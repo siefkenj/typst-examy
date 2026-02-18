@@ -6,7 +6,13 @@
 
 /// Value used for determining if a key is in a dictionary.
 #let NOT_FOUND_SENTINEL = () => {}
-#let _GLOBALS = state(PREFIX + "/globals", (all_questions: (), num_divisions: 0))
+#let _GLOBALS = state(PREFIX + "/globals", (
+  // XXX: not used, can delete
+  all_questions: (),
+  // XXX: not used, can delete
+  num_divisions: 0,
+  current_address: (),
+))
 
 #let HIERARCHY = ("question", "part", "subpart")
 #let ALLOWED_CHILDREN = (

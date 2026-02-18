@@ -7,6 +7,7 @@
   prefix: PREFIX,
   doc: "Display a box where students can write answers",
   display: it => {
+    // return block(stroke: 1pt + black, height: 1fr)[hi there]
     let is_block = type(it.height) == fraction
     let height = it.height
     // The height of a box cannot be a fraction, so we change it to 100% if it is
@@ -53,6 +54,8 @@
       baseline: 50% - .3em,
       inset: 5pt,
     )
+    repr(height)
+    repr(box_height)
 
     it.body
     set block(spacing: 8pt)

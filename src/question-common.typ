@@ -4,6 +4,8 @@
 /// Labelling for `question`, `part`, and `subpart`.
 #let LABELLING = ("1.", "(a)", "i.")
 
+#let NUMBER_TYPE = e.types.union(int, none, auto, content)
+
 /// Fields common to question, part, and subpart elements.
 #let _COMMON_FIELDS = (
   e.field("body", content, doc: "The content of the question", required: true),
@@ -40,13 +42,15 @@
   ),
   e.field(
     "number",
-    e.types.union(int, none, auto, content),
+    NUMBER_TYPE,
     doc: "The item number of the question/part/subpart. Leaving as `auto` will automatically number the items. Setting to an integer will number the item with that integer and continue numbering from there. Setting to `none` will omit the number entirely. Setting to `content` will use a custom label consisting of the content.",
     default: auto,
   ),
 )
 
-/// A type to keep track of data for each division (question/part/subpart). This is for internal use to allow a flattened structure split at pagebreaks.
+/// A type to keep track of data for each division (question/part/subpart).
+///
+/// This is for internal use to allow a flattened structure, which in turn allows splits at pagebreaks.
 #let _division_meta_type = e.types.declare(
   "division-metadata",
   prefix: PREFIX,
@@ -57,6 +61,11 @@
       "level",
       int,
       doc: "The level of the division",
+    ),
+    e.field(
+      "ancestor_numbering",
+      e.types.array(NUMBER_TYPE),
+      doc: "The computed numbering for the parent, grandparent, etc..",
     ),
     e.field(
       "continuation",
@@ -104,7 +113,7 @@
 }
 
 /// Takes content and wraps it in `metadata(_division_meta_type(...))` but keeps a parallel structure.
-/// That is, if come children are already a `_division_meta_type`, they are separately wrapped with their level incremented.
+/// That is, if some children are already a `_division_meta_type`, they are separately wrapped with their level incremented.
 #let _division(body, ..args) = {
   let initialized_args = _division_meta_type([], ..args)
   let chunks = content_to_array(body)
@@ -194,6 +203,17 @@
     if d.continuation {
       ret.push((..d, number: none))
     } else {
+      // Every counter above the current level gets reset
+      counters = counters
+        .enumerate()
+        .map(((i, v)) => {
+          if i > d.level {
+            -1
+          } else {
+            v
+          }
+        })
+
       if d.number == auto {
         counters.at(d.level) += 1
       }
@@ -201,7 +221,12 @@
         counters.at(d.level) = d.number
       }
       if d.number == auto or type(d.number) == int {
-        ret.push((..d, number: counters.at(d.level)))
+        ret.push((
+          ..d,
+          number: counters.at(d.level),
+          // The "oldest ancestor" is always 0; this is never displayed and so is not useful for numbering.
+          ancestor_numbering: counters.slice(1, d.level).rev(),
+        ))
       } else {
         // Preserve custom content or `none`
         ret.push(d)
@@ -211,11 +236,78 @@
   merge_duplicate_divisions(ret)
 }
 
+/// Collect information together about the number of points for each question, part, and subpart.
+/// Points for parts and subparts are added to the points value for the parent question.
+#let generate_points_data(processed_divs) = {
+  let top_leve_questions = processed_divs.filter(d => d.level == 1 and d.continuation == false)
+  let num_questions = top_leve_questions.len()
+  let ret = top_leve_questions.map(q => (number: q.number, points: none))
+  // Loop through each chunk and add its points to the appropriate question
+  let current_question = 0
+  for chunk in processed_divs {
+    if chunk.level < 1 {
+      continue
+    }
+    // Detect if we've moved to the next question
+    if chunk.level == 1 and chunk.number != none and chunk.number != current_question {
+      current_question += 1
+    }
+    // If we have points, add them to the current question's total.
+    if chunk.points != none and chunk.continuation == false {
+      let existing = ret.at(current_question, default: (number: chunk.number, points: none))
+      if existing.points == none {
+        existing.points = 0
+      }
+      existing.points += chunk.points
+      ret.at(current_question) = existing
+    }
+  }
+
+
+  ret
+}
 
 // TESTING
 #{
+  let body = _division[
+    #_division()[a]
+    #_division(points: 3)[a]
+
+    #_division[
+      #_division(points: 1)[xx]
+      #_division(points: 5)[yyy]
+    ]
+    #_division(number: "XX")[
+      #_division[
+        xx
+        #_division(points: 2)[yyy]
+        #_division(points: 2)[yyy]
+      ]
+      #_division(points: 5)[yyy]
+    ]
+  ]
+  body = _division[
+    Here are the questions
+
+    #_division[foo]
+
+    more text
+
+    #_division(label: <bar>, points: 3)[bar
+      #_division[baz#_division[bang and @bar]]
+    ]
+  ]
+  let processed = postprocess_divisions(merge_duplicate_divisions(divisions_to_array(body)))
+
+  [---\ ]
+  [#generate_points_data(processed)]
+  [\ ---\ ]
+  [#processed]
+  [\ ---]
+}
+#{
   set page(width: 10in)
-  let simplify_division(it) = {
+  let DEBUG_simplify_division(it) = {
     let chunks = content_to_array(it)
     chunks
       .map(get_division_meta_type)
@@ -223,8 +315,9 @@
         let ret = (
           level: d.level,
           // is_break: d.is_break,
-          continuation: d.continuation,
+          // continuation: d.continuation,
           number: d.number,
+          ancestor_numbering: d.ancestor_numbering,
           // indent: d.indent,
         )
         if d._DEBUG != none {
@@ -240,7 +333,8 @@
     ])
     let body = postprocess_divisions(divisions_to_array(body))
 
-    simplify_division(body)
+    DEBUG_simplify_division(body)
+    ("----",)
   }]
   [
     #parbreak()
@@ -250,13 +344,21 @@
 
         hi there#_division([xxx#pagebreak()])#_division(
           [xxx#pagebreak()],
-        )zzz#_division([xxx#_division([xxx#pagebreak()])])])
+        )zzz#_division([xxx#_division(
+            [xxx#pagebreak()],
+          )#_division[foo]#_division[bar]#_division[baz#_division[baz]]#_division[baz#_division[baz]]])])
 
-      simplify_division(body)
+      // simplify_division(body)
       ("______________",)
-      // simplify_division(
-      // merge_duplicate_divisions(divisions_to_array(body))
-      //  )
+      DEBUG_simplify_division(
+        merge_duplicate_divisions(
+          divisions_to_array(body),
+        ),
+      )
+      ("______________",)
+      DEBUG_simplify_division(
+        postprocess_divisions(merge_duplicate_divisions(divisions_to_array(body))),
+      )
     }]
 }
 
@@ -268,7 +370,7 @@
     [
       A bar c
     ]
-    // _division([hi there#_division([xxx #pagebreak() ])])
+    //_division([hi there#_division([xxx #pagebreak() ])])
   }
   parbreak()
   "!end!"
