@@ -1,0 +1,15 @@
+{
+  "name": "typst-examy",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "myriad-dreamin.tinymist",
+        "streetsidesoftware.code-spell-checker"
+      ]
+    }
+  },
+  "postCreateCommand": "typst --version"
+}
