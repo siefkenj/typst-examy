@@ -8,7 +8,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         fonts-dejavu-extra \
         fontconfig \
         unzip \
+        vim \
+        poppler-utils \
+        imagemagick \
     && rm -rf /var/lib/apt/lists/*
+
+# Make vim the default editor for git commits (e.g. `git commit` with no -m).
+RUN git config --system core.editor vim
 
 # Install the typst CLI, pinned to the compiler version in typst.toml.
 # Detected via `uname -m` rather than Docker's $TARGETARCH build-arg, since
