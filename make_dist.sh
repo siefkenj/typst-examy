@@ -11,7 +11,11 @@
 #   2. compile every example (with and without solutions) as validation
 #   3. regenerate the README screenshots from the examples
 #   4. assemble the package; example imports are rewritten from the local
-#      `../src/lib.typ` to `@preview/examy:<version>`
+#      `../src/lib.typ` to `@preview/examy:<version>`, and the README's
+#      relative links/images (which only work when browsing this repo on
+#      GitHub) are rewritten to absolute links against `repository` in
+#      typst.toml, so the published README is portable to Typst Universe /
+#      typst/packages
 #   5. compile the packaged examples against the vendored package
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -19,6 +23,15 @@ cd "$(dirname "$0")"
 VERSION=$(grep -m1 '^version' typst.toml | sed 's/.*"\(.*\)"/\1/')
 PKG="dist/examy/$VERSION"
 echo "==> examy $VERSION"
+
+# Base URLs for rewriting the README's repo-relative links (see step 4).
+# Assumes the release is published from this branch; adjust if released from
+# elsewhere (e.g. a release tag).
+REPO_URL=$(grep -m1 '^repository' typst.toml | sed 's/.*"\(.*\)"/\1/')
+GITHUB_BRANCH="main"
+BLOB_BASE="$REPO_URL/blob/$GITHUB_BRANCH"
+TREE_BASE="$REPO_URL/tree/$GITHUB_BRANCH"
+RAW_BASE="https://raw.githubusercontent.com/${REPO_URL#https://github.com/}/$GITHUB_BRANCH"
 
 echo "==> Running tests"
 ./tests/run.sh
@@ -59,8 +72,27 @@ mkdir -p "$PKG/examples/images"
 cp typst.toml LICENSE "$PKG/"
 # The published README keeps user documentation only: strip the Development
 # section (everything from "## Development" up to the next "## " heading).
+# Then rewrite repo-relative links so the README is portable outside GitHub:
+# markdown links `](path)` and `<a href="path">` become blob links (or tree
+# links for directory paths ending in `/`), and `<img src="path">` becomes a
+# raw.githubusercontent.com link. Absolute (`http...`), anchor (`#...`), and
+# `mailto:` targets are left untouched.
 awk '/^## Development$/ { skip = 1; next } skip && /^## / { skip = 0 } !skip' \
-    README.md >"$PKG/README.md"
+    README.md \
+    | BLOB_BASE="$BLOB_BASE" TREE_BASE="$TREE_BASE" RAW_BASE="$RAW_BASE" perl -pe '
+        s{\]\(([^)]+)\)}{
+            my $p = $1;
+            $p =~ m{^(?:https?:|#|mailto:)} ? "](" . $p . ")"
+            : $p =~ m{/$} ? "](" . $ENV{TREE_BASE} . "/" . $p . ")"
+            : "](" . $ENV{BLOB_BASE} . "/" . $p . ")"
+        }ge;
+        s{(<img\b[^>]*\bsrc=")([^"]+)(")}{
+            $2 =~ m{^https?:} ? "$1$2$3" : "$1" . $ENV{RAW_BASE} . "/$2" . "$3"
+        }ge;
+        s{(<a\b[^>]*\bhref=")([^"]+)(")}{
+            $2 =~ m{^https?:} ? "$1$2$3" : "$1" . $ENV{BLOB_BASE} . "/$2" . "$3"
+        }ge;
+    ' >"$PKG/README.md"
 cp -r src "$PKG/src"
 cp examples/images/*.png "$PKG/examples/images/"
 for f in examples/*.typ; do
