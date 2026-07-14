@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/devcontainers/base:bookworm
 
-ARG TYPST_VERSION=0.13.0
+ARG TYPST_VERSION=0.15.0
 ARG LIBERTINUS_VERSION=7.051
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -29,7 +29,7 @@ RUN case "$(uname -m)" in \
     && install -m 755 "/tmp/typst-${ARCH}-unknown-linux-musl/typst" /usr/local/bin/typst \
     && rm -rf /tmp/typst*
 
-# Install Libertinus Serif, used by src/elements/exam.typ and exam-new.typ.
+# Install Libertinus Serif, used by src/elements/exam.typ.
 # Not packaged for Debian stable/testing, so fetch it from upstream.
 RUN curl -fsSL "https://github.com/alerque/libertinus/releases/download/v${LIBERTINUS_VERSION}/Libertinus-${LIBERTINUS_VERSION}.zip" -o /tmp/libertinus.zip \
     && mkdir -p /usr/local/share/fonts/libertinus \

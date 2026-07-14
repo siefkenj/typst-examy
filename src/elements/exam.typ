@@ -6,8 +6,38 @@
 #import "../points.typ": compute_points_data, points_data_state
 #import "./solution.typ": show_solutions
 
-/// A labeled fill-in row (name/email/UTORid) for the cover page.
-#let name_row(title) = {
+/// The default rows for a name block.
+#let DEFAULT_NAME_FIELDS = ((prefix: [Name:]), (prefix: [Student ID:]))
+
+/// Render one entry of `name_fields` as grid cells. A dictionary entry
+/// `(prefix: ..., suffix: ...)` (both optional) becomes a fill-in row:
+/// the prefix, then an underline extending to the end of the line, with the
+/// suffix sitting on the line at its right end. Any other entry is content
+/// rendered verbatim, spanning the full block width.
+#let _name_field_row(entry) = {
+  if type(entry) != dictionary {
+    return (grid.cell(colspan: 2, entry),)
+  }
+  let prefix = entry.at("prefix", default: none)
+  let suffix = entry.at("suffix", default: none)
+  (
+    align(right + bottom, box(inset: (bottom: .35em), prefix)),
+    align(bottom, box(
+      width: 100%,
+      stroke: (bottom: 1pt),
+      inset: (bottom: .35em, x: .2em),
+      {
+        h(1fr)
+        // An invisible character keeps empty lines the same height as ones
+        // with a suffix.
+        if suffix == none { hide[X] } else { suffix }
+      },
+    )),
+  )
+}
+
+/// A block of fill-in rows (name, ID, ...) for the cover page.
+#let name_row(title, fields) = {
   {
     set align(center)
     set text(size: .9em)
@@ -17,33 +47,11 @@
     v(-.7em)
   }
 
-  show: pad.with(left: -.2cm)
   grid(
     columns: (auto, 1fr),
-    row-gutter: 1.5em,
+    row-gutter: 1em,
     column-gutter: .3em,
-    {
-      box({
-        set align(right)
-        stack(
-          spacing: .5em,
-          text(size: .85em)[(Given then Family)],
-          [NAME:],
-        )
-      })
-    },
-    {
-      align(bottom, box(width: 1fr, stroke: (bottom: 1pt)))
-    },
-
-    align(right, [Email address:]),
-    box(
-      width: 1fr,
-      stroke: (bottom: 1pt),
-      inset: (bottom: .4em),
-    )[#h(1fr) `@mail.utoronto.ca`],
-
-    align(right, [UTORid:]), box(width: 1fr, height: 1em, stroke: (bottom: 1pt)),
+    ..fields.map(_name_field_row).flatten()
   )
 }
 
@@ -64,12 +72,15 @@
     if it.name_list.len() > 0 {
       set text(font: "DejaVu Sans Mono")
       [#(
-        it
-          .name_list
-          .map(
-            name_header => name_row(name_header),
-          )
-          .join(v(.7em))
+        {
+          let name_fields = if it.name_fields == none { DEFAULT_NAME_FIELDS } else { it.name_fields }
+          it
+            .name_list
+            .map(
+              name_header => name_row(name_header, name_fields),
+            )
+            .join(v(.7em))
+        }
       )]
     }
     // Cover page. Only show if there are some cover items specified.
@@ -129,6 +140,13 @@
       "name_list",
       e.types.array(content),
       doc: "The number of places to write a name on the cover of the exam",
+    ),
+    e.field(
+      "name_fields",
+      // An option (rather than an array with a default) because elembic
+      // folds array fields by concatenating onto the default.
+      e.types.option(e.types.array(e.types.union(content, dictionary))),
+      doc: "The rows of each name block (default: a Name row and a Student ID row). A dictionary entry `(prefix: ..., suffix: ...)` (both optional) renders as a fill-in row: the prefix, an underline to the end of the line, and the suffix sitting on the line at its right end. A content entry is rendered verbatim as its own row.",
     ),
     e.field("institution", e.types.option(content), doc: "The institution name"),
     e.field("exam_name", e.types.option(content), doc: "The name of the exam"),

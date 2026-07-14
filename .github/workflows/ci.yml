@@ -1,0 +1,23 @@
+name: Run Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run tests and compile examples in devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            set -eu
+            ./tests/run.sh
+            typst compile --root . -f pdf examples/final-exam.typ final-exam.pdf
+            typst compile --root . -f pdf examples/quiz.typ quiz.pdf
+            typst compile --root . -f pdf --input show-solutions=true examples/quiz.typ quiz-solutions.pdf

@@ -1,6 +1,6 @@
 [package]
 name = "examy"
-version = "0.1.0"
+version = "0.2.0"
 compiler = "0.15.0"
 repository = "https://github.com/siefkenj/typst-examy"
 entrypoint = "src/lib.typ"
