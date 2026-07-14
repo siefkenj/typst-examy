@@ -35,7 +35,7 @@ bundletmp=$(mktemp -d)
 typst compile --root . --features bundle -f bundle examples/bundle.typ "$bundletmp"
 rm -rf "$bundletmp"
 
-echo "==> Regenerating API.md"
+echo "==> Regenerating the API reference in README.md"
 ./make_docs.sh
 
 echo "==> Rendering README screenshots"
@@ -56,7 +56,7 @@ typst compile --root . -f png --ppi 140 examples/name-blocks.typ examples/images
 echo "==> Assembling $PKG/"
 rm -rf dist
 mkdir -p "$PKG/examples/images"
-cp typst.toml LICENSE API.md "$PKG/"
+cp typst.toml LICENSE "$PKG/"
 # The published README keeps user documentation only: strip the Development
 # section (everything from "## Development" up to the next "## " heading).
 awk '/^## Development$/ { skip = 1; next } skip && /^## / { skip = 0 } !skip' \
