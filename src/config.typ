@@ -1,5 +1,17 @@
 #import "types.typ": *
 
+/// API documentation for `config` below, consumed by docs/generate-api.typ
+/// (keyed by export name). The properties are introspected from the
+/// element declaration; `config` is never called like a function (its
+/// properties are set with `e.set_`), so no call signature is shown.
+#let DOCS = (
+  config: (
+    kind: "element",
+    show-signature: false,
+    desc: "Package options. Set them with a show rule: `#show: e.set_(config, show-solutions: false, ...)`.",
+  ),
+)
+
 #let config = e.element.declare(
   "config",
   prefix: PREFIX,
@@ -12,6 +24,26 @@
       "show-solutions",
       e.types.option(bool),
       doc: "Whether to show solutions",
+    ),
+    e.field(
+      "institution",
+      e.types.option(content),
+      doc: "The institution name, shown by `maketitle`",
+    ),
+    e.field(
+      "exam-name",
+      e.types.option(content),
+      doc: "The name of the exam, shown by `maketitle`",
+    ),
+    e.field(
+      "term",
+      e.types.option(content),
+      doc: "The term of the exam (e.g. Fall 2026), shown by `maketitle`",
+    ),
+    e.field(
+      "duration",
+      e.types.option(duration),
+      doc: "The length of the exam, shown by `maketitle`",
     ),
     e.field(
       "show-rubric",

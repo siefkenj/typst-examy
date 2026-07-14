@@ -1,2 +1,2 @@
-#import "constants.typ": ALLOWED_CHILDREN, HIERARCHY, PARENTS, PREFIX, _GLOBALS
+#import "constants.typ": PREFIX
 #import "@preview/elembic:1.1.1" as e
