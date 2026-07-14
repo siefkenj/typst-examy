@@ -65,6 +65,8 @@
 #assert(starts_inline([#link("https://x.test")[a link]]) == true)
 // leading space is transparent; the text after decides
 #assert(starts_inline([ text after a space]) == true)
+// an explicitly-sized box fills its line past the baseline: not text-like
+#assert(starts_inline([#box(height: 2cm, width: 100%)[] text]) == false)
 // block-level starts
 #assert(starts_inline(block[a block]) == false)
 #assert(starts_inline([#block[a block] then text]) == false)

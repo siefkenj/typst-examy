@@ -133,6 +133,12 @@
   if (math.equation, raw, quote).contains(f) {
     return not c.at("block", default: false)
   }
+  // A box with an explicit height (e.g. a fixed-height answer box) fills its
+  // line well past the text baseline; a gutter label must not ride that
+  // baseline. Only content-sized boxes count as text-like.
+  if f == box {
+    return c.at("height", default: auto) == auto
+  }
   if _INLINE_FUNCS.contains(f) { return true }
   false
 }

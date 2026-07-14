@@ -19,7 +19,7 @@
       #pagebreak()
       #part(points: 5, label: <foo>)[The third part, labelled "@foo".
 
-        #answer-box(height: 2in, width: 100%, solution: [I know what you're thinking.])[]
+        #answer-box(height: 2in, width: 100%, solution: [I know what you're thinking!])[]
 
         #{
           stack(
@@ -57,7 +57,6 @@
   ],
 )
 
-XX #(1fr + 2fr)
 #a
 // #e.func-name(question[hi there])
 // #repr(a.at("children").filter( it => it.func() != metadata))

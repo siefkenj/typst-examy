@@ -37,10 +37,13 @@
   if inline {
     box(width: 0pt, h(-indent) + box(width: width - LABEL_GAP, align(right, disp)))
   } else {
-    place(dx: -indent, align(right, box(
+    // Anchor to the block region explicitly: since Typst 0.15 an
+    // alignment-less `place` inside a paragraph anchors at the line's
+    // baseline, which for a line containing a tall inline box is its bottom.
+    place(top + left, dx: -indent, box(
       width: width - LABEL_GAP,
-      disp,
-    )))
+      align(right, disp),
+    ))
   }
 }
 
