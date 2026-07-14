@@ -307,7 +307,7 @@ abridged), rendered below:
 #maketitle()
 #name-block(fields: (
   (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),
-  ..
+  // ...more fields
 ))
 
 #underline[_Instructions:_]
@@ -486,18 +486,28 @@ The following commands are useful for development.
 # compiles the examples, regenerates the README screenshots, rewrites
 # example imports to @preview/examy, and validates the result via
 # TYPST_PACKAGE_PATH (CI does the same and compiles a smoke-test document
-# against the vendored package).
-./make_dist.sh
+# against the vendored package). Requires --tag=<TAG> or --no-tag — see
+# below and `./make_dist.sh` with no arguments for why.
+./make_dist.sh --tag=v0.2.0   # or: ./make_dist.sh --no-tag
 ```
 
 ### Making a release
 
 1. Bump `version` in `typst.toml` — the elembic prefix, the example
    imports, and the dist layout all derive from it.
-2. Run `./make_dist.sh`. If the tests and validation pass, it produces
-   `dist/examy/<version>/` containing the package exactly as it should be
-   published (example imports rewritten to `@preview/examy:<version>`, this
-   Development section stripped from the README).
-3. Copy `dist/examy/<version>` into a fork of
+2. Commit, tag, and push:
+   ```bash
+   git commit -am "Release v0.2.0"
+   git tag v0.2.0
+   git push && git push origin v0.2.0
+   ```
+   The tag needs to already be on GitHub before the next step, since the
+   README's links are rewritten to permalinks pinned at it.
+3. Run `./make_dist.sh --tag=v0.2.0` (matching the tag from step 2). If the
+   tests and validation pass, it produces `dist/examy/<version>/` containing
+   the package exactly as it should be published (example imports rewritten
+   to `@preview/examy:<version>`, this Development section stripped from
+   the README, relative links rewritten to permalinks at the tag).
+4. Copy `dist/examy/<version>` into a fork of
    [typst/packages](https://github.com/typst/packages) as
    `packages/preview/examy/<version>` and open a pull request.
