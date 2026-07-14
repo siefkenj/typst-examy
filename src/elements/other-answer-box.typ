@@ -1,5 +1,6 @@
 #import "../types.typ": *
 #import "../config.typ": *
+#import "../markers.typ": height_hint
 
 /// Display a box where students can write answers
 #let other-answer-box(
@@ -20,6 +21,12 @@
     default_height: default_height,
     default_width: default_width,
   )
+
+  // The box below is built lazily via `show` rules, so the exam pipeline
+  // cannot introspect its height; announce fr heights with a hint marker.
+  if type(it.height) == fraction {
+    height_hint(it.height)
+  }
 
   // return block(stroke: 1pt + black, height: 1fr)[hi there]
   let is_block = type(it.height) == fraction

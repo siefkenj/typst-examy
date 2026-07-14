@@ -1,17 +1,67 @@
 #import "../types.typ": *
+#import "../tokenize.typ": tokenize
+#import "../parse.typ": parse
+#import "../plan.typ": plan
+#import "../render.typ": render
+#import "../points.typ": compute_points_data, points_data_state
+#import "./solution.typ": show_solutions
 
+/// A labeled fill-in row (name/email/UTORid) for the cover page.
+#let name_row(title) = {
+  {
+    set align(center)
+    set text(size: .9em)
+    if title != none and title != "" {
+      title
+    }
+    v(-.7em)
+  }
+
+  show: pad.with(left: -.2cm)
+  grid(
+    columns: (auto, 1fr),
+    row-gutter: 1.5em,
+    column-gutter: .3em,
+    {
+      box({
+        set align(right)
+        stack(
+          spacing: .5em,
+          text(size: .85em)[(Given then Family)],
+          [NAME:],
+        )
+      })
+    },
+    {
+      align(bottom, box(width: 1fr, stroke: (bottom: 1pt)))
+    },
+
+    align(right, [Email address:]),
+    box(
+      width: 1fr,
+      stroke: (bottom: 1pt),
+      inset: (bottom: .4em),
+    )[#h(1fr) `@mail.utoronto.ca`],
+
+    align(right, [UTORid:]), box(width: 1fr, height: 1em, stroke: (bottom: 1pt)),
+  )
+}
+
+/// Run the questions content through the full pipeline:
+/// tokenize → parse → plan → render (+ record point totals).
+#let process_questions(questions) = {
+  let items = parse(tokenize(questions))
+  points_data_state.update(compute_points_data(items))
+  render(items, plan(items))
+}
+
+/// Start an exam or homework list.
 #let exam = e.element.declare(
   "exam",
-  prefix: "mat244_exam",
+  prefix: PREFIX,
   doc: "Declare an exam",
   display: it => {
-    // Cover page. Only show if there are some cover items specified.
-    if (
-      not (it.institution, it.exam_name, it.term, it.duration, it.exam_instructions).all(t => (
-        t == none
-      ))
-        or it.name_list.len() > 0
-    ) {
+    if it.name_list.len() > 0 {
       set text(font: "DejaVu Sans Mono")
       [#(
         it
@@ -21,7 +71,14 @@
           )
           .join(v(.7em))
       )]
-
+    }
+    // Cover page. Only show if there are some cover items specified.
+    if (
+      not (it.institution, it.exam_name, it.term, it.duration, it.exam_instructions).all(t => (
+        t == none
+      ))
+    ) {
+      set text(font: "DejaVu Sans Mono")
       grid(
         columns: (1fr, 1fr),
         row-gutter: 1em,
@@ -50,28 +107,22 @@
       pagebreak()
     }
 
-    it.questions
-    // // If it.questions is a function, call it and pass it an argument of `solution_only(...)`, a function that shows things only if solutions are enabled.
-    // if type(it.questions) == function {
-    //   e.get(get => {
-    //     let show-solutions = get(hw.config).show-solutions
-    //     let show-solutions = if hw.SHOW_SOLUTIONS_OVERRIDE != none {
-    //       hw.SHOW_SOLUTIONS_OVERRIDE
-    //     } else {
-    //       show-solutions
-    //     }
-    //     let solutions_only(content, otherwise: none) = {
-    //       if show-solutions {
-    //         content
-    //       } else {
-    //         otherwise
-    //       }
-    //     }
-    //     (it.questions)(solutions_only)
-    //   })
-    // } else {
-    //   it.questions
-    // }
+    // If `questions` is a function, call it with a `solutions_only` helper
+    // that shows its argument only when solutions are enabled.
+    if type(it.questions) == function {
+      e.get(get => {
+        let solutions_only(content, otherwise: none) = {
+          if show_solutions(get) == true {
+            content
+          } else {
+            otherwise
+          }
+        }
+        process_questions((it.questions)(solutions_only))
+      })
+    } else {
+      process_questions(it.questions)
+    }
   },
   fields: (
     e.field(
@@ -101,19 +152,3 @@
     ),
   ),
 )
-
-#{
-  show: e.prepare()
-  [hi there!]
-
-  exam(
-    institution: [University of Toronto Faculty of Arts & Science],
-    exam_name: [Midterm Exam],
-    term: [Fall 2025],
-    duration: duration(minutes: 120),
-    exam_instructions: [Please complete all questions.],
-    questions: [
-      Here are the questions
-    ],
-  )
-}
