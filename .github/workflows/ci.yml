@@ -21,3 +21,35 @@ jobs:
             typst compile --root . -f pdf examples/final-exam.typ final-exam.pdf
             typst compile --root . -f pdf examples/quiz.typ quiz.pdf
             typst compile --root . -f pdf --input show-solutions=true examples/quiz.typ quiz-solutions.pdf
+
+  dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build dist and verify a document compiles against it
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: |
+            set -eu
+            ./make_dist.sh
+            # Verify that an end-user document compiles against the
+            # vendored package. Typst resolves `@preview/...` from
+            # `$TYPST_PACKAGE_PATH/preview/...`, so expose dist/ under a
+            # `preview` symlink.
+            mkdir -p pkgroot
+            ln -sfn "$PWD/dist" pkgroot/preview
+            VERSION=$(grep -m1 '^version' typst.toml | sed 's/.*"\(.*\)"/\1/')
+            printf '%s\n' \
+              "#import \"@preview/examy:$VERSION\": *" \
+              '#show: e.prepare()' \
+              '#name-block()' \
+              '#exam(questions: [' \
+              '  #question(points: 2)[' \
+              '    A question compiled against the vendored package.' \
+              '    #answer-box(width: 100%, height: 1fr)[#solution[An answer.]]' \
+              '  ]' \
+              '])' \
+              > smoke-test.typ
+            TYPST_PACKAGE_PATH="$PWD/pkgroot" typst compile -f pdf smoke-test.typ smoke-test.pdf

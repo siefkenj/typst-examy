@@ -227,6 +227,14 @@ and design decisions are documented in [DESIGN.md](DESIGN.md).
 # run the test suite (asserts + a full-pipeline integration document)
 ./tests/run.sh
 
+# build the publishable package in dist/examy/<version>/ — the folder to
+# copy into typst/packages under packages/preview/. Runs the tests,
+# compiles the examples, regenerates the README screenshots, rewrites
+# example imports to @preview/examy, and validates the result via
+# TYPST_PACKAGE_PATH (CI does the same and compiles a smoke-test document
+# against the vendored package).
+./make_dist.sh
+
 # compile the examples
 typst compile --root . -f pdf examples/final-exam.typ final-exam.pdf
 
