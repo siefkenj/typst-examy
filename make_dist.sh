@@ -38,7 +38,11 @@ typst compile --root . -f png --ppi 110 --input show-solutions=true examples/qui
 echo "==> Assembling $PKG/"
 rm -rf dist
 mkdir -p "$PKG/examples/images"
-cp typst.toml LICENSE README.md "$PKG/"
+cp typst.toml LICENSE "$PKG/"
+# The published README keeps user documentation only: strip the Development
+# section (everything from "## Development" up to the next "## " heading).
+awk '/^## Development$/ { skip = 1; next } skip && /^## / { skip = 0 } !skip' \
+    README.md >"$PKG/README.md"
 cp -r src "$PKG/src"
 cp examples/images/*.png "$PKG/examples/images/"
 for f in examples/*.typ; do

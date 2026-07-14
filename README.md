@@ -245,6 +245,18 @@ typst compile --root . -f png --ppi 110 examples/quiz.typ examples/images/quiz.p
 typst compile --root . -f png --ppi 110 --input show-solutions=true examples/quiz.typ examples/images/quiz-solutions.png
 ```
 
+### Making a release
+
+1. Bump `version` in `typst.toml` — the elembic prefix, the example
+   imports, and the dist layout all derive from it.
+2. Run `./make_dist.sh`. If the tests and validation pass, it produces
+   `dist/examy/<version>/` containing the package exactly as it should be
+   published (example imports rewritten to `@preview/examy:<version>`, this
+   Development section stripped from the README).
+3. Copy `dist/examy/<version>` into a fork of
+   [typst/packages](https://github.com/typst/packages) as
+   `packages/preview/examy/<version>` and open a pull request.
+
 Source layout (`src/`): `divisions.typ` (public constructors),
 `markers.typ`/`scan.typ`/`tokenize.typ`/`parse.typ`/`plan.typ`/`render.typ`
 (the pipeline), `refs.typ` (smart references), `points.typ` (totals and the
