@@ -92,6 +92,32 @@
   })
 )
 
+/// Exports sharing a `group` id (e.g. `question`/`part`/`subpart`, which
+/// take identical arguments) are collapsed into a single entry — documented
+/// once, with one signature line per name — instead of one section each.
+/// Order follows each group's first appearance in EXPORTS.
+#let GROUPED_EXPORTS = {
+  let names_by_group = (:)
+  for entry in EXPORTS {
+    let gid = entry.at("group", default: none)
+    if gid != none {
+      names_by_group.insert(gid, names_by_group.at(gid, default: ()) + (entry.name,))
+    }
+  }
+  let seen = (:)
+  let out = ()
+  for entry in EXPORTS {
+    let gid = entry.at("group", default: none)
+    if gid == none {
+      out.push(entry)
+    } else if gid not in seen {
+      seen.insert(gid, true)
+      out.push((..entry, names: names_by_group.at(gid)))
+    }
+  }
+  out
+}
+
 /// One argument in a signature: required positional args appear bare,
 /// required named args as `name: ..`, optional args as `name: default`.
 #let sig_arg(a) = {
@@ -132,7 +158,9 @@
   doc: f.doc + if f.doc.ends-with(".") { "" } else { "." },
 )
 
-/// Markdown for one export.
+/// Markdown for one export, or for a group of exports that share arguments
+/// (`entry.names.len() > 1`): one heading, one signature line per name, and
+/// a single shared description and argument list.
 #let entry_md(entry) = {
   let lines = ()
   let args = entry.at("args", default: ())
@@ -151,12 +179,23 @@
       .map(field_to_arg)
     tag = " (elembic element)"
   }
-  let head = if entry.kind == "value" or not entry.at("show-signature", default: true) {
-    entry.name
+  let names = entry.at("names", default: (entry.name,))
+  if names.len() > 1 {
+    // A grouped entry (e.g. question/part/subpart, which take identical
+    // arguments): one heading per name, each with its own full signature,
+    // followed by a single shared description and argument list below.
+    for (i, n) in names.enumerate() {
+      if i > 0 { lines.push("") }
+      lines.push("### `" + signature(n, args) + "`")
+    }
   } else {
-    signature(entry.name, args)
+    let head = if entry.kind == "value" or not entry.at("show-signature", default: true) {
+      entry.name
+    } else {
+      signature(entry.name, args)
+    }
+    lines.push("### `" + head + "`" + tag)
   }
-  lines.push("### `" + head + "`" + tag)
   lines.push("")
   lines.push(desc)
   if args.len() > 0 {
@@ -174,7 +213,7 @@
     + toml("/typst.toml").package.version
     + "\": *`."
     + "\n\n"
-    + EXPORTS.map(entry_md).join("\n\n")
+    + GROUPED_EXPORTS.map(entry_md).join("\n\n")
 )
 
 #metadata(md) <api>

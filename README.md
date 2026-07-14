@@ -11,6 +11,8 @@ follows the spirit of the [exam class for LaTeX](https://ctan.org/pkg/exam?lang=
 </p>
 <p align="center"><em><a href="examples/quiz.typ">examples/quiz.typ</a>, compiled without and with solutions.</em></p>
 
+See [examples/](examples/) for usage examples.
+
 ## Quick start
 
 ```typst
@@ -342,33 +344,11 @@ All names below are exported by `#import "@preview/examy:0.2.0": *`.
 
 ### `question(body, points: none, intent: none, solution: none, rubric: none, number: auto, indent: 1.5em, label: none)`
 
-Declare a question, numbered 1., 2., ....
-
-- `body: content` (required) — The body of the question.
-- `points: int | float | none = none` — The number of points: shows a "(2 points)" badge and feeds the points table.
-- `intent: "practice" | "bonus" | none = none` — Practice and bonus points are excluded from the regular totals; bonus points are tallied separately.
-- `solution: content | none = none` — A solution, rendered at the end of the division when solutions are enabled.
-- `rubric: content | none = none` — A grading rubric (accepted, but not yet rendered).
-- `number: auto | int | content | none = auto` — `auto` numbers sequentially; an integer is the number as displayed (later divisions continue from it); content is shown verbatim; `none` omits the number.
-- `indent: length = 1.5em` — Indentation of the body relative to the parent.
-- `label: label | none = none` — Attach a label so the division can be referenced with `@name`.
-
 ### `part(body, points: none, intent: none, solution: none, rubric: none, number: auto, indent: 1.5em, label: none)`
-
-Declare a part of a question, numbered (a), (b), .... Same arguments as `question`; the numbering style comes from the nesting depth, not the constructor name.
-
-- `body: content` (required) — The body of the question.
-- `points: int | float | none = none` — The number of points: shows a "(2 points)" badge and feeds the points table.
-- `intent: "practice" | "bonus" | none = none` — Practice and bonus points are excluded from the regular totals; bonus points are tallied separately.
-- `solution: content | none = none` — A solution, rendered at the end of the division when solutions are enabled.
-- `rubric: content | none = none` — A grading rubric (accepted, but not yet rendered).
-- `number: auto | int | content | none = auto` — `auto` numbers sequentially; an integer is the number as displayed (later divisions continue from it); content is shown verbatim; `none` omits the number.
-- `indent: length = 1.5em` — Indentation of the body relative to the parent.
-- `label: label | none = none` — Attach a label so the division can be referenced with `@name`.
 
 ### `subpart(body, points: none, intent: none, solution: none, rubric: none, number: auto, indent: 1.5em, label: none)`
 
-Declare a subpart of a part, numbered i., ii., .... Same arguments as `question`.
+Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively. The three functions take identical arguments; the numbering style is chosen by nesting depth, not by which function is called.
 
 - `body: content` (required) — The body of the question.
 - `points: int | float | none = none` — The number of points: shows a "(2 points)" badge and feeds the points table.

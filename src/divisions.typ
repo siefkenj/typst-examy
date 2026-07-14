@@ -122,17 +122,15 @@
     ),
 )
 
+/// A shared description for `question`/`part`/`subpart`: they take
+/// identical arguments and differ only in numbering style (chosen by
+/// nesting depth, not which function is called), so the API reference
+/// documents them as one group (see `group` below) instead of repeating
+/// the same argument list three times.
+#let _DIVISION_DESC = "Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively. The three functions take identical arguments; the numbering style is chosen by nesting depth, not by which function is called."
+
 #let DOCS = (
-  question: (
-    desc: "Declare a question, numbered 1., 2., ....",
-    args: _DIVISION_ARGS,
-  ),
-  part: (
-    desc: "Declare a part of a question, numbered (a), (b), .... Same arguments as `question`; the numbering style comes from the nesting depth, not the constructor name.",
-    args: _DIVISION_ARGS,
-  ),
-  subpart: (
-    desc: "Declare a subpart of a part, numbered i., ii., .... Same arguments as `question`.",
-    args: _DIVISION_ARGS,
-  ),
+  question: (group: "division", desc: _DIVISION_DESC, args: _DIVISION_ARGS),
+  part: (group: "division", desc: _DIVISION_DESC, args: _DIVISION_ARGS),
+  subpart: (group: "division", desc: _DIVISION_DESC, args: _DIVISION_ARGS),
 )
