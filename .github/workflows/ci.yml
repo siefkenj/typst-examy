@@ -33,7 +33,10 @@ jobs:
           push: never
           runCmd: |
             set -eu
-            ./make_dist.sh
+            # --no-tag: CI builds aren't tied to a release tag, so pin the
+            # README's links to the current commit instead (see make_dist.sh
+            # --help / its usage message for why one of these is required).
+            ./make_dist.sh --no-tag
             # Verify that an end-user document compiles against the
             # vendored package. Typst resolves `@preview/...` from
             # `$TYPST_PACKAGE_PATH/preview/...`, so expose dist/ under a
