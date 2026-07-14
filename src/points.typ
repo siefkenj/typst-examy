@@ -8,6 +8,20 @@
 
 #let points_data_state = state(PREFIX + "/points-data", none)
 
+/// API documentation for this module's exports, consumed by
+/// docs/generate-api.typ (keyed by export name).
+#let DOCS = (
+  "points-table": (
+    desc: "A scoring table with one column per question plus a total. Works anywhere in the document, even before the exam.",
+  ),
+  "num-questions": (
+    desc: "The total number of questions in the exam. Works anywhere in the document.",
+  ),
+  "num-points": (
+    desc: "The total number of regular (non-bonus, non-practice) points. Works anywhere in the document.",
+  ),
+)
+
 /// Extract the per-question point data from parsed items.
 #let compute_points_data(items) = {
   items

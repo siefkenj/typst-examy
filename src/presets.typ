@@ -13,3 +13,11 @@
     ),
   ),
 )
+
+/// API documentation for `presets`, consumed by docs/generate-api.typ
+/// (keyed by export name).
+#let DOCS = (
+  presets: (
+    desc: "Institution-specific argument sets. Currently `presets.utoronto.name_fields`: the University of Toronto name-block rows (NAME / Email address / UTORid).",
+  ),
+)

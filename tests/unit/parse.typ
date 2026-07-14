@@ -51,15 +51,16 @@
   assert(divs.map(d => d.address) == ((0,), (0, 0), (0, 1), (1,), (1, 0)))
 }
 
-// --- explicit int numbering continues from there ---
+// --- explicit int numbering is the displayed (1-based) number, and later
+//     divisions continue from it ---
 #{
   let items = parse(tokenize([
     #question[a]
-    #question(number: 5)[b]
-    #question[c]
+    #question(number: 5)[b] // displays "5."
+    #question[c] // displays "6."
   ]))
   let nums = divisions(items).map(d => d.number)
-  assert(nums == (0, 5, 6), message: repr(nums))
+  assert(nums == (0, 4, 5), message: repr(nums))
 }
 
 // --- content numbering is verbatim; counters untouched ---

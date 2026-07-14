@@ -66,3 +66,73 @@
 
 /// Declare a subpart of a part.
 #let subpart = _division.with(name: "subpart")
+
+/// API documentation for this module's exports, consumed by
+/// docs/generate-api.typ (keyed by export name). Plain functions cannot be
+/// introspected the way elembic elements can, so this lives here, next to
+/// `_division`'s signature — update both together.
+#let _DIVISION_ARGS = (
+    (
+      name: "body",
+      type: "content",
+      required: true,
+      doc: "The body of the question.",
+    ),
+    (
+      name: "points",
+      type: "int | float | none",
+      default: "none",
+      doc: "The number of points: shows a \"(2 points)\" badge and feeds the points table.",
+    ),
+    (
+      name: "intent",
+      type: "\"practice\" | \"bonus\" | none",
+      default: "none",
+      doc: "Practice and bonus points are excluded from the regular totals; bonus points are tallied separately.",
+    ),
+    (
+      name: "solution",
+      type: "content | none",
+      default: "none",
+      doc: "A solution, rendered at the end of the division when solutions are enabled.",
+    ),
+    (
+      name: "rubric",
+      type: "content | none",
+      default: "none",
+      doc: "A grading rubric (accepted, but not yet rendered).",
+    ),
+    (
+      name: "number",
+      type: "auto | int | content | none",
+      default: "auto",
+      doc: "`auto` numbers sequentially; an integer is the number as displayed (later divisions continue from it); content is shown verbatim; `none` omits the number.",
+    ),
+    (
+      name: "indent",
+      type: "length",
+      default: "1.5em",
+      doc: "Indentation of the body relative to the parent.",
+    ),
+    (
+      name: "label",
+      type: "label | none",
+      default: "none",
+      doc: "Attach a label so the division can be referenced with `@name`.",
+    ),
+)
+
+#let DOCS = (
+  question: (
+    desc: "Declare a question, numbered 1., 2., ....",
+    args: _DIVISION_ARGS,
+  ),
+  part: (
+    desc: "Declare a part of a question, numbered (a), (b), .... Same arguments as `question`; the numbering style comes from the nesting depth, not the constructor name.",
+    args: _DIVISION_ARGS,
+  ),
+  subpart: (
+    desc: "Declare a subpart of a part, numbered i., ii., .... Same arguments as `question`.",
+    args: _DIVISION_ARGS,
+  ),
+)

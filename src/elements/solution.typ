@@ -11,6 +11,25 @@
   }
 }
 
+/// API documentation for this module's exports, consumed by
+/// docs/generate-api.typ (keyed by export name). Kept next to the
+/// signatures — update both together. `solution` needs no argument docs
+/// here: elembic elements are introspected.
+#let DOCS = (
+  solution: (kind: "element"),
+  "show-solutions": (
+    desc: "Returns the effective show-solutions setting: the `--input show-solutions=..` command-line override if given, otherwise `config`'s value. Use it to conditionally render content that `#solution[..]` cannot wrap (e.g. one curve of a plot).",
+    args: (
+      (
+        name: "get",
+        type: "function",
+        required: true,
+        doc: "The accessor provided by `e.get(get => ..)`.",
+      ),
+    ),
+  ),
+)
+
 /// (Conditionally) show a solution for a question/part/subpart.
 #let solution = e.element.declare(
   "solution",

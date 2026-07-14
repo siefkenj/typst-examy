@@ -61,8 +61,7 @@
 /// Numbering rules per division, driven by its `number` field:
 /// - `auto`: next value of this level's counter; entering a division resets
 ///   all deeper counters
-/// - int: set this level's counter to that value and continue from there
-///   (0-based)
+/// - int: the 1-based number as displayed; later divisions continue from it
 /// - content/str: displayed verbatim; counters untouched
 /// - `none`: unnumbered; counters untouched
 #let assign_numbers(items) = {
@@ -79,8 +78,10 @@
       counters.at(level - 1) += 1
       counters.at(level - 1)
     } else if type(requested) == int {
-      counters.at(level - 1) = requested
-      requested
+      // `number:` is the 1-based number as it will be displayed; internal
+      // counters are 0-based.
+      counters.at(level - 1) = requested - 1
+      requested - 1
     } else {
       requested // content, str, or none: verbatim / unnumbered
     }

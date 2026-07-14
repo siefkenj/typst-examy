@@ -1,5 +1,58 @@
 #import "../types.typ": *
-#import "../config.typ": *
+#import "../config.typ": config
+
+/// API documentation for this module's exports, consumed by
+/// docs/generate-api.typ (keyed by export name). Kept next to the
+/// signature — update both together.
+#let DOCS = (
+  "answer-box": (
+    desc: "A box for students to write answers in.",
+    args: (
+    (
+      name: "body",
+      type: "content",
+      required: true,
+      doc: "Content shown inside the box (a prompt, `#solution[..]`, or nothing).",
+    ),
+    (
+      name: "solution",
+      type: "content | none",
+      default: "none",
+      doc: "Solution content that fills the bottom of the box when solutions are enabled.",
+    ),
+    (
+      name: "width",
+      type: "auto | length | ratio | relative",
+      default: "auto",
+      doc: "The width of the box; `auto` falls back to `default_width`.",
+    ),
+    (
+      name: "height",
+      type: "length | fraction | none",
+      default: "none",
+      doc: "A fixed height gives a box of that size (`none` falls back to `default_height`); a fraction (`1fr`) makes the box grow to fill the remaining space on the page.",
+    ),
+    (
+      name: "baseline",
+      type: "length | ratio | relative",
+      default: "50% - .3em",
+      doc: "Baseline shift for small boxes sitting inline in a sentence; ignored for block-mode and full-width boxes.",
+    ),
+    (
+      name: "default_height",
+      type: "length",
+      default: "2cm",
+      doc: "The height used when `height` is `none`.",
+    ),
+    (
+      name: "default_width",
+      type: "length",
+      default: "2cm",
+      doc: "The width used when `width` is `auto` (inline boxes only).",
+    ),
+    ),
+  ),
+)
 
 /// Display a box where students can write answers
 #let other-answer-box(

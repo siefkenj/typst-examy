@@ -113,6 +113,60 @@
   )
 }
 
+/// API documentation for this module's exports, consumed by
+/// docs/generate-api.typ (keyed by export name). Kept next to the
+/// signatures — update both together. `exam` needs no argument docs here:
+/// elembic elements are introspected.
+#let DOCS = (
+  exam: (kind: "element"),
+  maketitle: (
+    desc: "The exam title block (in the spirit of LaTeX's `\\maketitle`). Renders nothing if all four values resolve to `none`.",
+    args: (
+      (
+        name: "institution",
+        type: "auto | content | none",
+        default: "auto",
+        doc: "The institution name; `auto` takes `config`'s value, `none` suppresses it.",
+      ),
+      (
+        name: "exam-name",
+        type: "auto | content | none",
+        default: "auto",
+        doc: "The exam name, shown bold; `auto` takes `config`'s value, `none` suppresses it.",
+      ),
+      (
+        name: "term",
+        type: "auto | content | none",
+        default: "auto",
+        doc: "The term (e.g. Fall 2026); `auto` takes `config`'s value, `none` suppresses it.",
+      ),
+      (
+        name: "duration",
+        type: "auto | duration | none",
+        default: "auto",
+        doc: "The exam length, shown under the term; `auto` takes `config`'s value, `none` suppresses it.",
+      ),
+    ),
+  ),
+  "name-block": (
+    desc: "A block of fill-in rows for a cover page or quiz header.",
+    args: (
+      (
+        name: "title",
+        type: "content | none",
+        default: "none",
+        doc: "A heading shown centered above the block.",
+      ),
+      (
+        name: "fields",
+        type: "(dictionary | content)[]",
+        default: "((prefix: [Name:]), (prefix: [Student ID:]))",
+        doc: "One entry per row. A `(prefix: .., suffix: ..)` dictionary (both keys optional) renders the prefix, an underline extending to the end of the line, and the suffix sitting on the line at its right end; any other entry is content rendered verbatim as its own row.",
+      ),
+    ),
+  ),
+)
+
 /// Run the questions content through the full pipeline:
 /// tokenize → parse → plan → render (+ record point totals).
 #let process_questions(questions) = {

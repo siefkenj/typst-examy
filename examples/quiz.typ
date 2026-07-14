@@ -1,7 +1,8 @@
-// A compact single-page quiz.
+// A compact single-page quiz. This file configures `show-solutions: true`;
+// the command-line input overrides it in either direction.
 //
-// Compile:                  typst compile --root .. quiz.typ
-// Compile with solutions:   typst compile --root .. --input show-solutions=true quiz.typ
+// Answer key:       typst compile --root .. quiz.typ
+// Student version:  typst compile --root .. --input show-solutions=false quiz.typ
 #import "../src/lib.typ": *
 #import "@preview/lilaq:0.6.0" as lq
 
@@ -13,7 +14,7 @@
 
 // A fill-in block for the student's name; `name-block` can be placed
 // anywhere — here it sits at the top of the quiz page.
-#name-block(title: [Your name])
+#name-block()
 
 #exam(
   questions: [

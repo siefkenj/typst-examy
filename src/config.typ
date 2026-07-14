@@ -1,5 +1,17 @@
 #import "types.typ": *
 
+/// API documentation for `config` below, consumed by docs/generate-api.typ
+/// (keyed by export name). The properties are introspected from the
+/// element declaration; `config` is never called like a function (its
+/// properties are set with `e.set_`), so no call signature is shown.
+#let DOCS = (
+  config: (
+    kind: "element",
+    show-signature: false,
+    desc: "Package options. Set them with a show rule: `#show: e.set_(config, show-solutions: false, ...)`.",
+  ),
+)
+
 #let config = e.element.declare(
   "config",
   prefix: PREFIX,

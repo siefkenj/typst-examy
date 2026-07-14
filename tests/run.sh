@@ -24,6 +24,31 @@ for f in tests/unit/*.typ; do
     fi
 done
 
+# tests/unit/config.typ marks <show-solutions-effective> only when the
+# effective show-solutions value (as seen through elembic's e.get) is true,
+# with config itself set to `false`. Check all three --input states so the
+# `--input show-solutions=..` CLI override is verified against config, not
+# just its no-input fallback.
+if [[ -z "$filter" || "config.typ" == *"$filter"* ]]; then
+    check_show_solutions() {
+        local input="$1" expected="$2"
+        local args=()
+        [[ -n "$input" ]] && args=(--input "show-solutions=$input")
+        local got
+        got="$(typst eval --root . "query(<show-solutions-effective>).len() > 0" --in tests/unit/config.typ "${args[@]}" 2>&1)"
+        if [[ "$got" == "$expected" ]]; then
+            pass=$((pass + 1))
+            echo "PASS config.typ (show-solutions=${input:-none})"
+        else
+            fail=$((fail + 1))
+            echo "FAIL config.typ (show-solutions=${input:-none}): expected $expected, got $got"
+        fi
+    }
+    check_show_solutions "" false
+    check_show_solutions "true" true
+    check_show_solutions "false" false
+fi
+
 echo "----"
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
