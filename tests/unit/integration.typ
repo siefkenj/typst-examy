@@ -5,18 +5,24 @@
 
 #show: e.prepare()
 #show: e.set_(config, show-solutions: true)
+#show: e.set_(
+  config,
+  institution: "Test University",
+  exam-name: [Integration Test],
+  term: "Fall 2026",
+  duration: duration(minutes: 60),
+)
 
 There are #num-questions questions worth #num-points points.
 
 #points-table
 
+#maketitle()
+#name-block()
+Answer everything.
+#pagebreak()
+
 #exam(
-  name_list: (none,),
-  institution: "Test University",
-  exam_name: [Integration Test],
-  term: "Fall 2026",
-  duration: duration(minutes: 60),
-  exam_instructions: [Answer everything.],
   questions: [
     Some prose before the questions.
 

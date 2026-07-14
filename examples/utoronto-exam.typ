@@ -8,25 +8,33 @@
 
 #set page(paper: "us-letter", margin: (x: .75in, bottom: .75in, top: 1in))
 #show: e.prepare()
-#show: e.set_(config, show-solutions: false)
-
-#exam(
-  ..presets.utoronto,
-  name_list: (none,),
+#show: e.set_(config, show-solutions: true)
+#show: e.set_(
+  config,
   institution: [University of Toronto Faculty of Arts & Science],
-  exam_name: [MAT244H1S Midterm],
+  exam-name: [MAT244H1S Midterm],
   term: [Fall 2026],
   duration: duration(minutes: 110),
-  exam_instructions: [
-    #underline[_Exam Reminders:_]
-    - Fill out the name, UTORid, and email address at the top of this page.
-    - Do not begin writing the exam until instructed to do so.
-    - Turn off and store all cell phones, smart watches, and other
-      electronic devices.
+)
 
-    #v(1fr)
-    #align(center, points-table)
-  ],
+// The classic layout: name block above the title.
+#name-block(fields: presets.utoronto.name_fields)
+#maketitle()
+
+#underline[_Exam Reminders:_]
+- Fill out the name, UTORid, and email address at the top of this page.
+- Do not begin writing the exam until instructed to do so.
+- Turn off and store all cell phones, smart watches, and other
+  electronic devices.
+
+#v(1fr)
+#{
+  set align(center)
+  points-table
+}
+#pagebreak()
+
+#exam(
   questions: [
     #question(points: 4)[
       Solve the initial value problem

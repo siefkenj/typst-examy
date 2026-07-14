@@ -18,8 +18,10 @@ cross-references, and solutions that can be toggled on and off.
 #show: e.prepare()
 #show: e.set_(config, show-solutions: false)
 
+// A fill-in block (Name / Student ID) at the top of the page
+#name-block()
+
 #exam(
-  name_list: (none,), // one name/ID block at the top of the page
   questions: [
     #question(points: 2)[
       State the definition of a _continuous function_.
@@ -99,6 +101,29 @@ typst compile --input show-solutions=true exam.typ    # answer key
 The command-line input overrides the document setting
 `#show: e.set_(config, show-solutions: ...)`.
 
+When the solution is *part* of other content — say, one curve of a plot —
+wrapping it in `#solution[...]` isn't possible. Instead, read the setting
+yourself via elembic and branch on it:
+
+```typst
+#e.get(get => {
+  // `get(config).show-solutions` reads the raw config value; the
+  // `show-solutions` helper also honors the command-line override.
+  let solutions = show-solutions(get) != false
+  lq.diagram(
+    lq.plot(xs, xs.map(f), mark: none, color: black),
+    ..if solutions {
+      (lq.plot(xs, xs.map(f-prime), mark: none, color: blue),)
+    } else { () },
+  )
+})
+```
+
+[examples/quiz.typ](examples/quiz.typ) uses this to add the answer curve of
+a sketch-the-derivative question (drawn with
+[lilaq](https://typst.app/universe/package/lilaq)) only on the answer key —
+visible in the screenshot pair above.
+
 ### Cross-references
 
 Label a division with `label: <name>` and reference it with `@name`. The
@@ -117,35 +142,71 @@ in question 1.
 continues on the next page at the correct indentation, without repeating its
 number.
 
-### Exam cover page
+### Name blocks
 
-Passing `institution`, `exam_name`, `term`, `duration`, and/or
-`exam_instructions` to `#exam(...)` produces a cover page; `name_list`
-adds name/ID blocks (one per entry; an entry is an optional title shown
-above the block).
-
-The rows of each block are configurable per institution with
-`name_fields:`. An entry is either a `(prefix: ..., suffix: ...)` dictionary
-— rendered as the prefix, an underline extending to the end of the line, and
-the suffix sitting on the line at its right end — or arbitrary content shown
-verbatim as its own row. The default is a Name row and a Student ID row.
+`#name-block()` renders a fill-in block (Name / Student ID by default). It
+is ordinary content: put it at the top of a quiz page, on a cover page, or
+anywhere else. The rows are configurable with
+`fields:` — an entry is either a `(prefix: ..., suffix: ...)` dictionary,
+rendered as the prefix, an underline extending to the end of the line, and
+the suffix sitting on the line at its right end, or arbitrary content shown
+verbatim as its own row. An optional `title:` is shown above the block.
 
 ```typst
-#exam(
-  name_list: (none,),
-  name_fields: (
-    (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),
-    (prefix: [Email address:], suffix: `@university.edu`),
-    (prefix: [Student ID:]),
-    align(center, text(size: .85em)[_Write legibly and darkly._]),
-  ),
-  ...
-)
+#name-block(fields: (
+  (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),
+  (prefix: [Email address:], suffix: [`@university.edu`]),
+  (prefix: [Student ID:]),
+  {
+    set align(center)
+    text(size: .85em)[_Write legibly and darkly._]
+  },
+))
 ```
 
-See
-[examples/final-exam.typ](examples/final-exam.typ) for a complete exam and
-[examples/quiz.typ](examples/quiz.typ) for a minimal quiz.
+Institution-specific layouts ship with the package as `presets`; the
+University of Toronto block is `#name-block(fields:
+presets.utoronto.name_fields)`.
+
+### Exam cover page
+
+A cover page is ordinary content before `#exam(...)`. Set the exam's
+details (`institution`, `exam-name`, `term`, `duration`) on the `config`
+object and render them with `#maketitle()`; compose the rest — name blocks,
+instructions, a points table — around it in whatever order suits your
+institution, and end the page with `#pagebreak()`. Each configured value can
+be overridden per call, e.g. `#maketitle(term: [Summer 2026])`:
+
+```typst
+#show: e.set_(
+  config,
+  institution: [University of Examples],
+  exam-name: [MAT 101 Final Exam],
+  term: [Winter 2026],
+  duration: duration(minutes: 150),
+)
+
+#maketitle()
+#name-block()
+
+#underline[_Instructions:_]
+- Answer each question in the box provided.
+
+#v(1fr)
+#{
+  set align(center)
+  points-table
+}
+#pagebreak()
+
+#exam(questions: [...])
+```
+
+See [examples/quiz.typ](examples/quiz.typ) for a minimal quiz,
+[examples/final-exam.typ](examples/final-exam.typ) for a complete exam with
+custom name fields, and
+[examples/utoronto-exam.typ](examples/utoronto-exam.typ) for the preset in
+use.
 
 <p align="center">
   <img src="examples/images/cover.png" width="60%" alt="An exam cover page with a points table">

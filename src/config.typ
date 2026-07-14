@@ -14,6 +14,26 @@
       doc: "Whether to show solutions",
     ),
     e.field(
+      "institution",
+      e.types.option(content),
+      doc: "The institution name, shown by `maketitle`",
+    ),
+    e.field(
+      "exam-name",
+      e.types.option(content),
+      doc: "The name of the exam, shown by `maketitle`",
+    ),
+    e.field(
+      "term",
+      e.types.option(content),
+      doc: "The term of the exam (e.g. Fall 2026), shown by `maketitle`",
+    ),
+    e.field(
+      "duration",
+      e.types.option(duration),
+      doc: "The length of the exam, shown by `maketitle`",
+    ),
+    e.field(
       "show-rubric",
       e.types.option(bool),
       doc: "Whether to show a rubric",

@@ -9,32 +9,45 @@
 #set page(paper: "us-letter", margin: (x: .75in, bottom: .75in, top: 1in))
 #show: e.prepare()
 #show: e.set_(config, show-solutions: false)
-
-#exam(
-  name_list: (none,),
-  // Rows of the fill-in name block. A `(prefix: ..., suffix: ...)` entry
-  // draws an underline between the two; plain content is shown verbatim.
-  name_fields: (
-    (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),
-    (prefix: [Email address:], suffix: `@university.edu`),
-    (prefix: [Student ID:]),
-    align(center, text(size: .85em)[_Write legibly and darkly._]),
-  ),
+#show: e.set_(
+  config,
   institution: [University of Examples],
-  exam_name: [MAT 101 Final Exam],
+  exam-name: [MAT 101 Final Exam],
   term: [Winter 2026],
   duration: duration(minutes: 150),
-  exam_instructions: [
-    #underline[_Instructions:_]
-    - Fill out your name and student information at the top of this page.
-    - Answer each question in the box provided; work outside the boxes will
-      not be graded.
-    - The back of each page may be used for scratch work.
-    - No calculators or other aids are permitted.
+)
 
-    #v(1fr)
-    #align(center, points-table)
-  ],
+// `maketitle` renders the institution, exam name, term, and duration
+// configured above.
+#maketitle()
+
+// Rows of the fill-in name block. A `(prefix: ..., suffix: ...)` entry
+// draws an underline between the two; plain content is shown verbatim.
+#name-block(fields: (
+  (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),
+  (prefix: [Email address:], suffix: [`@university.edu`]),
+  (prefix: [Student ID:]),
+  {
+    set align(center)
+    text(size: .85em)[_Write legibly and darkly._]
+  },
+))
+
+#underline[_Instructions:_]
+- Fill out your name and student information at the top of this page.
+- Answer each question in the box provided; work outside the boxes will
+  not be graded.
+- The back of each page may be used for scratch work.
+- No calculators or other aids are permitted.
+
+#v(1fr)
+#{
+  set align(center)
+  points-table
+}
+#pagebreak()
+
+#exam(
   questions: [
     #question(points: 3)[
       Define what it means for a sequence $(a_n)$ to _converge_ to a limit
