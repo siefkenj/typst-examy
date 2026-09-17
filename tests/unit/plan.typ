@@ -35,11 +35,73 @@
   assert(shape(instr).contains("nested")) // q2 stays nested
 }
 
-// --- fr heights force split mode ---
+// --- fr heights force split mode and are hoisted to their own peer ---
 #{
   let (items, instr) = pipeline(question[fill the page #v(1fr)])
+  assert(shape(instr) == ("segment", "segment"), message: repr(shape(instr)))
+  let (prose, fill) = (instr.at(0), instr.at(1))
+  // the prose keeps the label and stays glued to the fr peer behind it
+  assert(prose.fr == none and prose.hoisted == false)
+  assert(prose.sticky == true)
+  assert(prose.label_divisions.len() == 1)
+  // the fr peer carries the height alone, so it negotiates against the page
+  // rather than against whatever the prose left over
+  assert(fill.fr == 1fr and fill.hoisted == true, message: repr(fill))
+  assert(fill.sticky == false)
+  assert(fill.items.len() == 1)
+}
+
+// --- an explicitly-sized box needs no negotiation: no split at all ---
+#{
+  let (items, instr) = pipeline(question[prompt #block(height: 2in)[]])
+  assert(shape(instr) == ("nested",), message: repr(shape(instr)))
+}
+
+// --- content after the fr box becomes a further peer ---
+#{
+  let (items, instr) = pipeline(question[before #v(1fr) after])
+  assert(shape(instr) == ("segment", "segment", "segment"), message: repr(shape(instr)))
+  assert(instr.map(s => s.hoisted) == (false, true, false))
+  // only the segment feeding the fr peer is sticky
+  assert(instr.map(s => s.sticky) == (true, false, false))
+}
+
+// --- a division whose body is only an fr box: the label rides the hoisted
+//     segment, since there is no prose to hold it ---
+#{
+  let (items, instr) = pipeline(question[#v(1fr)])
   assert(shape(instr) == ("segment",), message: repr(shape(instr)))
-  assert(instr.at(0).fr == 1fr)
+  assert(instr.at(0).hoisted == true)
+  assert(instr.at(0).label_divisions.len() == 1, message: repr(instr.at(0)))
+}
+
+// --- ... but a points badge takes a line, so it is kept out of the hoisted
+//     segment, where it would have been paid for out of the box's fr share ---
+#{
+  let (items, instr) = pipeline(question(points: 2)[#v(1fr)])
+  assert(shape(instr) == ("segment", "segment"), message: repr(shape(instr)))
+  let (head, fill) = (instr.at(0), instr.at(1))
+  assert(head.label_divisions.len() == 1 and head.sticky == true, message: repr(head))
+  assert(head.fr == none and head.hoisted == false)
+  assert(fill.hoisted == true and fill.label_divisions.len() == 0)
+}
+
+// --- sibling questions each get an independent fr peer ---
+#{
+  let (items, instr) = pipeline([
+    #question[short #v(1fr)]
+    #question[a much longer prompt #v(1fr)]
+  ])
+  let frs = instr.filter(i => i.kind == "segment" and i.hoisted)
+  assert(frs.len() == 2, message: repr(shape(instr)))
+  assert(frs.all(s => s.fr == 1fr))
+}
+
+// --- a chunk with a break inside keeps auto height, so it is not hoisted ---
+#{
+  let (items, instr) = pipeline(question[p #block(height: 1fr)[x #colbreak() y]])
+  let segs = instr.filter(i => i.kind == "segment")
+  assert(segs.all(s => not s.hoisted), message: repr(segs.map(s => s.hoisted)))
 }
 
 // --- segments around a break: label only on the first ---
