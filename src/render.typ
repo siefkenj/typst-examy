@@ -142,6 +142,12 @@
   let owner = items.at(seg.division)
   let height = if seg.has_inner_break or seg.fr == none { auto } else { seg.fr }
   let own_styles = owner.styles
+  // A hoisted segment is a bare wrapper sitting exactly where its one chunk
+  // used to sit, so it takes over that chunk's `above` spacing instead of the
+  // default gap between peer blocks (`answer-box` sets a tight one).
+  let above = if seg.hoisted {
+    items.at(seg.items.at(0)).body.at("above", default: auto)
+  } else { auto }
 
   let body = {
     // Gutter labels: possibly several divisions share this segment's first
@@ -174,7 +180,7 @@
   }
 
   apply_styles(
-    block(inset: (left: seg.indent), height: height, {
+    block(inset: (left: seg.indent), height: height, sticky: seg.sticky, above: above, {
       // A pagebreak buried inside an opaque chunk cannot break out of this
       // block; degrade it to a column break like the old implementation.
       show pagebreak: it => colbreak(weak: it.weak)

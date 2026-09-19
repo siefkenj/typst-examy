@@ -14,11 +14,14 @@
 /// - (kind: "nested", root: idx)              — render subtree as nested blocks
 /// - (kind: "segment", division: idx, first: bool, indent: length,
 ///    label_divisions: (idx, ..), items: (idx, ..), fr: fraction | none,
-///    has_inner_break: bool, tail: idx | none)
+///    has_inner_break: bool, tail: idx | none, sticky: bool, hoisted: bool)
 ///   `label_divisions` are the divisions whose number should be shown in the
 ///   gutter of this segment (a division whose body starts with a child
 ///   division shares its first line with that child). `tail` is a division
 ///   whose solution should be rendered at the end of this segment.
+///   `hoisted` marks a segment that wraps a single fr-height chunk pulled out
+///   of its division's prose (see `plan_split`); `sticky` marks the segment
+///   right before such a wrapper, which must not be separated from it.
 
 #import "scan.typ": is_whitespace_content
 
@@ -74,7 +77,7 @@
   let current = none
 
   // Emit `current` as a segment instruction (or defer/drop it).
-  let flush(instructions, pending_labels, current, force: false) = {
+  let flush(instructions, pending_labels, current, force: false, sticky: false) = {
     if current == none { return (instructions, pending_labels) }
     let whitespace = _segment_is_whitespace(items, current)
     let keep_for_content = not whitespace or current.fr != none or current.tail != none
@@ -98,17 +101,20 @@
       fr: current.fr,
       has_inner_break: current.has_inner_break,
       tail: current.tail,
+      sticky: sticky,
+      hoisted: current.hoisted,
     ))
     (instructions, ())
   }
 
-  let new_segment(division, first) = (
+  let new_segment(division, first, hoisted: false) = (
     division: division,
     first: first,
     items: (),
     fr: none,
     has_inner_break: false,
     tail: none,
+    hoisted: hoisted,
   )
 
   for ev in _events(items, root) {
@@ -128,11 +134,41 @@
       current = if stack.len() > 0 { new_segment(stack.at(-1), false) } else { none }
     } else if ev.kind == "chunk" {
       let chunk = items.at(ev.item)
+      // An fr height only resolves against the page at the top level of the
+      // flow, so a chunk sharing its segment with the division's prose would
+      // negotiate against that prose's height instead of against the other fr
+      // peers on the page — two `1fr` answer boxes under prompts of different
+      // lengths came out different sizes. Give it its own peer segment, and
+      // mark the prose sticky so the two still cannot be split apart. A chunk
+      // with a break inside keeps `auto` height anyway (see `render_segment`),
+      // so there is nothing to negotiate.
+      let hoist = chunk.fr != none and not chunk.has_inner_break
+      if hoist {
+        // A points badge takes a line, so letting one ride into the hoisted
+        // segment would spend the box's own fr share on it. Keep the head in a
+        // segment of its own instead. A bare gutter label is `place`d and
+        // costs no height, so it can still ride along.
+        let badged = (pending_labels + (current.division,)).any(d => (
+          items.at(d).fields.points != none
+        ))
+        (instructions, pending_labels) = flush(
+          instructions,
+          pending_labels,
+          current,
+          force: badged,
+          sticky: true,
+        )
+        current = new_segment(stack.at(-1), false, hoisted: true)
+      }
       current.items.push(ev.item)
       if chunk.fr != none {
         current.fr = if current.fr == none { chunk.fr } else { current.fr + chunk.fr }
       }
       if chunk.has_inner_break { current.has_inner_break = true }
+      if hoist {
+        (instructions, pending_labels) = flush(instructions, pending_labels, current)
+        current = new_segment(stack.at(-1), false)
+      }
     } else {
       // break
       (instructions, pending_labels) = flush(instructions, pending_labels, current, force: true)
@@ -153,6 +189,8 @@
       fr: none,
       has_inner_break: false,
       tail: none,
+      sticky: false,
+      hoisted: false,
     ))
   }
   instructions

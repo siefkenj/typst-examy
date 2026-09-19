@@ -7,7 +7,7 @@
 # (see the validation step below).
 #
 # Usage:
-#   ./make_dist.sh --tag=<TAG>   e.g. ./make_dist.sh --tag=v0.2.0
+#   ./make_dist.sh --tag=<TAG>   e.g. ./make_dist.sh --tag=v0.3.0
 #   ./make_dist.sh --no-tag
 #
 # Steps:
@@ -35,9 +35,9 @@ screenshots) into absolute GitHub permalinks, since the published package
 does not ship the examples/ directory itself. A permalink must be pinned to
 something — a release tag or a commit — so you must say which:
 
-  --tag=<TAG>   Pin the links to the given git tag, e.g. --tag=v0.2.0. Use
+  --tag=<TAG>   Pin the links to the given git tag, e.g. --tag=v0.3.0. Use
                 this for an actual release: create and push the tag first
-                    git tag v0.2.0 && git push origin v0.2.0
+                    git tag v0.3.0 && git push origin v0.3.0
                 then pass that same tag here, so the published README reads
                 nicely and links stay valid for that release forever.
 
