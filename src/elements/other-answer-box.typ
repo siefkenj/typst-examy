@@ -30,7 +30,7 @@
       name: "height",
       type: "length | fraction | none",
       default: "none",
-      doc: "A fixed height gives a box of that size (`none` falls back to `default_height`); a fraction (`1fr`) makes the box grow to fill the remaining space on the page.",
+      doc: "A fixed height gives a box of that size (`none` falls back to `default_height`); a fraction (`1fr`) makes the box grow to fill the remaining space on the page, shared proportionally with the other `fr` boxes there.",
     ),
     (
       name: "baseline",
