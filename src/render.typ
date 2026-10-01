@@ -11,10 +11,17 @@
 #let LABEL_GAP = .5em
 
 /// "(3 points)" badge shown at the start of a division.
+///
+/// The badge is boxed so it acts as a single atomic inline unit: it never
+/// breaks across lines, and its inner space is not stretched by paragraph
+/// justification. Without the box, a body that starts with a full-width
+/// inline element (e.g. `answer-box(width: 100%)`) pushes that element onto
+/// the next line, which makes the badge's line a non-final — and therefore
+/// justified — line, spreading "(1 point)" across the full measure.
 #let points_badge(points) = {
   if points == none { return none }
   let word = if points == 1 { "point" } else { "points" }
-  [(#points #word)#h(.5em)]
+  box[(#points #word)] + h(.5em)
 }
 
 /// The gutter label for a division, placed to the left of the body.
