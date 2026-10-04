@@ -1,5 +1,6 @@
 #import "../types.typ": *
 #import "../config.typ": config
+#import "widen.typ": widen_par_solutions
 
 /// API documentation for this module's exports, consumed by
 /// docs/generate-api.typ (keyed by export name). Kept next to the
@@ -96,6 +97,13 @@
     width = it.default_width
   }
 
+  // A centering baseline only makes sense for a small box sitting inline in
+  // a sentence. For block-mode boxes and full-width boxes on their own line
+  // there is none: since Typst 0.14/0.15 the line's ascent honors the
+  // baseline shift literally, so `50% - .3em` on a tall box pushes it half
+  // its height down the page.
+  let is_standalone = is_block or type(width) in (ratio, relative)
+
   // If our height is given as a fraction, we must be a block element
   show: it_ => {
     if is_block {
@@ -123,21 +131,32 @@
       it_
     }
   }
-  // A centering baseline only makes sense for a small box sitting inline in
-  // a sentence. For block-mode boxes and full-width boxes on their own line
-  // it must be 0pt: since Typst 0.14/0.15 the line's ascent honors the
-  // baseline shift literally, so `50% - .3em` on a tall box pushes it half
-  // its height down the page.
-  let is_standalone = is_block or type(width) in (ratio, relative)
+  // The baseline shift goes on an *outer* wrapper rather than on the drawn
+  // box itself: a box inherits the baseline of its contents' last line, so a
+  // box holding anything at all (a prompt, a solution) would be positioned
+  // by that line instead of by its own bottom edge, and the shift would then
+  // drop the whole box below the surrounding text. A `stack` discards the
+  // baseline of what it holds, so the wrapper's baseline is reliably its
+  // bottom edge — which is what `50% - .3em` is measured from. Wrapping the
+  // finished box (instead of its contents) also leaves the contents' own
+  // region alone, so `place(bottom)` and `height: 1fr` inside still see the
+  // full box. The wrapper repeats the box's height so that it still reads as
+  // a sized box to the exam pipeline's scans (`starts_inline` keeps a gutter
+  // label off the baseline of a tall box only when it can see its height).
+  show: it_ => if is_standalone { it_ } else {
+    box(height: box_height, baseline: it.baseline, stack(dir: ttb, it_))
+  }
   show: box.with(
     stroke: .5pt,
     width: width,
     height: box_height,
-    baseline: if is_standalone { 0pt } else { it.baseline },
     inset: 5pt,
   )
 
-  it.body
+  // A solution standing alone in a paragraph fills the box, so the highlight
+  // reads as the box's answer rather than a stray label; one used
+  // mid-sentence stays inline and leaves its line intact.
+  widen_par_solutions(it.body)
   set block(spacing: 8pt)
   if it.solution != none {
     e.get(get => {

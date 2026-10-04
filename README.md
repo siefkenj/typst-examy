@@ -371,12 +371,13 @@ A box for students to write answers in.
 - `default_height: length = 2cm` — The height used when `height` is `none`.
 - `default_width: length = 2cm` — The width used when `width` is `auto` (inline boxes only).
 
-### `solution(body, boxed: true)` (elembic element)
+### `solution(body, boxed: true, width: none)` (elembic element)
 
 Declare a solution to a question, part, or subpart; this is only rendered if the config option to show solutions is enabled.
 
 - `body: content` (required) — The solution content.
 - `boxed: bool = true` — Whether to put the solution in a box.
+- `width: auto | relative length | none = none` — Width of the solution box. `auto` shrink-wraps it to its content; `none` lets the context choose (`answer-box` fills its width for a solution standing alone in a paragraph, otherwise it shrink-wraps).
 
 ### `show-solutions(get)`
 

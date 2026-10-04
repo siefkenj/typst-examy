@@ -43,7 +43,16 @@
         show: it_ => {
           if it.boxed {
             // show: pad.with(-3pt)
-            box(fill: solution-background-color, width: auto, inset: 3pt, text(
+            // A width other than `auto` must use a block: a full-width *inline*
+            // box would be pushed onto a line of its own, splitting any text
+            // around it (and stretching a justified line before it).
+            // `width: none` means "not chosen": the context decides. `_fill-width`
+            // is how an enclosing element (`answer-box`) asks for the full width,
+            // so an explicit `width` — from an argument *or* a set rule, at any
+            // scope — still wins over it.
+            let w = if it.width != none { it.width } else if it._fill-width { 100% } else { auto }
+            let wrap = if w == auto { box.with(width: auto) } else { block.with(width: w) }
+            wrap(fill: solution-background-color, inset: 3pt, text(
               fill: solution-text-color,
               it_,
             ))
@@ -58,5 +67,23 @@
   fields: (
     e.field("body", content, doc: "The solution content", required: true),
     e.field("boxed", bool, doc: "Whether to put the solution in a box", default: true),
+    e.field(
+      "width",
+      e.types.option(e.types.union(auto, relative)),
+      doc: "Width of the solution box. `auto` shrink-wraps it to its content; `none` lets the context choose (`answer-box` fills its width for a solution standing alone in a paragraph, otherwise it shrink-wraps).",
+      default: none,
+    ),
+    // Internal: how `answer-box` asks a solution standing alone in a paragraph
+    // to fill its width. Kept off the public API (`internal` is what
+    // docs/generate-api.typ filters on) because it is a channel between the
+    // two elements, not a knob for documents: authors choose a width with
+    // `width`, which takes precedence over this.
+    e.field(
+      "_fill-width",
+      bool,
+      doc: "Whether an unset `width` should fill the container instead of shrink-wrapping.",
+      default: false,
+      internal: true,
+    ),
   ),
 )
