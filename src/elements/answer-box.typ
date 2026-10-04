@@ -1,5 +1,5 @@
 #import "../prelude.typ": *
-#import "../config.typ": config
+#import "../config.typ": solution_colors
 #import "../widen.typ": widen_par_solutions
 
 /// API documentation for this module's exports, consumed by
@@ -36,8 +36,8 @@
     (
       name: "baseline",
       type: "length | ratio | relative",
-      default: "50% - .3em",
-      doc: "Baseline shift for small boxes sitting inline in a sentence; ignored for block-mode and full-width boxes.",
+      default: "50% - .33em",
+      doc: "Baseline shift for small boxes sitting inline in a sentence; ignored for block-mode and full-width boxes. The default centers the box on the center line of a capital letter, the same line `bubble` is centered on, so a bubble and a box side by side line up.",
     ),
     (
       name: "default_height",
@@ -61,7 +61,15 @@
   solution: none,
   width: auto,
   height: none,
-  baseline: 50% - .3em,
+  // `.33em` is half the cap height of a typical serif face: the box is
+  // centered on the center line of a capital letter, which is what `bubble`
+  // centers on too, so the two line up side by side. `bubble` measures that
+  // line from the font instead of approximating it, but it can afford a
+  // `context` to do so and this cannot — one here would make the box opaque
+  // to the exam pipeline's content scans (see the note on block spacing
+  // below). tests/unit/bubble.typ holds the two to within .01em of each
+  // other.
+  baseline: 50% - .33em,
   default_height: 2cm,
   default_width: 2cm,
 ) = {
@@ -100,7 +108,7 @@
   // A centering baseline only makes sense for a small box sitting inline in
   // a sentence. For block-mode boxes and full-width boxes on their own line
   // there is none: since Typst 0.14/0.15 the line's ascent honors the
-  // baseline shift literally, so `50% - .3em` on a tall box pushes it half
+  // baseline shift literally, so `50% - .33em` on a tall box pushes it half
   // its height down the page.
   let is_standalone = is_block or type(width) in (ratio, relative)
 
@@ -129,7 +137,7 @@
   // by that line instead of by its own bottom edge, and the shift would then
   // drop the whole box below the surrounding text. A `stack` discards the
   // baseline of what it holds, so the wrapper's baseline is reliably its
-  // bottom edge — which is what `50% - .3em` is measured from. Wrapping the
+  // bottom edge — which is what `50% - .33em` is measured from. Wrapping the
   // finished box (instead of its contents) also leaves the contents' own
   // region alone, so `place(bottom)` and `height: 1fr` inside still see the
   // full box. The wrapper repeats the box's height so that it still reads as
@@ -152,13 +160,14 @@
   set block(spacing: 8pt)
   if it.solution != none {
     e.get(get => {
+      let colors = solution_colors(get)
       show: it_ => {
-        set text(fill: get(config).solution-text-color)
+        set text(fill: colors.color)
         show: pad.with(-3pt)
         block(
           width: 100%,
           height: 1fr,
-          fill: get(config).solution-background-color,
+          fill: colors.background,
           inset: 3pt,
           it_,
         )

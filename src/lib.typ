@@ -2,6 +2,8 @@
 // (see docs/generate-api.typ).
 #import "divisions.typ": question, part, subpart
 #import "elements/answer-box.typ": answer_box as answer-box
+#import "elements/bubble.typ": choice, bubble, square_bubble as square-bubble
+#import "elements/choices.typ": choices
 #import "elements/solution.typ": solution, show_solutions as show-solutions
 #import "elements/exam.typ": exam, maketitle, name_block as name-block
 #import "config.typ": config

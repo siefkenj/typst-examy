@@ -1,6 +1,6 @@
 #import "../prelude.typ": *
 #import "../constants.typ": SHOW_SOLUTIONS_OVERRIDE
-#import "../config.typ": config
+#import "../config.typ": config, solution_colors
 
 /// Whether or not solutions should be shown given the current configuration and command-line overrides.
 #let show_solutions(get) = {
@@ -38,8 +38,7 @@
   display: it => {
     e.get(get => {
       if show_solutions(get) != false {
-        let solution-background-color = get(config).solution-background-color
-        let solution-text-color = get(config).solution-text-color
+        let colors = solution_colors(get)
         show: it_ => {
           if it.boxed {
             // A width other than `auto` must use a block: a full-width *inline*
@@ -51,12 +50,12 @@
             // scope — still wins over it.
             let w = if it.width != none { it.width } else if it._fill-width { 100% } else { auto }
             let wrap = if w == auto { box.with(width: auto) } else { block.with(width: w) }
-            wrap(fill: solution-background-color, inset: 3pt, text(
-              fill: solution-text-color,
+            wrap(fill: colors.background, inset: 3pt, text(
+              fill: colors.color,
               it_,
             ))
           } else {
-            text(fill: solution-text-color, it_)
+            text(fill: colors.color, it_)
           }
         }
         it.body

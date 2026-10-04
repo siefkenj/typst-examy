@@ -18,6 +18,8 @@
 #import "/src/prelude.typ": e
 #import "/src/divisions.typ" as m-divisions
 #import "/src/elements/answer-box.typ" as m-answer-box
+#import "/src/elements/bubble.typ" as m-bubble
+#import "/src/elements/choices.typ" as m-choices
 #import "/src/elements/exam.typ" as m-exam
 #import "/src/elements/solution.typ" as m-solution
 #import "/src/config.typ" as m-config
@@ -29,6 +31,8 @@
 #let REGISTRY = (
   m-divisions.DOCS
     + m-answer-box.DOCS
+    + m-bubble.DOCS
+    + m-choices.DOCS
     + m-exam.DOCS
     + m-solution.DOCS
     + m-config.DOCS
@@ -118,12 +122,14 @@
   out
 }
 
-/// One argument in a signature: required positional args appear bare,
-/// required named args as `name: ..`, optional args as `name: default`.
+/// One argument in a signature: positional args appear bare (an optional
+/// one, like a bubble's content, shows its default in the argument list
+/// below instead), required named args as `name: ..`, optional named args as
+/// `name: default`.
 #let sig_arg(a) = {
   let required = a.at("required", default: false)
   let named = a.at("named", default: not required)
-  if required and not named {
+  if not named {
     a.name
   } else if required {
     a.name + ": .."

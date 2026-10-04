@@ -225,6 +225,109 @@ a sketch-the-derivative question (drawn with
 [lilaq](https://typst.app/universe/package/lilaq)) only on the answer key —
 visible in the screenshot pair at the top of this page.
 
+Solutions are drawn in a configurable pair of colors — the text color and the
+highlight behind it. If only one of these is set, the other color is derived from the set color.
+
+```typst
+#show: e.set_(config, solution-color: maroon)            // highlight follows
+#show: e.set_(config, solution-background-color: olive.lighten(90%))  // text follows
+#show: e.set_(config, solution-color: maroon, solution-background-color: luma(93%))
+```
+
+### Choices and Bubbles
+
+<p align="center">
+  <img src="examples/images/multiple-choice.png" width="45%" alt="Multiple-choice questions with empty round and square bubbles, one per line, in columns, inline, and in a table">
+  <img src="examples/images/multiple-choice-key.png" width="45%" alt="The same questions with the correct bubbles filled in and checked in blue">
+</p>
+
+[examples/multiple-choice.typ](examples/multiple-choice.typ)
+
+
+`#choice[]` draws a bubble (circle or square) to the left of text. `#choices[...]` takes a list and draws a bubble before each item for
+students to fill in. Write each choice on its own line starting with `-`. Starting an item with `+` will mark it as a correct choice (it will only render differently if solutions are shown.)
+
+```typst
+#question(points: 1)[
+  What is the capital of Canada? _Select one._
+  #choices[
+    - Toronto
+    + Ottawa
+    - Montreal
+    - Vancouver
+  ]
+]
+```
+
+#### `#choices[...]` API
+
+- `correct: int | array` — An alternative to using `+` to mark a correct choice. Setting `correct: 0` marks the first choice as correct, `correct: (0, 2)` marks the first and third.
+- `bubble: "circle" | "square"` — Round bubbles (the default) for "select
+  one", square ones for "select all that apply".
+- `columns: int` — Lay the choices out in this many equal columns, filled
+  row by row.
+- `inline: bool` — Run the choices side by side in a paragraph, wrapping like
+  text. Suits short choices. Cannot be combined with `columns`.
+- `gap: length` — The space between choices. One per line, it is the space
+  between rows (by default, the text's line spacing). Side by side, it is the
+  space between them (by default `1.5em`); inline, `1fr` spreads the choices
+  across the line.
+
+For a layout of your own, `#choice[...]` draws a single bubble before its
+content; mark an answer with `correct: true`. It takes `bubble: "circle" | "square"`. 
+The gap between a choice bubble and its content can be set with `outset` (e.g. `outset: .6em`).
+
+See
+[examples/multiple-choice.typ](examples/multiple-choice.typ)
+
+```typst
+#import "@preview/examy:0.3.0": *
+
+// A small page, so the screenshot stays readable; drop it for a full page.
+#set page(width: 11cm, height: auto, margin: 6mm)
+#show: e.prepare()
+// `true` prints the answer key, with the correct bubbles filled in.
+#show: e.set_(config, show-solutions: true)
+
+#exam(questions: [
+  #question(points: 1)[
+    What is the capital of Canada? _Select one._
+    // One per line (the default), spread out with `gap`.
+    #choices(gap: 0.8em)[
+      - Toronto
+      + Ottawa
+      - Montreal
+      - Vancouver
+    ]
+  ]
+  #question(points: 2)[
+    Which of these functions are continuous at $x = 0$? _Select all that apply._
+    // Square bubbles, in two columns.
+    #choices(bubble: "square", columns: 2)[
+      + $sin x$
+      - $1/x$
+      + $abs(x)$
+      - $floor(x)$
+    ]
+  ]
+  #question(points: 1)[
+    Which of these numbers is prime?
+    // Side by side, with the choices as an array and the answer by index.
+    #choices(inline: true, correct: 1, (9, 11, 15, 21))
+  ]
+  #question(points: 1)[
+    Let $f(x) = 1/x$. Which statement is true?
+    // A bare `#bubble()` in each row of a table, for a layout of your own.
+    #table(
+      columns: (auto, 1fr),
+      align: (center + horizon, left),
+      [#bubble()], [$f$ is increasing on $(0, 1)$.],
+      [#bubble(correct: true)], [$f$ is decreasing on $(0, 1)$.],
+    )
+  ]
+])
+```
+
 ### Cross-references
 
 Label a division with `label: <name>` and reference it with `@name`. The
@@ -359,7 +462,7 @@ Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectiv
 - `indent: length = 1.5em` — Indentation of the body relative to the parent.
 - `label: label | none = none` — Attach a label so the division can be referenced with `@name`.
 
-### `answer-box(body, solution: none, width: auto, height: none, baseline: 50% - .3em, default_height: 2cm, default_width: 2cm)`
+### `answer-box(body, solution: none, width: auto, height: none, baseline: 50% - .33em, default_height: 2cm, default_width: 2cm)`
 
 A box for students to write answers in.
 
@@ -367,9 +470,38 @@ A box for students to write answers in.
 - `solution: content | none = none` — Solution content that fills the bottom of the box when solutions are enabled.
 - `width: auto | length | ratio | relative = auto` — The width of the box; `auto` falls back to `default_width`.
 - `height: length | fraction | none = none` — A fixed height gives a box of that size (`none` falls back to `default_height`); a fraction (`1fr`) makes the box grow to fill the remaining space on the page, shared proportionally with the other `fr` boxes there.
-- `baseline: length | ratio | relative = 50% - .3em` — Baseline shift for small boxes sitting inline in a sentence; ignored for block-mode and full-width boxes.
+- `baseline: length | ratio | relative = 50% - .33em` — Baseline shift for small boxes sitting inline in a sentence; ignored for block-mode and full-width boxes. The default centers the box on the center line of a capital letter, the same line `bubble` is centered on, so a bubble and a box side by side line up.
 - `default_height: length = 2cm` — The height used when `height` is `none`.
 - `default_width: length = 2cm` — The width used when `width` is `auto` (inline boxes only).
+
+### `choice(body, bubble: "circle", correct: false, outset: (right: 0.4em), size: auto)`
+
+A bubble for students to fill in, followed by the choice it labels. On the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key. For a list of choices, use `choices`.
+
+- `body: content | none = none` — The choice the bubble labels, shown after it. Omit it, or leave it empty (`#choice[]`), for a bare bubble, e.g. one in a table or a grid of its own.
+- `bubble: "circle" | "square" = "circle"` — The shape of the bubble: round for "select one", square for "select all that apply". Typst's own `circle` and `square` work too.
+- `correct: bool = false` — Whether this choice is part of the answer, and so is filled in and checked when solutions are shown.
+- `outset: length | dictionary = (right: 0.4em)` — The space the bubble keeps around itself. A length sets the gap after the bubble, between it and its content (`outset: .6em`); a dictionary sets any of `left`, `right`, `top`, `bottom`, `x`, `y` and `rest`, as the `inset` of a box does, and leaves the sides it does not name at their defaults. The default parts the bubble from whatever follows — its content, an answer box, the next choice — so a gap need not be written at the call site.
+- `size: auto | length = auto` — The diameter of a round bubble, or the side of a square one. `auto` is 1em round and 0.93em square (a little smaller across than the circle, so the two read alike); relative to the font size, so a bubble scales with the surrounding text.
+
+### `bubble`
+
+`choice.with(bubble: "circle")`: a round bubble, for "select one". Takes the same arguments as `choice`.
+
+### `square-bubble`
+
+`choice.with(bubble: "square")`: a square bubble, for "select all that apply". Takes the same arguments as `choice`.
+
+### `choices(body, correct: none, bubble: "circle", inline: false, columns: none, gap: auto)`
+
+A multiple-choice answer: a bubble for each choice, filled in and checked on the answer key (when solutions are shown) for the correct ones, whose content is then set in the solution color. Mark a correct choice with `+` in place of `-`, or by its index with `correct`.
+
+- `body: content | array` (required) — The choices: a list, one `- ..` item per choice (`+ ..` for a correct one), each starting its own line; or an array of the choices' content.
+- `correct: int | array | none = none` — The index of the correct choice, or an array of indices for several, counted as Typst counts an array's: from 0 at the first choice, or from -1 at the last. Adds to any choices marked with `+`.
+- `bubble: "circle" | "square" = "circle"` — The shape of the bubbles: round for "select one", square for "select all that apply". Typst's own `circle` and `square` work too, as do `bubble` and `square-bubble`.
+- `inline: bool = false` — Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is not split across lines unless it is longer than a whole line. Cannot be combined with `columns`.
+- `columns: int | none = none` — Set the choices in this many equal columns, filled across each row in turn, rather than one per line. Cannot be combined with `inline`.
+- `gap: auto | length | fraction = auto` — The space between two choices. One per line, it is the space between one choice and the next below it, and `auto` sets them as close as the lines of a paragraph. Side by side, inline or in `columns`, it is the space between them, and `auto` is 1.5em; there, a fraction (`1fr`) spreads the choices across the line.
 
 ### `solution(body, boxed: true, width: none)` (elembic element)
 
@@ -417,8 +549,9 @@ Package options. Set them with a show rule: `#show: e.set_(config, show-solution
 - `term: content | none = none` — The term of the exam (e.g. Fall 2026), shown by `maketitle`.
 - `duration: duration | none = none` — The length of the exam, shown by `maketitle`.
 - `show-rubric: bool | none = none` — Whether to show a rubric.
-- `solution-background-color: color = rgb("#e6f1fb")` — The background color to use for solution boxes.
-- `solution-text-color: color = rgb("#005dae")` — The text color to use for solution boxes.
+- `solution-color: auto | color = auto` — The color solutions are drawn in: the text of a solution, the outline and check mark of a filled-in bubble. `auto` derives it from `solution-background-color`, or falls back to the package default if that is `auto` too.
+- `solution-background-color: auto | color = auto` — The color behind a solution, and the fill of a filled-in bubble. `auto` derives it from `solution-color` by lightening.
+- `solution-text-color: auto | color = auto` — Deprecated: the old name of `solution-color`, still accepted. Ignored when `solution-color` is set.
 
 ### `presets`
 

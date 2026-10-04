@@ -155,6 +155,8 @@ typst compile --root . -f png --ppi 140 examples/numbering.typ examples/images/n
 typst compile --root . -f png --ppi 140 examples/points.typ examples/images/points.png
 typst compile --root . -f png --ppi 140 --input show-solutions=false examples/solutions.typ examples/images/solutions.png
 typst compile --root . -f png --ppi 140 --input show-solutions=true examples/solutions.typ examples/images/solutions-key.png
+typst compile --root . -f png --ppi 140 --input show-solutions=false examples/multiple-choice.typ examples/images/multiple-choice.png
+typst compile --root . -f png --ppi 140 --input show-solutions=true examples/multiple-choice.typ examples/images/multiple-choice-key.png
 typst compile --root . -f png --ppi 140 examples/cross-references.typ examples/images/cross-references.png
 typst compile --root . -f png --ppi 140 examples/name-blocks.typ examples/images/name-blocks.png
 
