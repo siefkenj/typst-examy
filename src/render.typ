@@ -1,6 +1,6 @@
 /// Phase E: turn plan instructions into actual layout.
 
-#import "types.typ": *
+#import "prelude.typ": *
 #import "scan.typ": starts_inline
 #import "tokenize.typ": apply_styles
 #import "plan.typ": cumulative_indent

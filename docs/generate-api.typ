@@ -15,9 +15,9 @@
 // undocumented.
 
 #import "/src/lib.typ"
-#import "/src/types.typ": e
+#import "/src/prelude.typ": e
 #import "/src/divisions.typ" as m-divisions
-#import "/src/elements/other-answer-box.typ" as m-answer-box
+#import "/src/elements/answer-box.typ" as m-answer-box
 #import "/src/elements/exam.typ" as m-exam
 #import "/src/elements/solution.typ" as m-solution
 #import "/src/config.typ" as m-config

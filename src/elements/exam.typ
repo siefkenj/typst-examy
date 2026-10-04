@@ -1,4 +1,4 @@
-#import "../types.typ": *
+#import "../prelude.typ": *
 #import "../tokenize.typ": tokenize
 #import "../parse.typ": parse
 #import "../plan.typ": plan

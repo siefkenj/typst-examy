@@ -1,4 +1,4 @@
-#import "../types.typ": *
+#import "../prelude.typ": *
 #import "../constants.typ": SHOW_SOLUTIONS_OVERRIDE
 #import "../config.typ": config
 
@@ -42,7 +42,6 @@
         let solution-text-color = get(config).solution-text-color
         show: it_ => {
           if it.boxed {
-            // show: pad.with(-3pt)
             // A width other than `auto` must use a block: a full-width *inline*
             // box would be pushed onto a line of its own, splitting any text
             // around it (and stretching a justified line before it).

@@ -1,6 +1,6 @@
-#import "../types.typ": *
+#import "../prelude.typ": *
 #import "../config.typ": config
-#import "widen.typ": widen_par_solutions
+#import "../widen.typ": widen_par_solutions
 
 /// API documentation for this module's exports, consumed by
 /// docs/generate-api.typ (keyed by export name). Kept next to the
@@ -56,7 +56,7 @@
 )
 
 /// Display a box where students can write answers
-#let other-answer-box(
+#let answer_box(
   body,
   solution: none,
   width: auto,
@@ -119,14 +119,6 @@
         above: 0.65em,
         it_,
       )
-      // omni-box(
-      //   width: width,
-      //   height: height,
-      //   {
-      //     [#width #height]
-      //     it_
-      //   },
-      // )
     } else {
       it_
     }

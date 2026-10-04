@@ -4,11 +4,11 @@
 /// Elembic prefix for this package.
 #let PREFIX = "@preview/" + package_name + ",v" + version
 
-#let SHOW_SOLUTIONS_OVERRIDE = sys.inputs.at("show-solutions", default: none)
-#let SHOW_SOLUTIONS_OVERRIDE = if SHOW_SOLUTIONS_OVERRIDE == "true" { true } else if (
-  SHOW_SOLUTIONS_OVERRIDE == "false"
-) { false } else { none }
-#let SHOW_RUBRIC_OVERRIDE = sys.inputs.at("show-rubric", default: none)
-#let SHOW_RUBRIC_OVERRIDE = if SHOW_RUBRIC_OVERRIDE == "true" { true } else if (
-  SHOW_RUBRIC_OVERRIDE == "false"
-) { false } else { none }
+/// A `--input name=true|false` flag as a bool; `none` when it is absent or
+/// has any other value.
+#let _bool_input(name) = {
+  let value = sys.inputs.at(name, default: none)
+  if value == "true" { true } else if value == "false" { false } else { none }
+}
+
+#let SHOW_SOLUTIONS_OVERRIDE = _bool_input("show-solutions")

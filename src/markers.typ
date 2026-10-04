@@ -50,6 +50,3 @@
     none
   }
 }
-
-/// Whether `c` is an examy marker (of any kind).
-#let is_marker(c) = marker_value(c) != none

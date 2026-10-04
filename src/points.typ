@@ -3,7 +3,7 @@
 /// here read the final value, so they work anywhere in the document (even
 /// before the exam).
 
-#import "types.typ": *
+#import "prelude.typ": *
 #import "refs.typ": LABELLING
 
 #let points_data_state = state(PREFIX + "/points-data", none)

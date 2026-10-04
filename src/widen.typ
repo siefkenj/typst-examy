@@ -17,9 +17,9 @@
 /// passes over the same tree: the first lists what each paragraph holds, in
 /// document order; the second widens the solutions found to be alone.
 
-#import "../types.typ": *
-#import "../scan.typ": SEQUENCE_FUNC, STYLED_FUNC, is_whitespace_content
-#import "solution.typ": solution as solution_element
+#import "prelude.typ": *
+#import "scan.typ": SEQUENCE_FUNC, STYLED_FUNC, is_whitespace_content
+#import "elements/solution.typ": solution as solution_element
 
 /// The `solution` element's elembic id, to recognize its instances by.
 /// Matching on the id rather than the element's name avoids colliding with a

@@ -1,4 +1,4 @@
-#import "types.typ": *
+#import "prelude.typ": *
 
 /// API documentation for `config` below, consumed by docs/generate-api.typ
 /// (keyed by export name). The properties are introspected from the

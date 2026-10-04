@@ -7,7 +7,7 @@
 /// distinguishing suffix: `@q1p1` from inside question 2 shows "1 (a)", but
 /// from inside question 1 part 2 it shows just "(a)".
 
-#import "types.typ": *
+#import "prelude.typ": *
 
 /// Numbering patterns per level: questions, parts, subparts.
 #let LABELLING = ("1.", "(a)", "i.")
