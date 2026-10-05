@@ -40,6 +40,15 @@
       ]
     ]
     #question(points: 2)[
+      Which of these functions are differentiable at $x = 0$? _Select all that apply._
+      #choices(bubble: "square", inline: true)[
+        + $x^2$
+        - $|x|$
+        + $sin x$
+        - $root(3, x)$
+      ]
+    ]
+    #question(points: 2)[
       The graph below shows a function $f$. On the graph, sketch the graph of its derivative $f'$.
 
       // The solution is part of the *plot*, so `#solution[...]` can't hide
