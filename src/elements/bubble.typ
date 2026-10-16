@@ -1,6 +1,7 @@
 #import "../prelude.typ": *
 #import "../config.typ": DEFAULT_BUBBLE_LABEL_FONT, config, solution_colors
 #import "solution.typ": show_solutions
+#import "../scan.typ": is_multi_par
 
 /// The size of a bubble: the round one's diameter, and the basis every
 /// other shape's size is derived from. Relative to the font size, so a
@@ -349,6 +350,9 @@
   // How far the label's corners reach from the bubble's center, per point of
   // its size: its extent scales with its size, so one ratio fits it.
   let reach = calc.sqrt(calc.pow(m.width.pt() / 2, 2) + calc.pow(m.height.pt() / 2, 2)) / s.pt()
+  // An empty label (a numbering function giving `[]` for some choice) has
+  // nothing to fit.
+  if reach == 0 { return set_label(s) }
   let fit(across) = across.to-absolute().pt() / 2 / reach * 1pt
   s = calc.min(s, fit(room) * _LABEL_ROOM)
   let least = (size * _LABEL_MIN).to-absolute()
@@ -367,8 +371,28 @@
 /// the same source is both the exam and its key.
 ///
 /// `enumerate` and `index` label the bubble: `enumerate` as `choices` takes
-/// it, `auto` following `config`'s `choices-enumerate`, and `index` the
-/// choice's place in its list.
+/// it, with `auto` already resolved (`choices` reads `config` once for the
+/// whole list), and `index` the choice's place in its list.
+///
+/// A choice is one unit, whose bubble stays on its first line and whose
+/// further lines hang under its body rather than under the bubble.
+///
+/// As a block (`inline: false`, each choice of `choices` one per line or in
+/// columns), the bubble is the marker of a one-item list holding `body`. The
+/// list adds no indent of its own: the bubble carries the gap between itself
+/// and its body in its own outset, so the marker is already as wide as a
+/// bubble plus that gap.
+///
+/// Inline (a choice in a sentence, or in `choices(inline: true)`), the unit
+/// is a box, which keeps it whole within a line of text and lets an answer
+/// box see it as content of a line rather than as a `context` that may or
+/// may not show anything. In the box, the bubble and body are one paragraph,
+/// hanging its lines after the first by the bubble's width: a box holding a
+/// block (such as the list) has no baseline of its own, so it would sit on
+/// its bottom edge — the bubble's, which hangs below the text's baseline —
+/// and lift the choice off the line around it. A body of several paragraphs
+/// cannot be one paragraph, so it takes the list; it starts a line of its
+/// own anyway.
 #let draw_choice(
   body,
   shape: "circle",
@@ -377,18 +401,16 @@
   outset: _OUTSET,
   enumerate: false,
   index: none,
+  inline: true,
 ) = {
   let shape = _SHAPES.at(shape)
   if size == auto { size = shape.size }
 
+  show: it => if inline { box(it) } else { it }
   e.get(get => {
+    let cfg = get(config)
     let filled = is_filled(correct, get)
     let colors = solution_colors(get)
-    let enumerate = if enumerate == auto {
-      let configured = get(config).choices-enumerate
-      check_enumerate(configured, "config", name: "choices-enumerate")
-      configured
-    } else { enumerate }
     let label = if index == none { none } else { choice_label(enumerate, index) }
 
     // A bubble sits inline in a sentence, so it is centered on the text's
@@ -409,7 +431,7 @@
     let sides = resolve_sides(outset, base: resolve_sides(_OUTSET))
     // Capped on every bubble, filled in or not, so that the exam and the
     // answer key draw the same ring.
-    let thickness = get(config).bubble-stroke
+    let thickness = cfg.bubble-stroke
     assert(
       thickness.to-absolute() >= 0pt,
       message: "config: `bubble-stroke` must not be negative, got " + repr(thickness),
@@ -425,7 +447,7 @@
     // A labelled bubble is filled in like any other — outlined in the solution
     // color over the solution background — with its label, in the solution
     // color, where the check mark would go: the two would sit on each other.
-    box(
+    let mark = box(
       baseline: bubble_drop(size, cap_center()) + sides.bottom,
       inset: sides,
       {
@@ -443,7 +465,7 @@
             ring.room,
             label,
             if filled { colors.color } else { auto },
-            font: get(config).bubble-label-font,
+            font: cfg.bubble-label-font,
             // The inside of the outline, less the gap the ring keeps from it.
             limit: size.to-absolute() * (1 - 2 * _RING_GAP) - thickness,
           ))
@@ -453,9 +475,13 @@
       },
     )
 
-    if body != none {
-      if filled { text(fill: colors.color, body) } else { body }
+    if body == none { return mark }
+    let multi_par = is_multi_par(body)
+    let body = if filled { text(fill: colors.color, body) } else { body }
+    if inline and not multi_par {
+      return par(hanging-indent: measure(mark).width, first-line-indent: 0pt, mark + body)
     }
+    list(marker: mark, indent: 0pt, body-indent: 0pt, body)
   })
 }
 
@@ -493,7 +519,7 @@
 /// definitions — update both together.
 #let DOCS = (
   choice: (
-    desc: "A bubble for students to fill in, followed by the choice it labels. On the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key. For a list of choices, use `choices`.",
+    desc: "A bubble for students to fill in, followed by the choice it labels. The two are kept whole, like a single word: a choice that wraps starts a line of its own, with its bubble on its first line and its further lines hanging under its content, not under the bubble. On the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key. For a list of choices, use `choices`.",
     args: (
       (
         name: "body",

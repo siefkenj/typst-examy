@@ -10,6 +10,9 @@
 - `choices(enumerate: ...)` puts labels (A, B, C, … or any numbering pattern)
   inside the bubbles. Set it for the whole document with `choices-enumerate`.
 - New `config` options: `bubble-stroke` and `bubble-label-font`.
+- A `choice`, and each choice of `choices(inline: true)`, is kept whole: when
+  its text wraps, the further lines hang under the text instead of flowing
+  under the bubble, as they already did one per line and in `columns`.
 - Template: start a new exam with `typst init @preview/examy`.
 
 ## 0.4.0 — 2026-10-05

@@ -32,7 +32,7 @@
       name: "height",
       type: "auto | length | fraction | none",
       default: "none",
-      doc: "`none` sizes the box by what the exam shows in it: a box with content — a prompt, a list of choices — grows to fit it, while a box that is blank on the exam (empty, or holding only a solution) takes `default_height`, leaving room to write. Its solutions take no height, so the answer key lays out exactly like the exam: a solution is drawn where it would be, over whatever follows it, or hanging out of the box when it comes last. Any explicit height opts out of that. `auto` fits the content, solutions included, so the key's box grows to hold them. A length gives a box of that size; give one to leave room to write below a prompt. A fraction (`1fr`) makes the box fill the space left on the page, shared proportionally with the other `fr` boxes there; it gets only what the rest of the page leaves over, which may be less than its content needs.",
+      doc: "`none` sizes the box by what the exam shows in it: a box with content — a prompt, a list of choices — grows to fit it, while a box that is blank on the exam (empty, or holding only solutions) takes `default_height`, leaving room to write. A solution counts as blank only when written directly in the box: one inside another element, such as `align` or `strong`, is content, so the box fits it. Its solutions take no height, so the answer key lays out exactly like the exam: a solution is drawn where it would be, over whatever follows it, or hanging out of the box when it comes last. Any explicit height opts out of that. `auto` fits the content, solutions included, so the key's box grows to hold them. A length gives a box of that size; give one to leave room to write below a prompt. A fraction (`1fr`) makes the box fill the space left on the page, shared proportionally with the other `fr` boxes there; it gets only what the rest of the page leaves over, which may be less than its content needs.",
     ),
     (
       name: "baseline",
@@ -44,7 +44,7 @@
       name: "default_height",
       type: "length",
       default: "2cm",
-      doc: "The height of a box that is blank on the exam (empty, or holding only a solution) when `height` is `none`.",
+      doc: "The height of a box that is blank on the exam (empty, or holding only solutions written directly in it) when `height` is `none`.",
     ),
     (
       name: "default_width",
@@ -108,7 +108,9 @@
   // The height of a box cannot be a fraction, so we change it to 100% if it
   // is. With no height given, a box with something in it — a prompt, a list
   // of choices — grows to fit it, while a blank one (empty, or holding only
-  // its solution) takes `default_height`, so the student has room to write.
+  // its solutions) takes `default_height`, so the student has room to write.
+  // A solution wrapped in another element (`align`, `strong`, ...) is opaque
+  // to `par_events`, and so counts as content: the box fits it.
   // One holding only a `context` expression may be either until it is laid
   // out, and so takes `default_height` at the least: room to write when it
   // shows nothing on the exam, and room for whatever it does show.

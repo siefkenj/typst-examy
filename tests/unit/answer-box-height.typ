@@ -132,6 +132,15 @@
     answer-box(width: 100%, five_choices),
     equals: fitting(five_choices),
   )
+  // Every layout of `choices` is a block the box can see, so a short list in
+  // columns fits too, rather than taking the default height.
+  let two_columns = choices(columns: 2)[- a
+    - b]
+  check(
+    "Two choices in columns: fits them, under " + DEFAULT_TEXT + ".",
+    answer-box(width: 100%, two_columns),
+    equals: fitting(two_columns),
+  )
   // A short prompt makes a short box, not a default-height one, whatever
   // its shape.
   check(
@@ -151,6 +160,13 @@
   check(
     "A centered prompt: one line tall.",
     answer-box(width: 100%)[#align(center)[Some words.]],
+    under: DEFAULT,
+  )
+  // A solution wrapped in another element cannot be seen through, so it
+  // counts as content: the box fits it rather than taking the default.
+  check(
+    "A centered solution: sized to fit, not " + DEFAULT_TEXT + ".",
+    answer-box(width: 100%)[#align(center)[#solution[42]]],
     under: DEFAULT,
   )
   check(

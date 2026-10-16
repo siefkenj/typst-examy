@@ -150,24 +150,13 @@
   if events == auto { events = par_events(body) }
   let alone = _alone_flags(events)
   if not alone.any(x => x) { return body }
-  // Whether anything visible comes after each event, in one backward pass.
-  let visible_after = ()
-  let seen = false
-  for ev in events.rev() {
-    visible_after.push(seen)
-    if _is_visible(ev) { seen = true }
-  }
-  visible_after = visible_after.rev()
-  // The last visible event before each solution, in one forward pass.
-  let lasts = ()
-  let before = none
-  for (i, ev) in events.enumerate() {
-    if ev == "solution" {
-      let last = before != none and not visible_after.at(i)
-      lasts.push(if last { (after-text: before == "text") } else { none })
-    } else if _is_visible(ev) {
-      before = ev
-    }
+  // A solution is last when it comes after the last visible event, which is
+  // then the visible content just before it.
+  let from_end = events.rev().position(_is_visible)
+  let lasts = if from_end == none { (none,) * alone.len() } else {
+    let at = events.len() - 1 - from_end
+    let last = (after-text: events.at(at) == "text")
+    events.enumerate().filter(((_, ev)) => ev == "solution").map(((i, _)) => if i > at { last } else { none })
   }
   _rewrite(body, alone.zip(lasts), 0).first()
 }
@@ -179,9 +168,11 @@
 /// that shows a solution only on the key, say), which cannot be told until
 /// it is laid out. An answer box sizes itself by this — one holding, say, a
 /// prompt or a list of choices grows to fit them, while one that is blank on
-/// the exam (empty, or holding only its solution) keeps a fixed height for
-/// the student to write in, the same on the exam and the key. `events` is
-/// `par_events(body)`, if already at hand.
+/// the exam (empty, or holding only its solutions) keeps a fixed height for
+/// the student to write in, the same on the exam and the key. A solution
+/// inside an opaque element (`align`, `strong`, ...) is not seen, so it
+/// counts as `"yes"`: the box fits it. `events` is `par_events(body)`, if
+/// already at hand.
 #let exam_content(body, events: auto) = {
   if events == auto { events = par_events(body) }
   if events.any(ev => ev == "text" or ev == "block") { "yes" } else if "context" in events { "maybe" } else { "no" }

@@ -1,6 +1,6 @@
 #import "../prelude.typ": *
-#import "../config.typ": solution_colors
-#import "bubble.typ": bubble, check_enumerate, draw_choice, is_filled, shape_name, square_bubble
+#import "../config.typ": config
+#import "bubble.typ": bubble, check_enumerate, draw_choice, shape_name, square_bubble
 
 /// The default space between two choices side by side, inline or in columns
 /// (see `gap`). One per line, the default is the text's own line spacing.
@@ -153,20 +153,6 @@
   choices.enumerate().map(((i, c)) => (body: c.body, correct: c.marked or i in indices))
 }
 
-/// One choice on a line of its own. The bubble is the marker of a one-item
-/// list, rather than inline before the body as in `choice[..]`, so a choice
-/// that wraps hangs its second line under its body and not under the bubble,
-/// and a tall bubble does not push that second line further down.
-///
-/// The list adds no indent of its own: a bubble carries the space between
-/// itself and what it labels in its own outset, so the marker is already as
-/// wide as a bubble plus that gap.
-#let _block_choice(shape, body, correct, enumerate, index) = e.get(get => {
-  let body = if is_filled(correct, get) { text(fill: solution_colors(get).color, body) } else { body }
-  let marker = draw_choice(none, shape: shape, correct: correct, enumerate: enumerate, index: index)
-  list(marker: marker, indent: 0pt, body-indent: 0pt, body)
-})
-
 /// Check the arguments of `choices` that Typst's own parameter list cannot:
 /// `extra` holds any positional or named argument it does not take.
 #let _check_choices_args(extra, inline, columns, gap) = {
@@ -235,36 +221,45 @@
   let shape = choices_shape(bubble)
   let resolved = resolve_choices(body, correct: correct)
   let side_gap = if gap == auto { _SIDE_BY_SIDE_GAP } else { gap }
-  if inline {
-    // A paragraph of its own, like the other layouts, so that choices written
-    // on the line after a question start below it rather than running on
-    // from its text.
-    block(
-      resolved
-        .enumerate()
-        .map(((i, c)) => box(draw_choice(c.body, shape: shape, correct: c.correct, enumerate: enumerate, index: i)))
-        .join(h(side_gap, weak: true)),
-    )
-  } else if columns != none {
-    // Rows are spaced like the choices of the one-per-line layout.
-    context grid(
-      columns: (1fr,) * columns,
-      column-gutter: side_gap,
-      row-gutter: par.leading,
-      ..resolved.enumerate().map(((i, c)) => _block_choice(shape, c.body, c.correct, enumerate, i)),
-    )
-  } else {
-    // Each choice is a list of its own (see `_block_choice`), and Typst
-    // spaces two lists in a row by the paragraph spacing, so setting that
-    // spaces the choices. It also spaces the paragraphs of a choice that has
-    // several, which keeps them as apart as the choices are; unlike setting
-    // the block spacing, it leaves alone the space around an equation or
-    // other block inside a choice.
-    block(context {
+  // Every layout is a block — a paragraph of its own, so that choices
+  // written on the line after a question start below it rather than running
+  // on from its text, and one an answer box can see, so that it fits them
+  // rather than taking them for a bare `context`.
+  block(e.get(get => {
+    // `auto` follows `config`, read and checked once for the whole list.
+    let enumerate = if enumerate == auto {
+      let configured = get(config).choices-enumerate
+      check_enumerate(configured, "config", name: "choices-enumerate")
+      configured
+    } else { enumerate }
+    // Each choice drawn as one unit (see `draw_choice`): boxed, to sit in a
+    // line beside the others, or as a block of its own.
+    let drawn = resolved
+      .enumerate()
+      .map(((i, c)) => draw_choice(
+        c.body,
+        shape: shape,
+        correct: c.correct,
+        enumerate: enumerate,
+        index: i,
+        inline: inline,
+      ))
+    if inline {
+      drawn.join(h(side_gap, weak: true))
+    } else if columns != none {
+      // Rows are spaced like the choices of the one-per-line layout.
+      grid(columns: (1fr,) * columns, column-gutter: side_gap, row-gutter: par.leading, ..drawn)
+    } else {
+      // Each choice is a list of its own (see `draw_choice`), and Typst
+      // spaces two lists in a row by the paragraph spacing, so setting that
+      // spaces the choices. It also spaces the paragraphs of a choice that
+      // has several, which keeps them as apart as the choices are; unlike
+      // setting the block spacing, it leaves alone the space around an
+      // equation or other block inside a choice.
       set par(spacing: if gap == auto { par.leading } else { gap })
-      resolved.enumerate().map(((i, c)) => _block_choice(shape, c.body, c.correct, enumerate, i)).join()
-    })
-  }
+      drawn.join()
+    }
+  }))
 }
 
 /// API documentation for this module's exports, consumed by
@@ -297,7 +292,7 @@
         name: "inline",
         type: "bool",
         default: "false",
-        doc: "Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is not split across lines unless it is longer than a whole line. Cannot be combined with `columns`.",
+        doc: "Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is kept whole: one longer than a line starts a line of its own, with its further lines hanging under its content. Cannot be combined with `columns`.",
       ),
       (
         name: "columns",

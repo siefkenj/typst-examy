@@ -160,7 +160,9 @@ proportionally.
 With no height, the box sizes itself by what it holds. A blank box — empty,
 or holding only a `#solution[...]` — is `default_height` (`2cm`) tall, leaving
 room to write. A box with content, such as a prompt or a list of `#choices`,
-grows to fit it.
+grows to fit it. A solution counts as blank only when written directly in the
+box: wrapped in another element, as in `#align(center)[#solution[...]]`, it is
+content, and the box fits it.
 
 With no height, the solutions in a box also take no height, so the answer key
 lays out exactly like the exam: every box is the same size on both, and
@@ -311,7 +313,7 @@ students to fill in. Write each choice on its own line starting with `-`. Starti
 - `columns: int` — Lay the choices out in this many equal columns, filled
   row by row.
 - `inline: bool` — Run the choices side by side in a paragraph, wrapping like
-  text. Suits short choices. Cannot be combined with `columns`.
+  words. Suits short choices. Cannot be combined with `columns`.
 - `gap: length` — The space between choices. One per line, it is the space
   between rows (by default, the text's line spacing). Side by side, it is the
   space between them (by default `1.5em`); inline, `1fr` spreads the choices
@@ -325,7 +327,11 @@ students to fill in. Write each choice on its own line starting with `-`. Starti
   inside its outline.
 
 For a layout of your own, `#choice[...]` draws a single bubble before its
-content; mark an answer with `correct: true`. It takes `bubble: "circle" | "square"`. 
+content; mark an answer with `correct: true`. It takes `bubble: "circle" | "square"`.
+
+In every layout, a choice is kept whole. When its text wraps, the bubble stays
+on the first line and the further lines hang under the text, not under the
+bubble. 
 The gap between a choice bubble and its content can be set with `outset` (e.g. `outset: .6em`).
 The outline thickness of every bubble in the document is set with
 `#show: e.set_(config, bubble-stroke: .06em)` (default `.1em`). An outline
@@ -524,14 +530,14 @@ A box for students to write answers in.
 - `body: content` (required) — Content shown inside the box (a prompt, `#solution[..]`, or nothing).
 - `solution: content | none = none` — Solution content shown at the bottom of the box when solutions are shown. In a box of set height it fills the space left below the body. With `height: auto`, the box grows to hold it. With no height given, it takes no height, like any solution in such a box (see `height`).
 - `width: auto | length | ratio | relative = auto` — The width of the box; `auto` falls back to `default_width`.
-- `height: auto | length | fraction | none = none` — `none` sizes the box by what the exam shows in it: a box with content — a prompt, a list of choices — grows to fit it, while a box that is blank on the exam (empty, or holding only a solution) takes `default_height`, leaving room to write. Its solutions take no height, so the answer key lays out exactly like the exam: a solution is drawn where it would be, over whatever follows it, or hanging out of the box when it comes last. Any explicit height opts out of that. `auto` fits the content, solutions included, so the key's box grows to hold them. A length gives a box of that size; give one to leave room to write below a prompt. A fraction (`1fr`) makes the box fill the space left on the page, shared proportionally with the other `fr` boxes there; it gets only what the rest of the page leaves over, which may be less than its content needs.
+- `height: auto | length | fraction | none = none` — `none` sizes the box by what the exam shows in it: a box with content — a prompt, a list of choices — grows to fit it, while a box that is blank on the exam (empty, or holding only solutions) takes `default_height`, leaving room to write. A solution counts as blank only when written directly in the box: one inside another element, such as `align` or `strong`, is content, so the box fits it. Its solutions take no height, so the answer key lays out exactly like the exam: a solution is drawn where it would be, over whatever follows it, or hanging out of the box when it comes last. Any explicit height opts out of that. `auto` fits the content, solutions included, so the key's box grows to hold them. A length gives a box of that size; give one to leave room to write below a prompt. A fraction (`1fr`) makes the box fill the space left on the page, shared proportionally with the other `fr` boxes there; it gets only what the rest of the page leaves over, which may be less than its content needs.
 - `baseline: length | ratio | relative = 50% - .33em` — Baseline shift for small boxes sitting inline in a sentence; ignored for block-mode and full-width boxes. The default centers the box on the center line of a capital letter, the same line `bubble` is centered on, so a bubble and a box side by side line up.
-- `default_height: length = 2cm` — The height of a box that is blank on the exam (empty, or holding only a solution) when `height` is `none`.
+- `default_height: length = 2cm` — The height of a box that is blank on the exam (empty, or holding only solutions written directly in it) when `height` is `none`.
 - `default_width: length = 2cm` — The width used when `width` is `auto` (inline boxes only).
 
 ### `choice(body, bubble: "circle", correct: false, outset: (right: 0.4em), size: auto)`
 
-A bubble for students to fill in, followed by the choice it labels. On the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key. For a list of choices, use `choices`.
+A bubble for students to fill in, followed by the choice it labels. The two are kept whole, like a single word: a choice that wraps starts a line of its own, with its bubble on its first line and its further lines hanging under its content, not under the bubble. On the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key. For a list of choices, use `choices`.
 
 - `body: content | none = none` — The choice the bubble labels, shown after it. Omit it, or leave it empty (`#choice[]`), for a bare bubble, e.g. one in a table or a grid of its own.
 - `bubble: "circle" | "square" = "circle"` — The shape of the bubble: round for "select one", square for "select all that apply". Typst's own `circle` and `square` work too.
@@ -554,7 +560,7 @@ A multiple-choice answer: a bubble for each choice, filled in and checked on the
 - `body: content | array` (required) — The choices: a list, one `- ..` item per choice (`+ ..` for a correct one), each starting its own line; or an array of the choices' content.
 - `correct: int | array | none = none` — The index of the correct choice, or an array of indices for several, counted as Typst counts an array's: from 0 at the first choice, or from -1 at the last. Adds to any choices marked with `+`.
 - `bubble: "circle" | "square" = "circle"` — The shape of the bubbles: round for "select one", square for "select all that apply". Typst's own `circle` and `square` work too, as do `bubble` and `square-bubble`.
-- `inline: bool = false` — Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is not split across lines unless it is longer than a whole line. Cannot be combined with `columns`.
+- `inline: bool = false` — Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is kept whole: one longer than a line starts a line of its own, with its further lines hanging under its content. Cannot be combined with `columns`.
 - `columns: int | none = none` — Set the choices in this many equal columns, filled across each row in turn, rather than one per line. Cannot be combined with `inline`.
 - `gap: auto | length | fraction = auto` — The space between two choices. One per line, it is the space between one choice and the next below it, and `auto` sets them as close as the lines of a paragraph. Side by side, inline or in `columns`, it is the space between them, and `auto` is 1.5em; there, a fraction (`1fr`) spreads the choices across the line.
 - `enumerate: auto | bool | str | function = auto` — Labels inside the bubbles: `false` for none, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`"a"`, `"1"`, `"(i)"`). `auto` follows `config`'s `choices-enumerate`, which is `false` unless set. On the answer key, a correct labelled bubble is filled in like any other, with its label, in the solution color, in place of the check mark, and a thin ring inside its outline.

@@ -246,6 +246,31 @@
       - #probe(prefix + "z")z
     ],
   )
+  // Every layout keeps a choice whole: its bubble on its first line, and its
+  // further lines hanging under its content, not under its bubble.
+  case(
+    [In `columns`, a choice that wraps hangs under its content.],
+    choices(columns: 2)[
+      - a
+      - X#probe(prefix + "col-first") first \ X#probe(prefix + "col-second") second
+    ],
+  )
+  case(
+    [Inline, a choice that wraps hangs under its content.],
+    choices(inline: true)[
+      - a
+      - X#probe(prefix + "inl-first") first \ X#probe(prefix + "inl-second") second
+    ],
+  )
+  case(
+    [A bare `choice` that wraps hangs under its content.],
+    [#probe(prefix + "bare-left")#choice(correct: true)[X#probe(prefix + "bare-first") first \ X#probe(prefix + "bare-second") second]],
+  )
+  case(
+    [A bare `choice` in a sentence sits on the sentence's baseline.],
+    [The answer is#probe(prefix + "sent-before") #choice(correct: true)[#probe(prefix + "sent-in")Paris] or
+      #square-bubble[Lyon]#probe(prefix + "sent-after").],
+  )
   case(
     [In `columns`, the choices fill each row in turn; a short last row starts at the left.],
     choices(columns: 2)[
@@ -285,6 +310,33 @@
     // Wrapped: the second line starts where the first line's content does.
     check(near(p("first").x, p("second").x), prefix + "a wrapped choice should hang under its content")
     check(p("first").y < p("second").y, prefix + "the wrapped choice should span two lines")
+    // The same in the other layouts: the second line under the first line's
+    // content, which starts a bubble and a gap in from the choice's left edge.
+    for (layout, left) in (("col", none), ("inl", none), ("bare", "bare-left")) {
+      let first = p(layout + "-first")
+      let second = p(layout + "-second")
+      check(first.y < second.y, prefix + layout + ": the wrapped choice should span two lines")
+      check(
+        near(first.x, second.x),
+        prefix + layout + ": a wrapped choice should hang under its content, not its bubble, got lines at "
+          + repr(first.x) + " and " + repr(second.x),
+      )
+      if left != none {
+        // The probe follows the line's `X`.
+        let expected = indent + measure[X].width
+        check(
+          near(first.x - p(left).x, expected),
+          prefix + layout + ": content should start a bubble and a gap in, expected " + repr(expected) + ", got "
+            + repr(first.x - p(left).x),
+        )
+      }
+    }
+    // A choice in a sentence keeps the sentence's baseline.
+    check(
+      near(p("sent-before").y, p("sent-in").y) and near(p("sent-in").y, p("sent-after").y),
+      prefix + "a choice in a sentence should sit on its baseline, got "
+        + ("sent-before", "sent-in", "sent-after").map(n => repr(p(n).y)).join(", "),
+    )
     // Inline: one line, left to right.
     check(near(p("x").y, p("y").y) and near(p("y").y, p("z").y), prefix + "inline choices should share a line")
     check(p("x").x < p("y").x and p("y").x < p("z").x, prefix + "inline choices should run left to right")
@@ -770,6 +822,16 @@
   [A function returning content: `n => emph(numbering("A", n))`.],
   labels_drawn("content-fn", choices(enumerate: n => emph(numbering("A", n)), inline: true, EMPTY)),
 )
+// A function may leave some bubbles without a label, by giving empty
+// content: they are drawn bare, on the exam and on the key, where an empty
+// label has nothing to be fitted to.
+#for key in (false, true) {
+  show: e.set_(config, show-solutions: key)
+  case(
+    [A function giving empty labels for the odd choices#if key [, on the key].],
+    choices(enumerate: n => if calc.odd(n) [] else { str(n) }, inline: true, EMPTY, correct: 0),
+  )
+}
 
 #context {
   for (name, _, _, expected) in ENUMERATE_CASES {
