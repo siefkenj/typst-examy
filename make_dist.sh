@@ -14,15 +14,19 @@
 #   1. run the test suite
 #   2. compile every example (with and without solutions) as validation
 #   3. regenerate the README screenshots from the examples
-#   4. assemble the package (typst.toml, LICENSE, README.md, src/ — no
-#      examples/, matching `exclude` in typst.toml); the README's relative
-#      links/images (which only work when browsing this repo on GitHub) are
+#   4. assemble the package (typst.toml, LICENSE, README.md, src/,
+#      template/ — no examples/, matching `exclude` in typst.toml); the
+#      README's relative links/images (which only work when browsing this repo on GitHub) are
 #      rewritten to absolute permalinks against `repository` in typst.toml,
 #      pinned at --tag/--no-tag (see below), so the published README is
 #      portable to Typst Universe / typst/packages
 #   5. compile the examples (import rewritten to `@preview/examy:<version>`
 #      in a scratch copy — they aren't part of the published package) against
-#      the vendored package, to validate it works as advertised
+#      the vendored package, to validate it works as advertised; likewise
+#      the `typst init` template (template/main.typ), which already imports
+#      `@preview/examy:<version>`
+#   6. render the template's Typst Universe thumbnail (thumbnail.png, named
+#      by `[template] thumbnail` in typst.toml) from the vendored template
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -86,6 +90,14 @@ fi
 VERSION=$(grep -m1 '^version' typst.toml | sed 's/.*"\(.*\)"/\1/')
 PKG="dist/examy/$VERSION"
 echo "==> examy $VERSION"
+
+# Unlike the examples, the template ships in the package and is copied
+# verbatim by `typst init`, so its import must already name this version.
+if ! grep -qF "#import \"@preview/examy:$VERSION\"" template/main.typ; then
+    echo "error: template/main.typ does not import @preview/examy:$VERSION." >&2
+    echo "       Update its #import line to match the version in typst.toml." >&2
+    exit 1
+fi
 
 # Base URLs for rewriting the README's repo-relative links (see step 4).
 # Pinned to a permalink (a tag or a commit, never a branch name), so the
@@ -188,6 +200,7 @@ awk '/^## Development$/ { skip = 1; next } skip && /^## / { skip = 0 } !skip' \
         }ge;
     ' >"$PKG/README.md"
 cp -r src "$PKG/src"
+cp -r template "$PKG/template"
 
 echo "==> Validating the vendored package as @preview/examy:$VERSION"
 # Typst resolves `@preview/...` from `$TYPST_PACKAGE_PATH/preview/...`, so
@@ -211,6 +224,17 @@ done
 bundletmp=$(mktemp -d)
 TYPST_PACKAGE_PATH="$pkgroot" typst compile --features bundle -f bundle "$validation_examples/bundle.typ" "$bundletmp"
 rm -rf "$bundletmp" "$validation_examples"
+TYPST_PACKAGE_PATH="$pkgroot" typst compile -f pdf "$PKG/template/main.typ" /dev/null
+TYPST_PACKAGE_PATH="$pkgroot" typst compile -f pdf --input show-solutions=true "$PKG/template/main.typ" /dev/null
+
+echo "==> Rendering the template thumbnail"
+# typst/packages requires the thumbnail to depict a page of the template as
+# initialized (so no --input), with its longer edge at least 1080px and at
+# most 3 MiB; it recommends 250 PPI. Page 2 (the questions) shows off more
+# of the package than the cover page. The thumbnail lives at the package
+# root, and typst/packages leaves it out of the downloaded package. It is
+# built output, so it is written only into dist/, not the repository.
+TYPST_PACKAGE_PATH="$pkgroot" typst compile -f png --ppi 250 --pages 2 "$PKG/template/main.typ" "$PKG/thumbnail.png"
 
 echo "==> Done: $PKG/ ($(du -sh dist | cut -f1))"
 find dist -type f | sort

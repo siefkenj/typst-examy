@@ -16,8 +16,8 @@
 #exam(questions: [
   #question(points: 1)[
     What is the capital of Canada? _Select one._
-    // One per line (the default), spread out with `gap`.
-    #choices(gap: 0.8em)[
+    // One per line (the default), spread out with `gap`, lettered A, B, C, D.
+    #choices(gap: 0.8em, enumerate: true)[
       - Toronto
       + Ottawa
       - Montreal

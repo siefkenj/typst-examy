@@ -1,13 +1,13 @@
 #import "../prelude.typ": *
 #import "../config.typ": solution_colors
-#import "bubble.typ": bubble, choice, is_filled, shape_name, square_bubble
+#import "bubble.typ": bubble, check_enumerate, draw_choice, is_filled, shape_name, square_bubble
 
 /// The default space between two choices side by side, inline or in columns
 /// (see `gap`). One per line, the default is the text's own line spacing.
 #let _SIDE_BY_SIDE_GAP = 1.5em
 
 /// The named arguments `choices` takes.
-#let _CHOICES_ARGS = ("correct", "bubble", "inline", "columns", "gap")
+#let _CHOICES_ARGS = ("correct", "bubble", "inline", "columns", "gap", "enumerate")
 
 /// Names an author might reach for in place of `correct`.
 #let _CORRECT_ALIASES = ("answer", "answers", "solution", "solutions", "correct-answer", "key", "right")
@@ -161,9 +161,10 @@
 /// The list adds no indent of its own: a bubble carries the space between
 /// itself and what it labels in its own outset, so the marker is already as
 /// wide as a bubble plus that gap.
-#let _block_choice(shape, body, correct) = e.get(get => {
+#let _block_choice(shape, body, correct, enumerate, index) = e.get(get => {
   let body = if is_filled(correct, get) { text(fill: solution_colors(get).color, body) } else { body }
-  list(marker: choice(bubble: shape, correct: correct), indent: 0pt, body-indent: 0pt, body)
+  let marker = draw_choice(none, shape: shape, correct: correct, enumerate: enumerate, index: index)
+  list(marker: marker, indent: 0pt, body-indent: 0pt, body)
 })
 
 /// Check the arguments of `choices` that Typst's own parameter list cannot:
@@ -227,8 +228,10 @@
   inline: false,
   columns: none,
   gap: auto,
+  enumerate: auto,
 ) = {
   _check_choices_args(extra, inline, columns, gap)
+  check_enumerate(enumerate, "choices", allow-auto: true)
   let shape = choices_shape(bubble)
   let resolved = resolve_choices(body, correct: correct)
   let side_gap = if gap == auto { _SIDE_BY_SIDE_GAP } else { gap }
@@ -236,14 +239,19 @@
     // A paragraph of its own, like the other layouts, so that choices written
     // on the line after a question start below it rather than running on
     // from its text.
-    block(resolved.map(c => box(choice(c.body, bubble: shape, correct: c.correct))).join(h(side_gap, weak: true)))
+    block(
+      resolved
+        .enumerate()
+        .map(((i, c)) => box(draw_choice(c.body, shape: shape, correct: c.correct, enumerate: enumerate, index: i)))
+        .join(h(side_gap, weak: true)),
+    )
   } else if columns != none {
     // Rows are spaced like the choices of the one-per-line layout.
     context grid(
       columns: (1fr,) * columns,
       column-gutter: side_gap,
       row-gutter: par.leading,
-      ..resolved.map(c => _block_choice(shape, c.body, c.correct)),
+      ..resolved.enumerate().map(((i, c)) => _block_choice(shape, c.body, c.correct, enumerate, i)),
     )
   } else {
     // Each choice is a list of its own (see `_block_choice`), and Typst
@@ -254,7 +262,7 @@
     // other block inside a choice.
     block(context {
       set par(spacing: if gap == auto { par.leading } else { gap })
-      resolved.map(c => _block_choice(shape, c.body, c.correct)).join()
+      resolved.enumerate().map(((i, c)) => _block_choice(shape, c.body, c.correct, enumerate, i)).join()
     })
   }
 }
@@ -304,6 +312,12 @@
         doc: "The space between two choices. One per line, it is the space between one choice and the next below it, and `auto` sets them as close as the lines of a paragraph. Side by side, inline or in `columns`, it is the space between them, and `auto` is "
           + repr(_SIDE_BY_SIDE_GAP)
           + "; there, a fraction (`1fr`) spreads the choices across the line.",
+      ),
+      (
+        name: "enumerate",
+        type: "auto | bool | str | function",
+        default: "auto",
+        doc: "Labels inside the bubbles: `false` for none, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`\"a\"`, `\"1\"`, `\"(i)\"`). `auto` follows `config`'s `choices-enumerate`, which is `false` unless set. On the answer key, a correct labelled bubble is filled in like any other, with its label, in the solution color, in place of the check mark, and a thin ring inside its outline.",
       ),
     ),
   ),

@@ -1,5 +1,5 @@
 #import "../prelude.typ": *
-#import "../config.typ": solution_colors
+#import "../config.typ": DEFAULT_BUBBLE_LABEL_FONT, config, solution_colors
 #import "solution.typ": show_solutions
 
 /// The size of a bubble: the round one's diameter, and the basis every
@@ -16,13 +16,6 @@
 /// em, then made 5% larger, so a square bubble is a little smaller across
 /// than a round one but reads slightly heavier than it.
 #let _SQUARE_SIZE = calc.round(_BUBBLE_SIZE.em * _SQUARE_SCALE, digits: 2) * _BUBBLE_SIZE * 1.05
-
-/// The outline thickness of a bubble. Relative to the font size, like
-/// `size` is, so a bubble keeps its proportions in a footnote and in a
-/// heading alike; heavier than `answer-box`'s hairline box, because at this
-/// size a thin ring reads as a faint circle rather than as something a
-/// student is meant to fill in.
-#let _STROKE = .1em
 
 /// The center line of a capital letter in the font in use: half its cap
 /// height. A bubble is centered on this, so a bubble and a capital `X` are
@@ -128,10 +121,11 @@
 /// background — so a marked bubble and a highlighted solution read as the
 /// same annotation; a plain outline when it is not. Pure, so the color
 /// decision can be checked without rendering and measuring pixels.
-#let bubble_style(filled, colors) = if filled {
-  (stroke: _STROKE + colors.color, fill: colors.background)
+/// `thickness` is the outline's, `config`'s `bubble-stroke`.
+#let bubble_style(filled, colors, thickness) = if filled {
+  (stroke: thickness + colors.color, fill: colors.background)
 } else {
-  (stroke: _STROKE, fill: none)
+  (stroke: thickness, fill: none)
 }
 
 /// How large the check mark in a filled-in bubble is, as a share of the
@@ -144,14 +138,28 @@
 /// The fill alone is a pale wash, which in a grayscale print is lighter than
 /// an empty bubble's black outline; the check is what still marks the answer
 /// there. It is the `sym.checkmark` glyph, so it takes the font's own design
-/// (or a fallback font's, where the font has none). Its text edges are set
-/// to the glyph's bounds, so the box it sits in is exactly its ink, and
-/// centering that box centers the mark itself rather than its line.
+/// (or a fallback font's, where the font has none). It keeps the text's
+/// default edges, so it is centered in the bubble by its line box rather
+/// than by its ink.
 #let check_mark(size, paint) = text(
   size: size * _CHECK_SCALE,
   fill: paint,
   sym.checkmark,
 )
+
+/// The outline thickness a bubble of `size` is drawn with when `config`'s
+/// `bubble-stroke` is `thickness`. `mark` is the longer side of the check mark
+/// drawn in that bubble. All three are absolute lengths.
+///
+/// A shape's outline is drawn centered on its edge, so as it thickens it
+/// reaches inward over the check mark and outward past the bubble's box, into
+/// the gap after it and the lines above and below. It is capped at what
+/// leaves the check mark clear of the outline's full thickness on either
+/// side, which also keeps what spills outside the box under a tenth of the
+/// bubble's size. Capped rather than refused because the limit follows the
+/// bubble: the default `.1em` is over it for a bubble under about half an em,
+/// which should still draw, with a thinner ring.
+#let bubble_stroke(thickness, size, mark) = calc.min(thickness, (size - mark) / 2)
 
 /// Whether a bubble marked `correct: ..` should be drawn filled in: only on
 /// the answer key, so that a document whose solutions are off cannot leak
@@ -238,8 +246,119 @@
   body.func() == [].func() and body.children.all(_is_blank)
 }
 
-/// A bubble for students to fill in, optionally followed by `body`, the
-/// choice it labels.
+/// What `enumerate: true` numbers the choices with.
+#let DEFAULT_ENUMERATE = "A"
+
+/// The counting symbols a numbering pattern counts with, one of which it must
+/// hold: `numbering` rejects a pattern without one.
+#let _COUNTING_SYMBOLS = "1aAiIαΑ一壹あいアイא가ㄱ*١۱१১ক①⓵"
+
+/// Check an `enumerate` option: `true`, `false`, or what `enum`'s `numbering`
+/// takes — a pattern such as `"a"` or `"(i)"`, or a function of the number.
+/// `caller` names the function in the error message and `name` the option,
+/// and `auto` is allowed where it means "as configured".
+#let check_enumerate(value, caller, name: "enumerate", allow-auto: false) = {
+  assert(
+    type(value) in (bool, str, function) or (allow-auto and value == auto),
+    message: caller
+      + ": `"
+      + name
+      + "` must be `true`, `false`, a numbering pattern such as \"a\" or \"(i)\", or a numbering function"
+      + if allow-auto { ", or `auto` to follow `config`'s `choices-enumerate`" } else { "" }
+      + "; got "
+      + repr(value),
+  )
+  if type(value) == str {
+    assert(
+      value.clusters().any(c => _COUNTING_SYMBOLS.contains(c)),
+      message: caller
+        + ": `"
+        + name
+        + "` pattern "
+        + repr(value)
+        + " has nothing to count with; it needs a counting symbol such as 1, a, A, i or I, as in \"a\" or \"(i)\"",
+    )
+  }
+}
+
+/// The label inside the bubble of the choice at `index` (counting from 0),
+/// as `enumerate` numbers it, or `none` when `enumerate` is `false`.
+#let choice_label(enumerate, index) = {
+  if enumerate == false { return none }
+  let pattern = if enumerate == true { DEFAULT_ENUMERATE } else { enumerate }
+  [#numbering(pattern, index + 1)]
+}
+
+/// How large a choice's label is set, as a share of its bubble's size: a
+/// single letter or digit at this size sits well inside the outline.
+#let _LABEL_SCALE = 0.68
+
+/// How far a label may reach from the bubble's center toward the ring
+/// around it (see `ring_geometry`), as a share of the radius inside the ring.
+/// A longer label (`12`) is set smaller until it fits, down to `_LABEL_MIN`.
+#let _LABEL_ROOM = 0.85
+
+/// The smallest a label is set, as a share of its bubble's size: 5.5pt in a
+/// bubble beside 10pt text. A label too long to fit at this size is set at it
+/// anyway (see `label_mark`), as legibility matters more than clearance.
+#let _LABEL_MIN = 0.55
+
+/// The ring drawn inside a correct labelled bubble on the answer key: how
+/// far inside the outline it sits, and how thick it is, as shares of the
+/// bubble's size. Thinner than the outline, so the two read as a ring within
+/// a ring rather than as one heavy one.
+#let _RING_GAP = 0.06
+#let _RING_THICKNESS = 0.045
+
+/// The size of the ring inside a bubble of `size` drawn with an outline
+/// `thickness` thick (its diameter, or its side), measured to the middle of
+/// its stroke, as a shape's size is; and the room left inside it, across.
+/// Both absolute lengths.
+#let ring_geometry(size, thickness) = {
+  let ring_thickness = size * _RING_THICKNESS
+  let ring = size - thickness - 2 * size * _RING_GAP - ring_thickness
+  (size: ring, thickness: ring_thickness, room: ring - ring_thickness)
+}
+
+/// A choice's label, set to fit inside `room` across, in `font` (`config`'s
+/// `bubble-label-font`) and `paint` (`auto` for the text's own color).
+///
+/// Its text edges are the glyphs' own bounds, so the box it sits in is
+/// exactly its ink, and the label is centered in the bubble by that box: a
+/// lowercase `a` as well as a capital `A`, which centered on a capital's
+/// height would sit low. It is set small enough that its corners clear the
+/// inside of a circle `room` across — the tightest fit, and so the size a
+/// square bubble's label is set at too, so the two read alike.
+///
+/// A label that would have to be set smaller than `_LABEL_MIN` to fit (`(a)`,
+/// whose brackets are much taller than its letter, or `(iii)`) is set larger,
+/// up to that size, reaching past `room` toward the ring: but never past
+/// `limit` across, the inside of the bubble's outline, where the outline
+/// would cover it. Needs context, to measure the label.
+#let label_mark(size, room, label, paint, font: DEFAULT_BUBBLE_LABEL_FONT, limit: auto) = {
+  let set_label(s) = text(
+    size: s,
+    font: font,
+    top-edge: "bounds",
+    bottom-edge: "bounds",
+    ..if paint != auto { (fill: paint) },
+    label,
+  )
+  let s = (size * _LABEL_SCALE).to-absolute()
+  let m = measure(set_label(s))
+  // How far the label's corners reach from the bubble's center, per point of
+  // its size: its extent scales with its size, so one ratio fits it.
+  let reach = calc.sqrt(calc.pow(m.width.pt() / 2, 2) + calc.pow(m.height.pt() / 2, 2)) / s.pt()
+  let fit(across) = across.to-absolute().pt() / 2 / reach * 1pt
+  s = calc.min(s, fit(room) * _LABEL_ROOM)
+  let least = (size * _LABEL_MIN).to-absolute()
+  if s >= least or limit == auto { return set_label(s) }
+  set_label(calc.max(s, calc.min(least, fit(limit))))
+}
+
+/// Draw a choice: a bubble of the shape named `shape`, followed by `body`.
+/// `choice` checks its arguments and calls this; `choices` calls it directly,
+/// to give each bubble its label.
 ///
 /// `correct` marks the bubble as (part of) the answer. It only has a visible
 /// effect when solutions are shown: then the bubble is filled in and checked
@@ -247,25 +366,30 @@
 /// a filled-in answer sheet. With solutions off, `correct` changes nothing —
 /// the same source is both the exam and its key.
 ///
-/// Takes its content as an *optional* positional argument, which a plain
-/// parameter list cannot express, so `#choice[Paris]`, `#choice[]` and a
-/// bare `#choice()` all work.
-#let choice(..args) = {
-  let named = args.named()
-  _check_choice_args(args.pos(), named)
-  let shape = _SHAPES.at(shape_name(named.at("bubble", default: "circle"), "choice"))
-  let correct = named.at("correct", default: false)
-  let size = named.at("size", default: auto)
+/// `enumerate` and `index` label the bubble: `enumerate` as `choices` takes
+/// it, `auto` following `config`'s `choices-enumerate`, and `index` the
+/// choice's place in its list.
+#let draw_choice(
+  body,
+  shape: "circle",
+  correct: false,
+  size: auto,
+  outset: _OUTSET,
+  enumerate: false,
+  index: none,
+) = {
+  let shape = _SHAPES.at(shape)
   if size == auto { size = shape.size }
-  let outset = named.at("outset", default: _OUTSET)
-  // A string or a number is shown as written, like any other content.
-  let body = args.pos().at(0, default: none)
-  if _is_blank(body) { body = none }
-  if body != none and type(body) != content { body = [#body] }
 
   e.get(get => {
     let filled = is_filled(correct, get)
     let colors = solution_colors(get)
+    let enumerate = if enumerate == auto {
+      let configured = get(config).choices-enumerate
+      check_enumerate(configured, "config", name: "choices-enumerate")
+      configured
+    } else { enumerate }
+    let label = if index == none { none } else { choice_label(enumerate, index) }
 
     // A bubble sits inline in a sentence, so it is centered on the text's
     // own center line rather than on the baseline, and hangs below the
@@ -278,16 +402,54 @@
     // and the shift — measured from that edge — has to follow it to leave
     // the shape itself on the center line.
     //
-    // A filled-in bubble's check mark is placed over the shape, centered in
-    // the box's inset area — which is the shape — and takes no space, so it
-    // neither resizes the bubble nor moves it on the line.
+    // What is drawn inside the bubble — a filled-in bubble's check mark, a
+    // label — is placed over the shape, centered in the box's inset area
+    // (which is the shape), and takes no space, so it neither resizes the
+    // bubble nor moves it on the line.
     let sides = resolve_sides(outset, base: resolve_sides(_OUTSET))
+    // Capped on every bubble, filled in or not, so that the exam and the
+    // answer key draw the same ring.
+    let thickness = get(config).bubble-stroke
+    assert(
+      thickness.to-absolute() >= 0pt,
+      message: "config: `bubble-stroke` must not be negative, got " + repr(thickness),
+    )
+    thickness = thickness.to-absolute()
+    // The check mark is no larger than its font size (about .84 of it, in
+    // the fonts bundled with Typst), so an outline within the room that
+    // leaves cannot reach it, and the mark need not be measured.
+    if thickness > (size * (1 - _CHECK_SCALE) / 2).to-absolute() {
+      let mark = measure(check_mark(size, colors.color))
+      thickness = bubble_stroke(thickness, size.to-absolute(), calc.max(mark.width, mark.height))
+    }
+    // A labelled bubble is filled in like any other — outlined in the solution
+    // color over the solution background — with its label, in the solution
+    // color, where the check mark would go: the two would sit on each other.
     box(
       baseline: bubble_drop(size, cap_center()) + sides.bottom,
       inset: sides,
       {
-        (shape.draw)(size, ..bubble_style(filled, colors))
-        if filled { place(center + horizon, check_mark(size, colors.color)) }
+        (shape.draw)(size, ..bubble_style(filled, colors, thickness))
+        if label != none {
+          // Ringed only once filled in, so on the exam every label reads
+          // alike and the answers do not stand out. The label fits inside
+          // the ring on the exam too, so it is the same size on both.
+          let ring = ring_geometry(size.to-absolute(), thickness)
+          if filled {
+            place(center + horizon, (shape.draw)(ring.size, stroke: ring.thickness + colors.color, fill: none))
+          }
+          place(center + horizon, label_mark(
+            size,
+            ring.room,
+            label,
+            if filled { colors.color } else { auto },
+            font: get(config).bubble-label-font,
+            // The inside of the outline, less the gap the ring keeps from it.
+            limit: size.to-absolute() * (1 - 2 * _RING_GAP) - thickness,
+          ))
+        } else if filled {
+          place(center + horizon, check_mark(size, colors.color))
+        }
       },
     )
 
@@ -295,6 +457,28 @@
       if filled { text(fill: colors.color, body) } else { body }
     }
   })
+}
+
+/// A bubble for students to fill in, optionally followed by `body`, the
+/// choice it labels; see `draw_choice` for how it is drawn.
+///
+/// Takes its content as an *optional* positional argument, which a plain
+/// parameter list cannot express, so `#choice[Paris]`, `#choice[]` and a
+/// bare `#choice()` all work.
+#let choice(..args) = {
+  let named = args.named()
+  _check_choice_args(args.pos(), named)
+  // A string or a number is shown as written, like any other content.
+  let body = args.pos().at(0, default: none)
+  if _is_blank(body) { body = none }
+  if body != none and type(body) != content { body = [#body] }
+  draw_choice(
+    body,
+    shape: shape_name(named.at("bubble", default: "circle"), "choice"),
+    correct: named.at("correct", default: false),
+    size: named.at("size", default: auto),
+    outset: named.at("outset", default: _OUTSET),
+  )
 }
 
 /// A round bubble: "select one".

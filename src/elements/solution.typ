@@ -1,6 +1,7 @@
 #import "../prelude.typ": *
 #import "../constants.typ": SHOW_SOLUTIONS_OVERRIDE
 #import "../config.typ": config, solution_colors
+#import "../scan.typ": is_multi_par
 
 /// Whether or not solutions should be shown given the current configuration and command-line overrides.
 #let show_solutions(get) = {
@@ -30,6 +31,68 @@
   ),
 )
 
+/// An inline solution that makes no line taller: its text highlighted where it
+/// stands, so it flows and wraps with the words around it, rather than boxed.
+/// A box would need vertical padding, which makes its line taller, and it
+/// cannot break across lines. The sideways padding a boxed solution has comes
+/// from a filled cap at each end, joined to the text so that a line break
+/// cannot strand it, and drawn as an outset so it takes no height. `highlight`
+/// covers only text, so an inline equation gets a fill of its own; an outset
+/// again, which takes no height.
+#let _inline_no_height(body, colors) = {
+  let up = measure(text(top-edge: "ascender", bottom-edge: "baseline")[x]).height
+  let down = measure(text(top-edge: "baseline", bottom-edge: "descender")[x]).height
+  let cap = box(width: 3pt, height: 0pt, outset: (top: up, bottom: down), fill: colors.background)
+  show math.equation.where(block: false): eq => box(fill: colors.background, outset: (y: 3pt), eq)
+  (
+    cap
+      + sym.wj
+      + highlight(
+        fill: colors.background,
+        top-edge: "ascender",
+        bottom-edge: "descender",
+        text(fill: colors.color, body),
+      )
+      + sym.wj
+      + cap
+  )
+}
+
+/// The spacing the flow puts between blocks when `block`'s `above` is not
+/// set: Typst's default `block.spacing`, which cannot be read back.
+#let _DEFAULT_BLOCK_SPACING = 1.2em
+
+/// A solution that takes no height (see `answer-box`) and is a paragraph of
+/// its own: out of the flow, so what follows takes its place, just as on the
+/// exam — on top of the content after it, or hanging below the box when it is
+/// last. Placed where its block would begin; when it is last, the flow trims
+/// the spacing above it, so it is drawn that much lower itself. Needs
+/// context, to read that spacing.
+#let _placed_no_height(it, body, colors, width) = {
+  let gap = if it._last {
+    let above = block.above
+    if type(above) != length { above = _DEFAULT_BLOCK_SPACING }
+    // After text, the flow's spacing is the paragraph spacing, when that is
+    // the larger.
+    if it._last-after-text { calc.max(par.spacing.to-absolute(), above.to-absolute()) } else { above }
+  } else { 0pt }
+  let body = text(fill: colors.color, body)
+  place(dy: gap, if it.boxed { block(width: width, fill: colors.background, inset: 3pt, body) } else {
+    block(width: width, body)
+  })
+}
+
+/// A solution that takes no height and stands within a paragraph: it keeps
+/// its line no taller than on the exam. With a width of its own, it is a box
+/// of that width, padded only sideways and filled above and below as an
+/// outset, so it is as tall as its text, though a long one still wraps onto
+/// further lines.
+#let _in_line_no_height(it, body, colors, width) = {
+  if not it.boxed { return text(fill: colors.color, body) }
+  if width == auto { return _inline_no_height(body, colors) }
+  box(width: width, fill: colors.background, inset: (x: 3pt), outset: (y: 3pt), text(fill: colors.color, body))
+}
+
 /// (Conditionally) show a solution for a question/part/subpart.
 #let solution = e.element.declare(
   "solution",
@@ -40,15 +103,26 @@
       if show_solutions(get) != false {
         let colors = solution_colors(get)
         show: it_ => {
+          // `width: none` means "not chosen": the context decides. `_fill-width`
+          // is how an enclosing element (`answer-box`) asks for the full width,
+          // so an explicit `width` — from an argument *or* a set rule, at any
+          // scope — still wins over it.
+          let w = if it.width != none { it.width } else if it._fill-width { 100% } else { auto }
+          if it._no-height {
+            // A paragraph of its own: alone in one, as `answer-box` found
+            // (`_fill-width`), or holding blocks, which set it apart wherever
+            // it stands, even where `answer-box` cannot see it (in an `align`,
+            // say).
+            return if it._fill-width or is_multi_par(it.body) {
+              _placed_no_height(it, it_, colors, if w == auto { 100% } else { w })
+            } else {
+              _in_line_no_height(it, it_, colors, w)
+            }
+          }
           if it.boxed {
             // A width other than `auto` must use a block: a full-width *inline*
             // box would be pushed onto a line of its own, splitting any text
             // around it (and stretching a justified line before it).
-            // `width: none` means "not chosen": the context decides. `_fill-width`
-            // is how an enclosing element (`answer-box`) asks for the full width,
-            // so an explicit `width` — from an argument *or* a set rule, at any
-            // scope — still wins over it.
-            let w = if it.width != none { it.width } else if it._fill-width { 100% } else { auto }
             let wrap = if w == auto { box.with(width: auto) } else { block.with(width: w) }
             wrap(fill: colors.background, inset: 3pt, text(
               fill: colors.color,
@@ -80,6 +154,30 @@
       "_fill-width",
       bool,
       doc: "Whether an unset `width` should fill the container instead of shrink-wrapping.",
+      default: false,
+      internal: true,
+    ),
+    // Internal: how `answer-box` with its default height keeps its solutions
+    // from taking any height, so its answer key lays out like its exam. A
+    // channel between the two elements, like `_fill-width`.
+    e.field(
+      "_no-height",
+      bool,
+      doc: "Whether the solution should take no height: placed out of the flow if it is a block, highlighted where it stands if inline.",
+      default: false,
+      internal: true,
+    ),
+    e.field(
+      "_last",
+      bool,
+      doc: "With `_no-height`, whether the solution comes after the last of its box's visible content, where the flow leaves out the spacing it would have put above it, so that it is drawn that much lower itself.",
+      default: false,
+      internal: true,
+    ),
+    e.field(
+      "_last-after-text",
+      bool,
+      doc: "With `_last`, whether text comes just before the solution, so that the flow's spacing above it is the paragraph spacing, when that is larger than the block spacing.",
       default: false,
       internal: true,
     ),

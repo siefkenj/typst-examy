@@ -15,6 +15,16 @@ See [examples/](examples/) for usage examples.
 
 ## Quick start
 
+To start from a complete exam (a cover page with a points table, followed
+by questions with answer boxes, parts, and multiple choice), run
+
+```bash
+typst init @preview/examy
+```
+
+or choose examy under _Start from template_ in the Typst web app. A minimal
+document looks like this:
+
 ```typst
 #import "@preview/examy:0.4.0": *
 
@@ -147,6 +157,40 @@ height (`1fr`, `2fr`, ...) makes the box grow to fill the remaining space on
 the page — multiple `fr` boxes on one page share the leftover space
 proportionally.
 
+With no height, the box sizes itself by what it holds. A blank box — empty,
+or holding only a `#solution[...]` — is `default_height` (`2cm`) tall, leaving
+room to write. A box with content, such as a prompt or a list of `#choices`,
+grows to fit it.
+
+With no height, the solutions in a box also take no height, so the answer key
+lays out exactly like the exam: every box is the same size on both, and
+nothing after a box moves. A solution is drawn where it would be. When more
+of the box follows it, it is drawn over that; when it comes last, it hangs out
+of the box, over whatever comes next. An inline solution is highlighted where
+it stands, so it never makes its line taller, though a long one still wraps
+onto further lines. To have a box hold its solutions instead, give it a
+height, which can be `auto`:
+
+```typst
+#answer-box(width: 100%)[Solve $2x = 8$. #solution[$x = 4$]]              // same size on the key
+#answer-box(width: 100%, height: auto)[Solve $2x = 8$. #solution[$x = 4$]] // grows on the key
+```
+
+> **Changed after 0.4.0:** in examy 0.4.0 and earlier, a box with no height
+> (or with `height: auto`) was always `default_height` tall, whatever it held.
+> Now a box holding a prompt, such as
+> `#answer-box(width: 100%)[Explain your reasoning:]`, shrinks to the prompt
+> and leaves no room to write, and `default_height` no longer affects it.
+> `height: auto` always fits the content, so an empty `height: auto` box has
+> no height at all. To keep the old size, give the height explicitly:
+> `#answer-box(width: 100%, height: 2cm)[Explain your reasoning:]`. Also, in
+> a box with no height, solutions now take no height (see above); give the box
+> a height for it to hold them.
+
+A fraction height gets only the space left over once everything else on the
+page is placed, and that can be less than the box's content needs. For a box
+whose content must fit, leave the height out, or give a length.
+
 ### Solutions
 
 Wrap solutions in `#solution[...]` (anywhere in your document, including inside an answer box).
@@ -272,10 +316,21 @@ students to fill in. Write each choice on its own line starting with `-`. Starti
   between rows (by default, the text's line spacing). Side by side, it is the
   space between them (by default `1.5em`); inline, `1fr` spreads the choices
   across the line.
+- `enumerate: bool | str | function` — Labels inside the bubbles: `true` for
+  A, B, C, …, or any numbering pattern or function `enum` takes (`"a"`, `"1"`,
+  `"(i)"`). Off by default; set it for the whole document with
+  `#show: e.set_(config, choices-enumerate: true)`. Labels are set in the
+  monospaced font bundled with Typst, changed with `config`'s
+  `bubble-label-font`; on the answer key, a correct one gets a thin ring
+  inside its outline.
 
 For a layout of your own, `#choice[...]` draws a single bubble before its
 content; mark an answer with `correct: true`. It takes `bubble: "circle" | "square"`. 
 The gap between a choice bubble and its content can be set with `outset` (e.g. `outset: .6em`).
+The outline thickness of every bubble in the document is set with
+`#show: e.set_(config, bubble-stroke: .06em)` (default `.1em`). An outline
+thick enough to cover a filled-in bubble's check mark, about a fifth of the
+bubble's size, is drawn at that limit instead.
 
 See
 [examples/multiple-choice.typ](examples/multiple-choice.typ)
@@ -292,8 +347,8 @@ See
 #exam(questions: [
   #question(points: 1)[
     What is the capital of Canada? _Select one._
-    // One per line (the default), spread out with `gap`.
-    #choices(gap: 0.8em)[
+    // One per line (the default), spread out with `gap`, lettered A, B, C, D.
+    #choices(gap: 0.8em, enumerate: true)[
       - Toronto
       + Ottawa
       - Montreal
@@ -467,11 +522,11 @@ Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectiv
 A box for students to write answers in.
 
 - `body: content` (required) — Content shown inside the box (a prompt, `#solution[..]`, or nothing).
-- `solution: content | none = none` — Solution content that fills the bottom of the box when solutions are enabled.
+- `solution: content | none = none` — Solution content shown at the bottom of the box when solutions are shown. In a box of set height it fills the space left below the body. With `height: auto`, the box grows to hold it. With no height given, it takes no height, like any solution in such a box (see `height`).
 - `width: auto | length | ratio | relative = auto` — The width of the box; `auto` falls back to `default_width`.
-- `height: length | fraction | none = none` — A fixed height gives a box of that size (`none` falls back to `default_height`); a fraction (`1fr`) makes the box grow to fill the remaining space on the page, shared proportionally with the other `fr` boxes there.
+- `height: auto | length | fraction | none = none` — `none` sizes the box by what the exam shows in it: a box with content — a prompt, a list of choices — grows to fit it, while a box that is blank on the exam (empty, or holding only a solution) takes `default_height`, leaving room to write. Its solutions take no height, so the answer key lays out exactly like the exam: a solution is drawn where it would be, over whatever follows it, or hanging out of the box when it comes last. Any explicit height opts out of that. `auto` fits the content, solutions included, so the key's box grows to hold them. A length gives a box of that size; give one to leave room to write below a prompt. A fraction (`1fr`) makes the box fill the space left on the page, shared proportionally with the other `fr` boxes there; it gets only what the rest of the page leaves over, which may be less than its content needs.
 - `baseline: length | ratio | relative = 50% - .33em` — Baseline shift for small boxes sitting inline in a sentence; ignored for block-mode and full-width boxes. The default centers the box on the center line of a capital letter, the same line `bubble` is centered on, so a bubble and a box side by side line up.
-- `default_height: length = 2cm` — The height used when `height` is `none`.
+- `default_height: length = 2cm` — The height of a box that is blank on the exam (empty, or holding only a solution) when `height` is `none`.
 - `default_width: length = 2cm` — The width used when `width` is `auto` (inline boxes only).
 
 ### `choice(body, bubble: "circle", correct: false, outset: (right: 0.4em), size: auto)`
@@ -492,7 +547,7 @@ A bubble for students to fill in, followed by the choice it labels. On the answe
 
 `choice.with(bubble: "square")`: a square bubble, for "select all that apply". Takes the same arguments as `choice`.
 
-### `choices(body, correct: none, bubble: "circle", inline: false, columns: none, gap: auto)`
+### `choices(body, correct: none, bubble: "circle", inline: false, columns: none, gap: auto, enumerate: auto)`
 
 A multiple-choice answer: a bubble for each choice, filled in and checked on the answer key (when solutions are shown) for the correct ones, whose content is then set in the solution color. Mark a correct choice with `+` in place of `-`, or by its index with `correct`.
 
@@ -502,6 +557,7 @@ A multiple-choice answer: a bubble for each choice, filled in and checked on the
 - `inline: bool = false` — Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is not split across lines unless it is longer than a whole line. Cannot be combined with `columns`.
 - `columns: int | none = none` — Set the choices in this many equal columns, filled across each row in turn, rather than one per line. Cannot be combined with `inline`.
 - `gap: auto | length | fraction = auto` — The space between two choices. One per line, it is the space between one choice and the next below it, and `auto` sets them as close as the lines of a paragraph. Side by side, inline or in `columns`, it is the space between them, and `auto` is 1.5em; there, a fraction (`1fr`) spreads the choices across the line.
+- `enumerate: auto | bool | str | function = auto` — Labels inside the bubbles: `false` for none, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`"a"`, `"1"`, `"(i)"`). `auto` follows `config`'s `choices-enumerate`, which is `false` unless set. On the answer key, a correct labelled bubble is filled in like any other, with its label, in the solution color, in place of the check mark, and a thin ring inside its outline.
 
 ### `solution(body, boxed: true, width: none)` (elembic element)
 
@@ -551,6 +607,9 @@ Package options. Set them with a show rule: `#show: e.set_(config, show-solution
 - `show-rubric: bool | none = none` — Whether to show a rubric.
 - `solution-color: auto | color = auto` — The color solutions are drawn in: the text of a solution, the outline and check mark of a filled-in bubble. `auto` derives it from `solution-background-color`, or falls back to the package default if that is `auto` too.
 - `solution-background-color: auto | color = auto` — The color behind a solution, and the fill of a filled-in bubble. `auto` derives it from `solution-color` by lightening.
+- `bubble-stroke: length = 0.1em` — The outline thickness of the bubbles drawn by `choice`, `bubble`, `square-bubble` and `choices`. An `em` length scales with the text around each bubble. Must not be negative; an outline thick enough to cover a filled-in bubble's check mark (about a fifth of the bubble's size) is drawn thinner, at the most that leaves the check mark clear.
+- `bubble-label-font: str | array = "DejaVu Sans Mono"` — The font the labels inside bubbles (`choices`' `enumerate`) are set in: a font name, or a list of them to fall back through, as `text`'s `font` takes. The default is the monospaced font bundled with Typst.
+- `choices-enumerate: bool | str | function = false` — How `choices` labels its bubbles, unless it is given `enumerate` itself: `false` for no labels, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`"a"`, `"1"`, `"(i)"`).
 - `solution-text-color: auto | color = auto` — Deprecated: the old name of `solution-color`, still accepted. Ignored when `solution-color` is set.
 
 ### `presets`
@@ -628,7 +687,10 @@ The following commands are useful for development.
 ### Making a release
 
 1. Bump `version` in `typst.toml` — the elembic prefix, the example
-   imports, and the dist layout all derive from it.
+   imports, and the dist layout all derive from it. Also update the
+   `#import "@preview/examy:<version>"` line in `template/main.typ` (the
+   `typst init` template ships verbatim, so it isn't rewritten;
+   `make_dist.sh` refuses to build if it doesn't match).
 2. Commit, tag, and push:
    ```bash
    git commit -am "Release v0.4.0"
@@ -641,7 +703,8 @@ The following commands are useful for development.
    tests and validation pass, it produces `dist/examy/<version>/` containing
    the package exactly as it should be published (example imports rewritten
    to `@preview/examy:<version>`, this Development section stripped from
-   the README, relative links rewritten to permalinks at the tag).
+   the README, relative links rewritten to permalinks at the tag, the
+   template's `thumbnail.png` rendered from page 2 of `template/main.typ`).
 4. Copy `dist/examy/<version>` into a fork of
    [typst/packages](https://github.com/typst/packages) as
    `packages/preview/examy/<version>` and open a pull request.

@@ -8,10 +8,10 @@
 // answers through the bubbles.
 #import "/src/lib.typ": *
 #import "/src/elements/bubble.typ": (
-  _BUBBLE_SIZE, _OUTSET, _SQUARE_SIZE, _STROKE, bubble_drop, bubble_style, cap_center, check_mark,
+  _BUBBLE_SIZE, _OUTSET, _SQUARE_SIZE, bubble_drop, bubble_stroke, bubble_style, cap_center, check_mark,
   is_filled, resolve_sides, round_shape,
 )
-#import "/src/config.typ": resolve_solution_colors, solution_colors
+#import "/src/config.typ": DEFAULT_BUBBLE_STROKE, resolve_solution_colors, solution_colors
 
 #set page(width: 6in, height: auto, margin: .25in)
 #set text(size: 10pt)
@@ -49,11 +49,11 @@
 // A filled-in bubble is drawn with the same pair as a solution: the
 // solution color outlining the solution background.
 #let _colors = (color: blue, background: aqua)
-#assert.eq(bubble_style(true, _colors).stroke, _STROKE + blue)
-#assert.eq(bubble_style(true, _colors).fill, aqua)
+#assert.eq(bubble_style(true, _colors, DEFAULT_BUBBLE_STROKE).stroke, DEFAULT_BUBBLE_STROKE + blue)
+#assert.eq(bubble_style(true, _colors, DEFAULT_BUBBLE_STROKE).fill, aqua)
 // An empty bubble is a plain outline, in no particular color.
-#assert.eq(bubble_style(false, _colors).stroke, _STROKE)
-#assert.eq(bubble_style(false, _colors).fill, none)
+#assert.eq(bubble_style(false, _colors, DEFAULT_BUBBLE_STROKE).stroke, DEFAULT_BUBBLE_STROKE)
+#assert.eq(bubble_style(false, _colors, DEFAULT_BUBBLE_STROKE).fill, none)
 
 // --- the color a bubble's content is set in ---
 // A probe reporting the text color in force where the bubble's content sits.
@@ -159,7 +159,7 @@
   // also takes in the baseline it is shifted off — which, for a bubble small
   // enough to clear the baseline entirely, reports more than its own height.
   assert.eq(
-    measure(round_shape(_BUBBLE_SIZE, stroke: _STROKE)).height,
+    measure(round_shape(_BUBBLE_SIZE, stroke: DEFAULT_BUBBLE_STROKE)).height,
     _BUBBLE_SIZE.to-absolute(),
     message: "a bubble is not _BUBBLE_SIZE tall",
   )
@@ -490,7 +490,7 @@
 // the default.
 #context for size in (_BUBBLE_SIZE, _SQUARE_SIZE, 2em, 0.6em) {
   let mark = measure(check_mark(size, black))
-  let room = size.to-absolute() - 2 * _STROKE.to-absolute()
+  let room = size.to-absolute() - 2 * DEFAULT_BUBBLE_STROKE.to-absolute()
   assert(
     mark.width < room and mark.height < room,
     message: "the check mark should fit inside a "
@@ -565,4 +565,86 @@
       }
     }
   }
+}
+
+// --- the outline thickness, set through `config` ---
+// `bubble-stroke` sets every bubble's outline: round and square, filled in
+// or not, alone or in `choices`. A stroke takes no layout space, so it is
+// read off the drawn shapes themselves: within a case, a show rule records
+// the stroke of each circle and square drawn, under that case's label.
+#let strokes_of(name, body) = {
+  show circle: it => [#metadata(it.stroke)#label("stroke-" + name)#it]
+  show square: it => [#metadata(it.stroke)#label("stroke-" + name)#it]
+  body
+}
+#let some_bubbles = [
+  #choice[a] #choice(correct: true)[b] #bubble[c] #square-bubble[d]
+  #square-bubble(correct: true)[e]
+  #choices(inline: true)[- f
+    + g]
+  #choices(bubble: "square", inline: true)[- h
+    + i]
+]
+#case([By default, every bubble's outline is #raw(repr(DEFAULT_BUBBLE_STROKE)).], strokes_of("default", some_bubbles))
+#[
+  #show: e.set_(config, bubble-stroke: .15em)
+  #case([`bubble-stroke: .15em` thickens every one of them.], strokes_of("thick", some_bubbles))
+]
+#[
+  #show: e.set_(config, bubble-stroke: 0pt)
+  #case([`bubble-stroke: 0pt` draws no outline.], strokes_of("none", some_bubbles))
+]
+#context {
+  for (name, expected) in (("default", DEFAULT_BUBBLE_STROKE), ("thick", .15em), ("none", 0pt)) {
+    let found = query(label("stroke-" + name)).map(m => stroke(m.value).thickness)
+    // Nine bubbles: four alone (two filled), and two `choices` of two.
+    assert.eq(found.len(), 9, message: name + ": expected nine bubbles, found " + str(found.len()))
+    for t in found {
+      assert.eq(
+        t.to-absolute(),
+        expected.to-absolute(),
+        message: name + ": every bubble's outline should be " + repr(expected) + ", found " + repr(t),
+      )
+    }
+  }
+}
+
+// `bubble_style` draws the outline at the thickness it is given, and a
+// filled-in bubble keeps the solution color at any thickness.
+#assert.eq(bubble_style(true, _colors, 2pt).stroke, 2pt + blue)
+#assert.eq(bubble_style(false, _colors, 2pt).stroke, 2pt)
+
+// --- how thick an outline is drawn ---
+// An outline is drawn centered on the shape's edge, so a thick one would
+// cover the check mark of a filled-in bubble. It is capped where it would
+// start to: an outline under the cap is drawn as given, one over it at the
+// cap. The cap follows the bubble's size, so it is checked at several.
+#context for size in (_BUBBLE_SIZE, _SQUARE_SIZE, 2em, 0.6em, 0.3em) {
+  let mark = measure(check_mark(size, black))
+  let longer = calc.max(mark.width, mark.height)
+  let s = size.to-absolute()
+  let cap = (s - longer) / 2
+  let drawn(t) = bubble_stroke(t, s, longer)
+  let at = " for a " + repr(size) + " bubble"
+  assert(cap > 0pt, message: "there should be room for an outline" + at)
+  assert.eq(drawn(0pt), 0pt, message: "no outline should stay none" + at)
+  assert.eq(drawn(cap), cap, message: "an outline at the cap should be drawn as given" + at)
+  assert.eq(drawn(cap + 1pt), cap, message: "an outline over the cap should be drawn at it" + at)
+  assert.eq(drawn(cap / 2), cap / 2, message: "an outline under the cap should be drawn as given" + at)
+}
+// End to end: `.3em` is over the cap for a bubble of the default size, but
+// under it for a 2em one.
+#[
+  #show: e.set_(config, bubble-stroke: .3em)
+  #case(
+    [`bubble-stroke: .3em` is capped on a 1em bubble, so its check mark stays clear, but not on a 2em one.],
+    strokes_of("capped", [#choice(correct: true)[a] #choice(correct: true, size: 2em)[b]]),
+  )
+]
+#context {
+  let (small, large) = query(<stroke-capped>).map(m => stroke(m.value).thickness.to-absolute())
+  let mark = measure(check_mark(_BUBBLE_SIZE, black))
+  let cap = (_BUBBLE_SIZE.to-absolute() - calc.max(mark.width, mark.height)) / 2
+  assert(calc.abs((small - cap).pt()) < 0.01, message: "a 1em bubble's outline should be capped at " + repr(cap) + ", got " + repr(small))
+  assert(calc.abs((large - .3em.to-absolute()).pt()) < 0.01, message: "a 2em bubble's outline should be .3em, got " + repr(large))
 }

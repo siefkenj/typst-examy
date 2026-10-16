@@ -18,13 +18,17 @@
 /// document order; the second widens the solutions found to be alone.
 
 #import "prelude.typ": *
-#import "scan.typ": SEQUENCE_FUNC, STYLED_FUNC, is_whitespace_content
+#import "scan.typ": SEQUENCE_FUNC, STYLED_FUNC, ends_par, is_multi_par, is_whitespace_content
 #import "elements/solution.typ": solution as solution_element
 
 /// The `solution` element's elembic id, to recognize its instances by.
 /// Matching on the id rather than the element's name avoids colliding with a
 /// same-named element from another package.
 #let _SOLUTION_EID = e.data(solution_element).eid
+
+/// The internal `context` element function, which `context` expressions and
+/// elembic's `e.get` produce.
+#let _CONTEXT_FUNC = (context none).func()
 
 /// Whether `c` is a `solution` instance. Note that an element realizes to a
 /// bare `sequence`, so it cannot be recognized by `func()`.
@@ -37,65 +41,44 @@
   )
 }
 
-/// Elements that are always block-level, and so end the paragraph before
-/// them and start a fresh one after. Anything not listed counts as inline:
-/// mistaking a block for inline content merely leaves a solution
-/// shrink-wrapped, whereas the reverse widens a solution in the middle of a
-/// sentence and breaks the line apart.
-#let _BLOCK_FUNCS = (
-  parbreak,
-  block,
-  table,
-  grid,
-  figure,
-  list,
-  enum,
-  terms,
-  heading,
-  image,
-  align,
-  pad,
-  stack,
-  columns,
-  colbreak,
-  pagebreak,
-  v,
-  rect,
-  square,
-  circle,
-  ellipse,
-  polygon,
-  line,
-  outline,
-  bibliography,
-)
-
-#let _ends_par(c) = {
-  let f = c.func()
-  if _BLOCK_FUNCS.contains(f) { return true }
-  // Inline unless their `block` flag is set.
-  if (math.equation, raw, quote).contains(f) { return c.at("block", default: false) }
-  false
-}
-
 /// Pass 1: what `c` contributes to the paragraph flow, as an array of events
-/// in document order: `"solution"`, `"break"` (a paragraph boundary), or
-/// `"text"` (any other visible content). `styled` and `sequence` are looked
-/// through; everything else is opaque, so a solution nested inside it (a
-/// table cell, `strong`, ...) is not seen.
-#let _events(c) = {
+/// in document order: `"solution"`, `"break"` (a paragraph boundary),
+/// `"block"` (a block-level element, always between two breaks), `"context"`
+/// (a `context` expression, or `e.get`, which may or may not show anything),
+/// or `"text"` (any other visible content). `styled` and `sequence` are
+/// looked through; everything else is opaque, so a solution nested inside it
+/// (a table cell, `strong`, ...) is not seen. Exported so that a caller
+/// needing both `widen_par_solutions` and `exam_content` walks the body only
+/// once.
+///
+/// With `split`, a solution of several paragraphs is a paragraph of its own
+/// even where it is written inline (`*Proof:*` and then `#solution[..]` on
+/// the next line), so it is widened into a block like one set off by blank
+/// lines. `answer-box` asks for this where its solutions take no height: an
+/// inline solution is then highlighted line by line, which would leave a gap
+/// between each of its lines.
+#let par_events(c, split: false) = {
+  // Only ever at the top: a body given as a string rather than as content.
+  if type(c) == str { return if c.trim() == "" { () } else { ("text",) } }
   if type(c) != content { return () }
-  if _is_solution(c) { return ("solution",) }
-  if _ends_par(c) { return ("break",) }
+  if _is_solution(c) {
+    let body = e.fields(c).at("body", default: none)
+    return if split and is_multi_par(body) { ("break", "solution", "break") } else { ("solution",) }
+  }
+  if ends_par(c) {
+    return if c.func() == parbreak { ("break",) } else { ("break", "block", "break") }
+  }
   let f = c.func()
-  if f == STYLED_FUNC { return _events(c.child) }
-  if f == SEQUENCE_FUNC { return c.children.map(_events).flatten() }
+  if f == STYLED_FUNC { return par_events(c.child, split: split) }
+  if f == SEQUENCE_FUNC { return c.children.map(x => par_events(x, split: split)).flatten() }
+  if f == _CONTEXT_FUNC { return ("context",) }
   if is_whitespace_content(c) { return () }
   ("text",)
 }
 
 /// For each solution event, in order, whether it is the only visible content
-/// of its paragraph.
+/// of its paragraph. A `context` event counts as visible: mistaking it for
+/// visible content merely leaves a solution shrink-wrapped.
 #let _alone_flags(events) = {
   let flags = ()
   let par = ()
@@ -115,21 +98,25 @@
 /// Ask a solution to fill the available width, via a set rule scoped to just
 /// that solution. An explicit `width` — passed as an argument or set by a rule
 /// at any scope — still wins, because `_fill-width` only applies when `width`
-/// is left unset.
-#let _widen(c) = {
-  show: e.set_(solution_element, _fill-width: true)
+/// is left unset. `last` is its `_last` and `_last-after-text`, as a
+/// dictionary, or `none` when it is not last.
+#let _widen(c, last) = {
+  let (is-last, after-text) = if last == none { (false, false) } else { (true, last.after-text) }
+  show: e.set_(solution_element, _fill-width: true, _last: is-last, _last-after-text: after-text)
   c
 }
 
 /// Pass 2: rebuild `c`, widening the solutions whose flag is set. Walks the
-/// tree exactly as `_events` does; `i` is the index of the next solution.
-/// Returns the new content and the next index.
+/// tree exactly as `par_events` does; `i` is the index of the next solution.
+/// `flags` holds, for each solution, whether to widen it and whether it is
+/// last. Returns the new content and the next index.
 #let _rewrite(c, flags, i) = {
   if type(c) != content { return (c, i) }
   if _is_solution(c) {
-    return (if flags.at(i) { _widen(c) } else { c }, i + 1)
+    let (wide, last) = flags.at(i)
+    return (if wide { _widen(c, last) } else { c }, i + 1)
   }
-  if _ends_par(c) { return (c, i) }
+  if ends_par(c) { return (c, i) }
   let f = c.func()
   if f == STYLED_FUNC {
     let (child, next) = _rewrite(c.child, flags, i)
@@ -147,9 +134,55 @@
   (c, i)
 }
 
+/// Whether an event is something the exam may show.
+#let _is_visible(ev) = ev in ("text", "block", "context")
+
 /// Widen every `solution` in `body` that stands alone in its paragraph.
-#let widen_par_solutions(body) = {
-  let flags = _alone_flags(_events(body))
-  if not flags.any(x => x) { return body }
-  _rewrite(body, flags, 0).first()
+/// `events` is `par_events(body)`, if already at hand.
+///
+/// Each widened solution is also told whether it is last: visible content
+/// before it, and none after. That matters to a solution that takes no
+/// height (see `answer-box`), which is placed out of the flow. Placed between
+/// two paragraphs, it lands below the spacing the flow puts between them;
+/// placed after the last one, it gets no spacing, as the flow trims spacing
+/// at its end, so it has to add that spacing itself.
+#let widen_par_solutions(body, events: auto) = {
+  if events == auto { events = par_events(body) }
+  let alone = _alone_flags(events)
+  if not alone.any(x => x) { return body }
+  // Whether anything visible comes after each event, in one backward pass.
+  let visible_after = ()
+  let seen = false
+  for ev in events.rev() {
+    visible_after.push(seen)
+    if _is_visible(ev) { seen = true }
+  }
+  visible_after = visible_after.rev()
+  // The last visible event before each solution, in one forward pass.
+  let lasts = ()
+  let before = none
+  for (i, ev) in events.enumerate() {
+    if ev == "solution" {
+      let last = before != none and not visible_after.at(i)
+      lasts.push(if last { (after-text: before == "text") } else { none })
+    } else if _is_visible(ev) {
+      before = ev
+    }
+  }
+  _rewrite(body, alone.zip(lasts), 0).first()
+}
+
+/// What `body` shows on the exam itself, that is, with its solutions, which
+/// appear only on the answer key, left out: `"yes"` when it holds visible
+/// content, `"no"` when it holds only whitespace and solutions, and
+/// `"maybe"` when all it might show is a `context` expression (an `e.get`
+/// that shows a solution only on the key, say), which cannot be told until
+/// it is laid out. An answer box sizes itself by this — one holding, say, a
+/// prompt or a list of choices grows to fit them, while one that is blank on
+/// the exam (empty, or holding only its solution) keeps a fixed height for
+/// the student to write in, the same on the exam and the key. `events` is
+/// `par_events(body)`, if already at hand.
+#let exam_content(body, events: auto) = {
+  if events == auto { events = par_events(body) }
+  if events.any(ev => ev == "text" or ev == "block") { "yes" } else if "context" in events { "maybe" } else { "no" }
 }

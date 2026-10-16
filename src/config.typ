@@ -12,6 +12,22 @@
   ),
 )
 
+/// The outline thickness of a bubble (`choice`, `bubble`, `square-bubble`,
+/// `choices`) when `bubble-stroke` is not configured. Relative to the font
+/// size, so a bubble keeps its proportions in a footnote and in a heading
+/// alike; heavier than `answer-box`'s hairline box, because at a bubble's size
+/// a thin ring reads as a faint circle rather than as something a student is
+/// meant to fill in.
+#let DEFAULT_BUBBLE_STROKE = .1em
+
+/// The font a bubble's label (see `choices`' `enumerate`) is set in when
+/// `bubble-label-font` is not configured: the monospaced face bundled with
+/// Typst, so it is there wherever the document is compiled. Its letters and
+/// digits are all of a width, so labels read alike from one bubble to the
+/// next, and as a sans face they stand apart from the text of the choice
+/// beside them.
+#let DEFAULT_BUBBLE_LABEL_FONT = "DejaVu Sans Mono"
+
 #let config = e.element.declare(
   "config",
   prefix: PREFIX,
@@ -61,6 +77,24 @@
       e.types.union(auto, color),
       doc: "The color behind a solution, and the fill of a filled-in bubble. `auto` derives it from `solution-color` by lightening",
       default: auto,
+    ),
+    e.field(
+      "bubble-stroke",
+      length,
+      doc: "The outline thickness of the bubbles drawn by `choice`, `bubble`, `square-bubble` and `choices`. An `em` length scales with the text around each bubble. Must not be negative; an outline thick enough to cover a filled-in bubble's check mark (about a fifth of the bubble's size) is drawn thinner, at the most that leaves the check mark clear",
+      default: DEFAULT_BUBBLE_STROKE,
+    ),
+    e.field(
+      "bubble-label-font",
+      e.types.union(str, array),
+      doc: "The font the labels inside bubbles (`choices`' `enumerate`) are set in: a font name, or a list of them to fall back through, as `text`'s `font` takes. The default is the monospaced font bundled with Typst",
+      default: DEFAULT_BUBBLE_LABEL_FONT,
+    ),
+    e.field(
+      "choices-enumerate",
+      e.types.union(bool, str, function),
+      doc: "How `choices` labels its bubbles, unless it is given `enumerate` itself: `false` for no labels, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`\"a\"`, `\"1\"`, `\"(i)\"`)",
+      default: false,
     ),
     // The name `solution-color` had in 0.3 and earlier, when it colored only the
     // text of a solution. Kept so that documents written for 0.3 still

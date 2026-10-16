@@ -188,3 +188,56 @@
   }
   false
 }
+
+/// Elements that are always block-level, and so end the paragraph before
+/// them and start a fresh one after. Anything not listed counts as inline:
+/// mistaking a block for inline content merely leaves a solution
+/// shrink-wrapped, whereas the reverse widens a solution in the middle of a
+/// sentence and breaks the line apart.
+#let _BLOCK_FUNCS = (
+  parbreak,
+  block,
+  table,
+  grid,
+  figure,
+  list,
+  enum,
+  terms,
+  heading,
+  image,
+  align,
+  pad,
+  stack,
+  columns,
+  colbreak,
+  pagebreak,
+  v,
+  rect,
+  square,
+  circle,
+  ellipse,
+  polygon,
+  line,
+  outline,
+  bibliography,
+)
+
+/// Whether `c` is block-level, ending the paragraph before it.
+#let ends_par(c) = {
+  let f = c.func()
+  if _BLOCK_FUNCS.contains(f) { return true }
+  // Inline unless their `block` flag is set.
+  if (math.equation, raw, quote).contains(f) { return c.at("block", default: false) }
+  false
+}
+
+/// Whether `c` runs over more than one paragraph: it holds a paragraph break
+/// or a block-level element, looking through `styled` and `sequence`.
+#let is_multi_par(c) = {
+  if type(c) != content { return false }
+  if ends_par(c) { return true }
+  let f = c.func()
+  if f == STYLED_FUNC { return is_multi_par(c.child) }
+  if f == SEQUENCE_FUNC { return c.children.any(is_multi_par) }
+  false
+}

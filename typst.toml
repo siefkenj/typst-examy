@@ -11,5 +11,10 @@ description = "Template for writing exams, quizzes, and homework with automatic 
 keywords = ["exam", "homework", "quiz", "assignment"]
 exclude = ["test", "examples"]
 
+[template]
+path = "template"
+entrypoint = "main.typ"
+thumbnail = "thumbnail.png"
+
 [tool.typst-test]
 tests = "test/unit"
