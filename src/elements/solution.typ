@@ -5,6 +5,8 @@
 
 /// Whether or not solutions should be shown given the current configuration and command-line overrides.
 #let show_solutions(get) = {
+  // `answer-box` measuring what the exam shows; see `config`'s `_exam-view`.
+  if get(config)._exam-view { return false }
   if SHOW_SOLUTIONS_OVERRIDE != none {
     SHOW_SOLUTIONS_OVERRIDE
   } else {
@@ -58,28 +60,29 @@
   )
 }
 
-/// The spacing the flow puts between blocks when `block`'s `above` is not
-/// set: Typst's default `block.spacing`, which cannot be read back.
-#let _DEFAULT_BLOCK_SPACING = 1.2em
-
 /// A solution that takes no height (see `answer-box`) and is a paragraph of
 /// its own: out of the flow, so what follows takes its place, just as on the
 /// exam — on top of the content after it, or hanging below the box when it is
 /// last. Placed where its block would begin; when it is last, the flow trims
 /// the spacing above it, so it is drawn that much lower itself. Needs
-/// context, to read that spacing.
+/// context, to read that spacing. The first of a run of solutions draws the
+/// rest of the run after itself, in the flow of the block it is placed in
+/// (`_then`; see `widen_par_solutions`).
 #let _placed_no_height(it, body, colors, width) = {
   let gap = if it._last {
+    // The flow spaces a block by its `above`, after text and after a block
+    // alike. Unset, that reads `auto`, and the flow uses the paragraph
+    // spacing. (A relative spacing is read the same way, which is close
+    // enough for one nobody sets.)
     let above = block.above
-    if type(above) != length { above = _DEFAULT_BLOCK_SPACING }
-    // After text, the flow's spacing is the paragraph spacing, when that is
-    // the larger.
-    if it._last-after-text { calc.max(par.spacing.to-absolute(), above.to-absolute()) } else { above }
+    if type(above) != length { above = par.spacing }
+    above
   } else { 0pt }
   let body = text(fill: colors.color, body)
-  place(dy: gap, if it.boxed { block(width: width, fill: colors.background, inset: 3pt, body) } else {
+  let drawn = if it.boxed { block(width: width, fill: colors.background, inset: 3pt, body) } else {
     block(width: width, body)
-  })
+  }
+  place(dy: gap, if it._then == none { drawn } else { block(width: 100%, drawn + it._then) })
 }
 
 /// A solution that takes no height and stands within a paragraph: it keeps
@@ -175,10 +178,10 @@
       internal: true,
     ),
     e.field(
-      "_last-after-text",
-      bool,
-      doc: "With `_last`, whether text comes just before the solution, so that the flow's spacing above it is the paragraph spacing, when that is larger than the block spacing.",
-      default: false,
+      "_then",
+      e.types.option(content),
+      doc: "With `_no-height`, what the solution draws after itself, in the flow, in the block it is placed in: the solutions after it in a run with nothing visible between them, which would otherwise all be placed in the same place.",
+      default: none,
       internal: true,
     ),
   ),

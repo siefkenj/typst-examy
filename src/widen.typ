@@ -98,23 +98,32 @@
 /// Ask a solution to fill the available width, via a set rule scoped to just
 /// that solution. An explicit `width` — passed as an argument or set by a rule
 /// at any scope — still wins, because `_fill-width` only applies when `width`
-/// is left unset. `last` is its `_last` and `_last-after-text`, as a
-/// dictionary, or `none` when it is not last.
-#let _widen(c, last) = {
-  let (is-last, after-text) = if last == none { (false, false) } else { (true, last.after-text) }
-  show: e.set_(solution_element, _fill-width: true, _last: is-last, _last-after-text: after-text)
+/// is left unset. `last` is its `_last`, and `then` its `_then`.
+#let _widen(c, last, then) = {
+  show: e.set_(solution_element, _fill-width: true, _last: last, _then: then)
+  c
+}
+
+/// A solution drawn after the first of its run, by that first one (see
+/// `widen_par_solutions`): in the flow, filling the width as it would
+/// have standing alone in its paragraph.
+#let _in_run(c) = {
+  show: e.set_(solution_element, _no-height: false, _fill-width: true, _last: false, _then: none)
   c
 }
 
 /// Pass 2: rebuild `c`, widening the solutions whose flag is set. Walks the
 /// tree exactly as `par_events` does; `i` is the index of the next solution.
-/// `flags` holds, for each solution, whether to widen it and whether it is
-/// last. Returns the new content and the next index.
+/// `flags` holds, for each solution, whether to widen it, whether it is last,
+/// and what it draws after itself: `none`, the content of the rest of its
+/// run, or `"drop"` when the first of its run draws it instead. Returns the
+/// new content and the next index.
 #let _rewrite(c, flags, i) = {
   if type(c) != content { return (c, i) }
   if _is_solution(c) {
-    let (wide, last) = flags.at(i)
-    return (if wide { _widen(c, last) } else { c }, i + 1)
+    let (wide, last, then) = flags.at(i)
+    let new = if then == "drop" { [] } else if wide { _widen(c, last, then) } else { c }
+    return (new, i + 1)
   }
   if ends_par(c) { return (c, i) }
   let f = c.func()
@@ -134,11 +143,23 @@
   (c, i)
 }
 
+/// The solutions in `c`, in the order `par_events` and `_rewrite` meet them.
+#let _collect(c) = {
+  if type(c) != content { return () }
+  if _is_solution(c) { return (c,) }
+  if ends_par(c) { return () }
+  let f = c.func()
+  if f == STYLED_FUNC { return _collect(c.child) }
+  if f == SEQUENCE_FUNC { return c.children.map(_collect).flatten() }
+  ()
+}
+
 /// Whether an event is something the exam may show.
 #let _is_visible(ev) = ev in ("text", "block", "context")
 
 /// Widen every `solution` in `body` that stands alone in its paragraph.
-/// `events` is `par_events(body)`, if already at hand.
+/// `events` is `par_events(body)`, if already at hand. Returns the new body,
+/// as `body`, and whether it took `then` (see below), as `took-then`.
 ///
 /// Each widened solution is also told whether it is last: visible content
 /// before it, and none after. That matters to a solution that takes no
@@ -146,27 +167,62 @@
 /// two paragraphs, it lands below the spacing the flow puts between them;
 /// placed after the last one, it gets no spacing, as the flow trims spacing
 /// at its end, so it has to add that spacing itself.
-#let widen_par_solutions(body, events: auto) = {
+///
+/// With `group`, as where solutions take no height, a run of solutions alone
+/// in their paragraphs with nothing visible between them is drawn as one.
+/// Each would be placed out of the flow where its block begins, and as none
+/// takes any height, they would all begin at the same place, each drawn over
+/// the one before. So the first draws them all, stacked as the flow would
+/// stack them, and the others draw nothing. `then` (`answer-box`'s
+/// `solution:` argument, which would be drawn over a run that ends the body
+/// for the same reason) joins the run that ends the body, if there is one.
+/// A solution moved into the first of its run loses any set rule between
+/// the two.
+#let widen_par_solutions(body, events: auto, group: false, then: none) = {
   if events == auto { events = par_events(body) }
   let alone = _alone_flags(events)
-  if not alone.any(x => x) { return body }
-  // A solution is last when it comes after the last visible event, which is
-  // then the visible content just before it.
+  if not alone.any(x => x) { return (body: body, took-then: false) }
+  // A solution is last when it comes after the last visible event.
   let from_end = events.rev().position(_is_visible)
-  let lasts = if from_end == none { (none,) * alone.len() } else {
-    let at = events.len() - 1 - from_end
-    let last = (after-text: events.at(at) == "text")
-    events.enumerate().filter(((_, ev)) => ev == "solution").map(((i, _)) => if i > at { last } else { none })
+  let solution_at = events.enumerate().filter(((_, ev)) => ev == "solution").map(((i, _)) => i)
+  let lasts = solution_at.map(i => from_end != none and i > events.len() - 1 - from_end)
+  let thens = (none,) * alone.len()
+  let took-then = false
+  if group {
+    // The runs, as solution indices, and whether one ends the body.
+    let runs = ()
+    let open = false
+    let k = 0
+    for ev in events {
+      if ev == "break" { continue }
+      if ev == "solution" {
+        if alone.at(k) { if open { runs.last().push(k) } else { runs.push((k,)) } }
+        open = alone.at(k)
+        k += 1
+      } else {
+        open = false
+      }
+    }
+    took-then = open and then != none
+    let solutions = _collect(body)
+    for (n, run) in runs.enumerate() {
+      let rest = run.slice(1).map(j => _in_run(solutions.at(j)))
+      if took-then and n == runs.len() - 1 { rest.push(then) }
+      if rest.len() == 0 { continue }
+      thens.at(run.first()) = rest.map(x => parbreak() + x).join()
+      for j in run.slice(1) { thens.at(j) = "drop" }
+    }
   }
-  _rewrite(body, alone.zip(lasts), 0).first()
+  (body: _rewrite(body, alone.zip(lasts, thens), 0).first(), took-then: took-then)
 }
 
 /// What `body` shows on the exam itself, that is, with its solutions, which
 /// appear only on the answer key, left out: `"yes"` when it holds visible
 /// content, `"no"` when it holds only whitespace and solutions, and
 /// `"maybe"` when all it might show is a `context` expression (an `e.get`
-/// that shows a solution only on the key, say), which cannot be told until
-/// it is laid out. An answer box sizes itself by this — one holding, say, a
+/// that shows a solution only on the key, say), which cannot be told from
+/// the source: `answer-box` lays it out to decide. An answer box sizes
+/// itself by this — one holding, say, a
 /// prompt or a list of choices grows to fit them, while one that is blank on
 /// the exam (empty, or holding only its solutions) keeps a fixed height for
 /// the student to write in, the same on the exam and the key. A solution

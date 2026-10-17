@@ -1,5 +1,5 @@
 #import "../prelude.typ": *
-#import "../config.typ": solution_colors
+#import "../config.typ": config, solution_colors
 #import "../widen.typ": exam_content, par_events, widen_par_solutions
 #import "solution.typ": show_solutions, solution as solution_element
 
@@ -32,7 +32,7 @@
       name: "height",
       type: "auto | length | fraction | none",
       default: "none",
-      doc: "`none` sizes the box by what the exam shows in it: a box with content — a prompt, a list of choices — grows to fit it, while a box that is blank on the exam (empty, or holding only solutions) takes `default_height`, leaving room to write. A solution counts as blank only when written directly in the box: one inside another element, such as `align` or `strong`, is content, so the box fits it. Its solutions take no height, so the answer key lays out exactly like the exam: a solution is drawn where it would be, over whatever follows it, or hanging out of the box when it comes last. Any explicit height opts out of that. `auto` fits the content, solutions included, so the key's box grows to hold them. A length gives a box of that size; give one to leave room to write below a prompt. A fraction (`1fr`) makes the box fill the space left on the page, shared proportionally with the other `fr` boxes there; it gets only what the rest of the page leaves over, which may be less than its content needs.",
+      doc: "`none` sizes the box by what the exam shows in it: a box with content — a prompt, a list of choices — grows to fit it, while a box that is blank on the exam (empty, or holding only solutions) takes `default_height`, leaving room to write. A solution counts as blank only when written directly in the box: one inside another element, such as `align` or `strong`, is content, so the box fits it. Its solutions take no height, so the answer key lays out exactly like the exam: a solution is drawn where it would be, over whatever follows it, or hanging out of the box when it comes last. Solutions in a row, with nothing between them, are stacked as they would be, as is the `solution:` argument after a solution that ends the body. Any explicit height opts out of that. `auto` fits the content, solutions included, so the key's box grows to hold them. A length gives a box of that size; give one to leave room to write below a prompt. A fraction (`1fr`) makes the box fill the space left on the page, shared proportionally with the other `fr` boxes there; it gets only what the rest of the page leaves over, which may be less than its content needs.",
     ),
     (
       name: "baseline",
@@ -111,9 +111,8 @@
   // its solutions) takes `default_height`, so the student has room to write.
   // A solution wrapped in another element (`align`, `strong`, ...) is opaque
   // to `par_events`, and so counts as content: the box fits it.
-  // One holding only a `context` expression may be either until it is laid
-  // out, and so takes `default_height` at the least: room to write when it
-  // shows nothing on the exam, and room for whatever it does show.
+  // One holding only a `context` expression may be either, which is decided
+  // when it is laid out (see the strut below).
   let shows = if height == none { exam_content(it.body, events: events) } else { none }
   let box_height = if is_block {
     100%
@@ -180,49 +179,76 @@
     height: box_height,
     inset: _INSET,
   )
-  // At least `default_height` tall: a strut of that height beside the body,
-  // in a column of no width.
+  // A body holding only a `context` cannot be told blank or not until it is
+  // laid out: `#context [A prompt.]` shows something on the exam, while
+  // `#e.get(get => if show-solutions(get) [42])` shows nothing there and
+  // something on the key. So it is laid out here, as the exam shows it (see
+  // `config`'s `_exam-view`, which wins over the command line too), and
+  // measured. When that comes out empty, the box is blank on the exam, and
+  // takes `default_height` at the least: a strut of that height beside the
+  // body, in a column of no width. Measuring the exam's layout, the exam and
+  // the key decide alike.
   show: it_ => if shows != "maybe" { it_ } else {
-    grid(columns: (0pt, 100%), box(height: it.default_height - 2 * _INSET), it_)
+    let strut = context {
+      let exam = measure({
+        show: e.set_(config, _exam-view: true)
+        it.body
+      })
+      if exam.height == 0pt { box(height: it.default_height - 2 * _INSET) }
+    }
+    grid(columns: (0pt, 100%), strut, it_)
   }
 
   // Set either way, so that a box nested in another decides for its own
   // solutions.
   show: e.set_(solution_element, _no-height: no_height)
+  // The `solution:` argument, after the body. `in_run` draws it in the flow
+  // after the solutions that end the body, which draw it themselves (see
+  // below); otherwise it is drawn here.
+  let solution_arg(in_run) = e.get(get => {
+    // Like `#solution[..]`, shown only on the answer key.
+    if show_solutions(get) == false { return }
+    let colors = solution_colors(get)
+    set block(spacing: _SPACING)
+    show: it_ => {
+      set text(fill: colors.color)
+      // Taking no height, in a box sized to what the exam shows: out of
+      // the flow, below the body, where its block would have begun. (In a
+      // blank box, of `default_height`, it fills the box as usual, which
+      // does not change the box's height.)
+      // `_SPACING` below it, the spacing it gets in the flow. (In a run, the
+      // flow it is drawn in spaces it.)
+      show: x => if no_height and box_height == auto and not in_run { place(dy: _SPACING, x) } else { x }
+      show: pad.with(-3pt)
+      block(
+        width: 100%,
+        // The solution fills the rest of a box of known height. A box
+        // sized to its content has no rest to fill — a `1fr` there would
+        // collapse to nothing and spill the solution out below the box —
+        // so the solution is sized to its own content instead, and the
+        // box (with `height: auto`) grows to hold it. In a run it is
+        // drawn in a placed block, which has no rest to fill either.
+        height: if box_height == auto or in_run { auto } else { 1fr },
+        fill: colors.background,
+        inset: 3pt,
+        it_,
+      )
+    }
+    it.solution
+  })
+
   // A solution standing alone in a paragraph fills the box, so the highlight
   // reads as the box's answer rather than a stray label; one used
-  // mid-sentence stays inline and leaves its line intact.
-  widen_par_solutions(it.body, events: events)
-  set block(spacing: _SPACING)
-  if it.solution != none {
-    e.get(get => {
-      // Like `#solution[..]`, shown only on the answer key.
-      if show_solutions(get) == false { return }
-      let colors = solution_colors(get)
-      show: it_ => {
-        set text(fill: colors.color)
-        // Taking no height, in a box sized to what the exam shows: out of
-        // the flow, below the body, where its block would have begun. (In a
-        // blank box, of `default_height`, it fills the box as usual, which
-        // does not change the box's height.)
-        // It follows the body with no paragraph break, so the spacing the flow
-        // would have put above it is the block spacing, after text or not.
-        show: x => if no_height and box_height == auto { place(dy: _SPACING, x) } else { x }
-        show: pad.with(-3pt)
-        block(
-          width: 100%,
-          // The solution fills the rest of a box of known height. A box
-          // sized to its content has no rest to fill — a `1fr` there would
-          // collapse to nothing and spill the solution out below the box —
-          // so the solution is sized to its own content instead, and the
-          // box (with `height: auto`) grows to hold it.
-          height: if box_height == auto { auto } else { 1fr },
-          fill: colors.background,
-          inset: 3pt,
-          it_,
-        )
-      }
-      it.solution
-    })
-  }
+  // mid-sentence stays inline and leaves its line intact. Where solutions
+  // take no height, a run of them with nothing visible between them is drawn
+  // as one, so they do not land on each other; the `solution:` argument
+  // joins the run that ends the body, if there is one, for the same reason.
+  let widened = widen_par_solutions(
+    it.body,
+    events: events,
+    group: no_height,
+    then: if no_height and it.solution != none { solution_arg(true) },
+  )
+  widened.body
+  if it.solution != none and not widened.took-then { solution_arg(false) }
 }

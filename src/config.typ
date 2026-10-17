@@ -105,6 +105,16 @@
       doc: "Deprecated: the old name of `solution-color`, still accepted. Ignored when `solution-color` is set",
       default: auto,
     ),
+    // Internal: set while `answer-box` lays out its body as the exam shows
+    // it, to measure it. Overrides `show-solutions` and the command line
+    // alike, so the measurement is of the exam even when compiling the key.
+    e.field(
+      "_exam-view",
+      bool,
+      doc: "Whether to lay out as the exam, whatever `show-solutions` and the command line say.",
+      default: false,
+      internal: true,
+    ),
   ),
 )
 

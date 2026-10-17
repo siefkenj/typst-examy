@@ -49,6 +49,23 @@ if [[ -z "$filter" || "config.typ" == *"$filter"* ]]; then
     check_show_solutions "false" false
 fi
 
+# tests/unit/answer-box-exam-view.typ must hold whatever the
+# `--input show-solutions=..` override says, which wins over `config`; the
+# loop above compiled it with none.
+if [[ -z "$filter" || "answer-box-exam-view.typ" == *"$filter"* ]]; then
+    for input in true false; do
+        out="$(typst compile --root . -f pdf --input "show-solutions=$input" tests/unit/answer-box-exam-view.typ /dev/null 2>&1)"
+        if [[ $? -eq 0 ]]; then
+            pass=$((pass + 1))
+            echo "PASS answer-box-exam-view.typ (show-solutions=$input)"
+        else
+            fail=$((fail + 1))
+            echo "FAIL answer-box-exam-view.typ (show-solutions=$input)"
+            echo "$out" | sed 's/^/     /'
+        fi
+    done
+fi
+
 echo "----"
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]

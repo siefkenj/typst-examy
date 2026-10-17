@@ -410,6 +410,17 @@
     equals: DEFAULT,
   )
 }
+// A `context` that shows something on the exam is content like any other:
+// the box fits it, exam and key alike.
+#for key in (false, true) {
+  show: e.set_(config, show-solutions: key)
+  let prompt = answer-box(width: 100%)[#context [A short prompt.]]
+  check(
+    "Only a `context` showing a short prompt: fits it, exam and key alike.",
+    prompt,
+    equals: () => measure(answer-box(width: 100%)[A short prompt.], width: COLUMN).height,
+  )
+}
 #check(
   "Only a `context` showing more than fits in " + DEFAULT_TEXT + ": grows to fit it.",
   answer-box(width: 100%)[#context lorem(120)],
@@ -500,6 +511,65 @@
       [An answer.],
     ),
   ),
+  // With the block spacing unset, the flow spaces blocks by the paragraph
+  // spacing too, so changing that moves a solution after anything.
+  (
+    name: "par-spacing",
+    desc: [Last in the box, after a block, with `par.spacing` of 2em and the block spacing unset],
+    box: h => {
+      set par(spacing: 2em)
+      drawn_at(
+        "par-spacing-" + h,
+        if h == "none" { none } else { auto },
+        p => [
+          #block(width: 100%, height: 5mm, stroke: .5pt + gray)
+
+          #p
+        ],
+        [An answer.],
+      )
+    },
+  ),
+  // What a `context` shows is not known until it is laid out. One is taken
+  // for text, which is spaced by the paragraph spacing when that is the
+  // larger; one wrapped in `block(..)` is spaced as a block. Both with a
+  // paragraph spacing larger than the block spacing, so the two differ.
+  (
+    name: "after-context",
+    desc: [Last in the box, after a `context` showing text, with `par.spacing` of 2em and `block.spacing` of .5em],
+    box: h => {
+      set par(spacing: 2em)
+      set block(spacing: .5em)
+      drawn_at(
+        "after-context-" + h,
+        if h == "none" { none } else { auto },
+        p => [
+          #context [A prompt, in a `context`.]
+
+          #p
+        ],
+        [An answer.],
+      )
+    },
+  ),
+  (
+    name: "after-block-context",
+    desc: [Last in the box, after a `context` in a `block`, with `par.spacing` of 2em and `block.spacing` of .5em],
+    box: h => {
+      set par(spacing: 2em)
+      set block(spacing: .5em)
+      drawn_at(
+        "after-block-context-" + h,
+        if h == "none" { none } else { auto },
+        p => [
+          #block(context block(width: 100%, height: 5mm, stroke: .5pt + gray))
+
+          #p
+        ],
+        [An answer.],
+      )
+    },
+  ),
   (
     name: "arg",
     desc: [The `solution:` argument],
@@ -530,7 +600,7 @@
       .flatten(),
   )
 ]
-#context for name in ("last", "middle", "after-list", "after-block", "arg") {
+#context for name in ("last", "middle", "after-list", "after-block", "par-spacing", "after-context", "after-block-context", "arg") {
   let offset(h) = {
     let y(which) = query(label(which + "-" + name + "-" + h)).first().location().position().y
     y("sol") - y("top")
@@ -544,6 +614,115 @@
       + repr(offset("none")),
   )
 }
+
+// --- runs of solutions ---
+// Solutions with nothing visible between them would each be placed where
+// its block begins, and, taking no height, all begin at the same place, each
+// drawn over the one before. They are drawn as one run instead, stacked as
+// the flow would stack them. Each row is drawn as in the grid above, with no
+// height on the left and `height: auto` on the right, and every solution in
+// it, the `solution:` argument too, must land the same distance below the
+// top of its box on both sides.
+#let s(id, t) = solution[#metadata(none)#label("run-sol-" + id)#t]
+#let RUNS = (
+  (
+    name: "middle",
+    desc: [Two solutions between two prompts],
+    arg: none,
+    body: id => [(i) Find $f'(x)$.
+
+      #s(id, [$f'(x) = 2x$, by the power rule.])
+
+      #s(id, [So $f'(3) = 6$.])
+
+      (ii) Is $f$ increasing?],
+  ),
+  (
+    name: "end",
+    desc: [Three solutions ending the box],
+    arg: none,
+    body: id => [Explain why the series converges.
+
+      #s(id, [By the ratio test: each term is half the one before.])
+
+      #s(id, [Its sum is 2.])
+
+      #s(id, [#lorem(12)])],
+  ),
+  (
+    name: "end-arg",
+    desc: [A solution ending the box, and the `solution:` argument],
+    arg: [$x = 4$],
+    body: id => [Solve $2x = 8$.
+
+      #s(id, [Divide both sides by 2.])],
+  ),
+  (
+    name: "run-arg",
+    desc: [Two solutions ending the box, and the `solution:` argument],
+    arg: [$x = 4$],
+    body: id => [Solve $2x = 8$.
+
+      #s(id, [Divide both sides by 2.])
+
+      #s(id, [Check: $2 dot 4 = 8$.])],
+  ),
+)
+#let run_box(r, h) = {
+  let id = r.name + "-" + h
+  answer-box(
+    width: 100%,
+    height: if h == "none" { none } else { auto },
+    solution: if r.arg != none [#metadata(none)#label("run-sol-" + id)#r.arg],
+  )[#metadata(none)#label("run-top-" + id)#(r.body)(id)]
+}
+#pagebreak()
+#heading(level: 2)[Solutions with nothing between them are stacked, not drawn on each other]
+#[
+  #show: e.set_(config, show-solutions: true)
+  #grid(
+    columns: (HALF, HALF),
+    column-gutter: 12pt,
+    row-gutter: 6pt,
+    strong[No height given], strong[`height: auto` (reference)],
+    ..RUNS
+      .map(r => (
+        grid.cell(colspan: 2, block(above: 10pt, line(length: 100%, stroke: .5pt + gray)) + emph(r.desc)),
+        run_box(r, "none"),
+        run_box(r, "auto"),
+        grid.cell(colspan: 2, v(2.4cm)),
+      ))
+      .flatten(),
+  )
+]
+#context for r in RUNS {
+  let offsets(h) = {
+    let id = r.name + "-" + h
+    let top = query(label("run-top-" + id)).first().location().position().y
+    query(label("run-sol-" + id)).map(m => m.location().position().y - top)
+  }
+  let (got, want) = (offsets("none"), offsets("auto"))
+  assert(
+    got.len() == want.len() and got.zip(want).all(((a, b)) => calc.abs((a - b).pt()) < 0.5),
+    message: r.name + ": solutions with nothing between them should be stacked as with `height: auto`, at "
+      + repr(want) + " below the top of the box, got " + repr(got),
+  )
+}
+// A box blank on the exam, holding a solution and given a `solution:`
+// argument: the two are stacked, not drawn on each other, and the box keeps
+// its height.
+#[
+  #show: e.set_(config, show-solutions: true)
+  #let blank = answer-box(width: 100%, solution: [#metadata(none)<blank-arg>Second.])[
+    #solution[#metadata(none)<blank-sol>First.]
+  ]
+  #case([A blank box with a solution and a `solution:` argument: stacked, and #DEFAULT_TEXT tall.], blank)
+  #context {
+    let (sol, arg) = (<blank-sol>, <blank-arg>).map(l => query(l).first().location().position().y)
+    assert(arg > sol + 10pt, message: "the `solution:` argument should be drawn below the body's solution")
+    assert(near(measure(blank, width: COLUMN).height, DEFAULT), message: "the blank box should keep its height")
+  }
+]
 
 // Outside an answer box, a solution is drawn as always, and takes space.
 #[
