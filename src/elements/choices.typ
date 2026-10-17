@@ -210,7 +210,7 @@
     e.field(
       "enumerate",
       e.types.union(auto, bool, str, function),
-      doc: "Labels inside the bubbles: `false` for none, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`\"a\"`, `\"1\"`, `\"(i)\"`). `auto` follows `config`'s `choices-enumerate`, which is `false` unless set. On the answer key, a correct labelled bubble is filled in like any other, with its label, in the solution color, in place of the check mark, and a thin ring inside its outline.",
+      doc: "Labels inside the bubbles: `false` for none, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`\"a\"`, `\"1\"`, `\"(i)\"`). `auto` follows `config`'s `choices-enumerate`, which is `false` unless set.\n\nOn the answer key, a correct labelled bubble is filled in like any other, with its label, in the solution color, in place of the check mark, and a thin ring inside its outline.",
       default: auto,
       meta: (check: v => enumerate_error(v, "choices", allow-auto: true)),
     ),

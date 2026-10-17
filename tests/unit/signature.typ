@@ -67,6 +67,8 @@
   ("subpart", "[B], intent: \"extra\"", "subpart: `intent` must be \"practice\" | \"bonus\" | none"),
   ("part", "[B], label: \"x\"", "write it in angle brackets"),
   ("question", "[B], pts: 2", "question: unknown argument `pts`; `question` takes `points`, `intent`"),
+  // Divisions once took a `solution:`; it is written in the body now.
+  ("question", "[B], solution: [x]", "question: unknown argument `solution`; write the solution in the body, as `#solution[..]`"),
   ("answer-box", "[], [extra]", "answer-box: takes at most 1 positional argument (`body`), got 2"),
   ("answer-box", "[], height: \"2cm\"", "answer-box: `height` must be auto | length | ratio | relative | fraction | none"),
   ("choice", "[A], [B]", "use `#choices`"),

@@ -458,7 +458,7 @@
 
 #let _CHOICE = declare_function(
   "choice",
-  doc: "A bubble for students to fill in, followed by the choice it labels. The two are kept whole, like a single word: a choice that wraps starts a line of its own, with its bubble on its first line and its further lines hanging under its content, not under the bubble. On the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key. For a list of choices, use `choices`.",
+  doc: "A bubble for students to fill in, followed by the choice it labels. The two are kept whole, like a single word: a choice that wraps starts a line of its own, with its bubble on its first line and its further lines hanging under its content, not under the bubble.\n\nOn the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key.\n\nFor a list of choices, use `choices`.",
   fields: (
     e.field(
       "body",
@@ -489,7 +489,7 @@
     e.field(
       "outset",
       e.types.union(length, dictionary),
-      doc: "The space the bubble keeps around itself. A length sets the gap after the bubble, between it and its content (`outset: .6em`); a dictionary sets any of `left`, `right`, `top`, `bottom`, `x`, `y` and `rest`, as the `inset` of a box does, and leaves the sides it does not name at their defaults. The default parts the bubble from whatever follows — its content, an answer box, the next choice — so a gap need not be written at the call site.",
+      doc: "The space the bubble keeps around itself. A length sets the gap after the bubble, between it and its content (`outset: .6em`); a dictionary sets any of `left`, `right`, `top`, `bottom`, `x`, `y` and `rest`, as the `inset` of a box does, and leaves the sides it does not name at their defaults.\n\nThe default parts the bubble from whatever follows — its content, an answer box, the next choice — so a gap need not be written at the call site.",
       default: _OUTSET,
       meta: (check: v => outset_error("choice", v)),
     ),

@@ -276,7 +276,7 @@
 /// docs/api.typ (keyed by export name).
 #let DOCS = (
   "points-table": (
-    desc: "A scoring table with a column per question plus a total. Works anywhere in the document, even before the exam. Its layout is set on `config`: `points-table-direction`, `points-table-by` (questions or pages), `points-table-score`, `points-table-bonus`, and `points-table-max-columns`; its words by `strings`. Set them in a scope of their own for one table, e.g. `#[#show: e.set_(config, points-table-direction: \"vertical\"); #points-table]`.",
+    desc: "A scoring table with a column per question plus a total. Works anywhere in the document, even before the exam.\n\nIts layout is set on `config`: `points-table-direction`, `points-table-by` (questions or pages), `points-table-score`, `points-table-bonus`, and `points-table-max-columns`; its words by `strings`. Set them in a scope of their own for one table, e.g. `#[#show: e.set_(config, points-table-direction: \"vertical\"); #points-table]`.",
   ),
   "num-questions": (
     desc: "The total number of questions in the exam. Works anywhere in the document.",

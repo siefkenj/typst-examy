@@ -1,0 +1,51 @@
+name: Deploy documentation site
+
+# Builds the documentation site (`npm run build`: docs/site.typ, compiled with
+# Typst's bundle and HTML export, and the live editor, bundled by Vite) and
+# publishes it to GitHub Pages. In the repository's settings, Pages must be
+# set to deploy from GitHub Actions.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer push waits for the one in progress.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Built in the dev container, so that the site is compiled with the
+      # same Typst version and fonts as the tests and the examples.
+      - name: Build the site in the devcontainer
+        uses: devcontainers/ci@v0.3
+        with:
+          push: never
+          runCmd: npm ci && npm run build
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -191,7 +191,7 @@
 #let exam = e.element.declare(
   "exam",
   prefix: PREFIX,
-  doc: "Declare an exam",
+  doc: "The exam: its questions, parts, and subparts, numbered and laid out, with their points totalled for `points-table` and the other point counts.",
   display: it => {
     // If `questions` is a function, call it with a `solutions_only` helper
     // that shows its argument only when solutions are enabled.
@@ -215,7 +215,7 @@
     e.field(
       "questions",
       e.types.union(content, function),
-      doc: "The questions in the exam or a function that accepts a `solutions_only` function and returns the exam questions",
+      doc: "The questions: content holding `question`s (with their `part`s and `subpart`s, and anything else between them).\n\nOr a function that returns them, for an answer key that differs from the exam in what it holds, not only in its solutions. The function is called with one argument, a function of its own, conventionally named `solutions-only`: `questions: solutions-only => [..]`. Within the questions, `solutions-only(x)` is `x` on the answer key and `none` on the exam, and `solutions-only(x, otherwise: y)` is `y` on the exam.\n\nUnlike `solution`, it draws what it is given as it is, not as a solution, and that can be any part of the questions: a part of its own on the key, a different `height` for an answer box (`height: solutions-only(auto, otherwise: 3cm)`), a whole question. A question only on the key renumbers the questions after it; to avoid that, give it `number: none`, or put what the key adds in a part.\n\nThe key is told from the exam as `show-solutions` tells it: by `config`'s `show-solutions`, unless the `--input show-solutions=..` command-line option overrides it.",
       required: true,
       named: true,
     ),

@@ -4,20 +4,22 @@
 #import "../scan.typ": is_multi_par
 #import "../signature.typ": declare_function, define
 
-/// Whether or not solutions should be shown given the current configuration and command-line overrides.
+/// Whether solutions are shown, given the configuration and the command line:
+/// `true` or `false`. Unset, they are shown, as everything that draws a
+/// solution has always taken it: only `show-solutions: false` hides them.
 #let show_solutions(get) = {
   // `answer-box` measuring what the exam shows; see `config`'s `_exam-view`.
   if get(config)._exam-view { return false }
   if SHOW_SOLUTIONS_OVERRIDE != none {
     SHOW_SOLUTIONS_OVERRIDE
   } else {
-    get(config).show-solutions
+    get(config).show-solutions != false
   }
 }
 
 #let _SHOW_SOLUTIONS = declare_function(
   "show-solutions",
-  doc: "Returns the effective show-solutions setting: the `--input show-solutions=..` command-line override if given, otherwise `config`'s value. Use it to conditionally render content that `#solution[..]` cannot wrap (e.g. one curve of a plot).",
+  doc: "Whether solutions are shown, `true` or `false`: the `--input show-solutions=..` command-line override if given, otherwise `config`'s `show-solutions`, which shows them unless it is `false`. Use it to conditionally render content that `#solution[..]` cannot wrap (e.g. one curve of a plot).",
   fields: (
     e.field(
       "get",

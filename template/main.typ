@@ -3,7 +3,7 @@
 //
 // Student version:  typst compile main.typ
 // Answer key:       typst compile --input show-solutions=true main.typ
-#import "@preview/examy:0.4.0": *
+#import "@preview/examy:1.0.0": *
 
 #set page(paper: "us-letter", margin: (x: .75in, bottom: .75in, top: 1in))
 #show: e.prepare()

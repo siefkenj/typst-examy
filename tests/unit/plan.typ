@@ -35,7 +35,6 @@
     if i.hoisted { ("hoisted",) }
     if i.sticky { ("sticky",) }
     if i.has_inner_break { ("has_inner_break",) }
-    if i.tail != none { ("solution of " + name(i.tail),) }
   } else if i.kind == "break" {
     (i.target + if i.weak { ", weak" } else { "" },)
   } else if i.kind == "nested" {
@@ -194,17 +193,6 @@
   let seg = instr.find(i => i.kind == "segment")
   assert(seg.has_inner_break == true)
 })
-
-#case(
-  [A division's solution is attached to its last segment.],
-  "#question(solution: [the answer], points: 2)[q #pagebreak() end]",
-  (items, instr) => {
-    let segs = instr.filter(i => i.kind == "segment")
-    let q = items.position(it => it.kind == "division")
-    assert(segs.at(-1).tail == q, message: repr(segs.map(s => s.tail)))
-    assert(segs.at(0).tail == none)
-  },
-)
 
 // --- cumulative indent sums ancestors; needs_split ---
 #let INDENTS = {

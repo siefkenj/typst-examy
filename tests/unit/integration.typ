@@ -50,13 +50,15 @@ Answer everything.
 
     #pagebreak()
 
-    #question(points: 2, solution: [A solution.])[
+    #question(points: 2)[
       A question split by an explicit pagebreak.
       #part[
         Before the break.
         #pagebreak()
         After the break; refers to @q1p1 (should show "1 (a)").
       ]
+
+      #solution[A solution, after the part, on the page the question ends on.]
     ]
 
     #question[
@@ -71,10 +73,10 @@ Answer everything.
       #part(points: 1, intent: "bonus")[With a bonus part.]
     ]
 
-    // Gutter-label alignment: the boxed solution makes the first line taller
+    // Gutter-label alignment: the inline box makes the first line taller
     // than the line height; the "6." must sit on the text baseline.
-    #question(points: 2, solution: [An inline boxed solution.])[
-      A one-line question with a tall first line.
+    #question(points: 2)[
+      A one-line question with a tall first line #box(inset: (x: 3pt, y: 4pt), fill: luma(230))[boxed].
     ]
     // ...and a body starting with a block element keeps the placed label.
     #question[

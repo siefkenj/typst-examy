@@ -40,7 +40,7 @@
     e.field(
       "height",
       e.types.union(auto, .._RELATIVE, fraction, none),
-      doc: "`none` sizes the box by what the exam shows in it: a box with content — a prompt, a list of choices — grows to fit it, while a box that is blank on the exam (empty, or holding only solutions) takes `default_height`, leaving room to write. A solution counts as blank only when written directly in the box: one inside another element, such as `align` or `strong`, is content, so the box fits it. Its solutions take no height, so the answer key lays out exactly like the exam: a solution is drawn where it would be, over whatever follows it, or hanging out of the box when it comes last. Solutions in a row, with nothing between them, are stacked as they would be, as is the `solution:` argument after a solution that ends the body. Any explicit height opts out of that. `auto` fits the content, solutions included, so the key's box grows to hold them. A length gives a box of that size; give one to leave room to write below a prompt. A fraction (`1fr`) makes the box fill the space left on the page, shared proportionally with the other `fr` boxes there; it gets only what the rest of the page leaves over, which may be less than its content needs.",
+      doc: "`none` sizes the box by what the exam shows in it: a box with content — a prompt, a list of choices — grows to fit it, while a box that is blank on the exam (empty, or holding only solutions) takes `default_height`, leaving room to write. A solution counts as blank only when written directly in the box: one inside another element, such as `align` or `strong`, is content, so the box fits it.\n\nWith `none`, the box's solutions take no height, so the answer key lays out exactly like the exam: a solution is drawn where it would be, over whatever follows it, or hanging out of the box when it comes last. Solutions in a row, with nothing between them, are stacked as they would be, as is the `solution:` argument after a solution that ends the body. Any explicit height opts out of that.\n\n`auto` fits the content, solutions included, so the key's box grows to hold them.\n\nA length gives a box of that size; give one to leave room to write below a prompt.\n\nA fraction (`1fr`) makes the box fill the space left on the page, shared proportionally with the other `fr` boxes there; it gets only what the rest of the page leaves over, which may be less than its content needs.",
       default: none,
     ),
     // `.33em` is half the cap height of a typical serif face: the box is
@@ -73,7 +73,7 @@
     e.field(
       "stroke",
       e.types.union(none, length, color, gradient, tiling, e.types.exact(stroke), dictionary),
-      doc: "The outline of the box, as `box`'s `stroke` takes it. A dictionary outlines only the sides it names (`left`, `right`, `top`, `bottom`, `x`, `y`, `rest`): `(bottom: .5pt)` draws a single rule to write on, and `none` leaves blank space with no outline at all. To change it for a whole document, redefine the function: `#let answer-box = answer-box.with(stroke: none)`.",
+      doc: "The outline of the box, as `box`'s `stroke` takes it. A dictionary outlines only the sides it names (`left`, `right`, `top`, `bottom`, `x`, `y`, `rest`): `(bottom: .5pt)` draws a single rule to write on, and `none` leaves blank space with no outline at all.\n\nTo change it for a whole document, redefine the function: `#let answer-box = answer-box.with(stroke: none)`.",
       default: .5pt,
     ),
   ),

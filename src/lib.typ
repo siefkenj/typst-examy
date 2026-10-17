@@ -1,5 +1,5 @@
-// The order of these imports is the order of the generated API reference
-// (see docs/api.typ).
+// The API reference lists these exports alphabetically (see docs/api.typ),
+// and takes a group's order (`question`, `part`, `subpart`) from here.
 #import "divisions.typ": question, part, subpart
 #import "elements/answer-box.typ": answer_box as answer-box
 #import "elements/bubble.typ": choice, bubble, square_bubble as square-bubble

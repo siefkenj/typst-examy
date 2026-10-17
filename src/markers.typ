@@ -10,7 +10,6 @@
 #let DIVISION_FIELD_DEFAULTS = (
   points: none,
   intent: none,
-  solution: none,
   rubric: none,
   number: auto,
   indent: 1.5em,

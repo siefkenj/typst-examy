@@ -2,3 +2,5 @@
 .vscode/
 dist/
 _site/
+.site-dev/
+node_modules/

@@ -7,7 +7,6 @@
 #import "config.typ": DEFAULT_EXAM_OPTIONS
 #import "points.typ": conflict_warning, points_marker
 #import "refs.typ": display_number, division_anchor, update_current_address
-#import "elements/solution.typ": solution
 
 /// Half-em gap between a gutter label and the body text.
 #let LABEL_GAP = .5em
@@ -255,9 +254,6 @@
     }
     render_chunks(items, chunk_run, base: it.styles.len())
     end_badge
-    if it.fields.solution != none {
-      solution(it.fields.solution)
-    }
   }
 
   apply_styles(
@@ -308,12 +304,6 @@
     }
     render_chunks(items, seg.items, base: owner.styles.len())
     if ends.at(str(seg.division), default: none) == n { _end_badge(owner, opts) }
-    if seg.tail != none {
-      let d = items.at(seg.tail)
-      if d.fields.solution != none {
-        solution(d.fields.solution)
-      }
-    }
   }
 
   apply_styles(

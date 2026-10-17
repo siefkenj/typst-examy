@@ -14,11 +14,10 @@
 /// - (kind: "nested", root: idx)              — render subtree as nested blocks
 /// - (kind: "segment", division: idx, first: bool, indent: length,
 ///    label_divisions: (idx, ..), items: (idx, ..), fr: fraction | none,
-///    has_inner_break: bool, tail: idx | none, sticky: bool, hoisted: bool)
+///    has_inner_break: bool, sticky: bool, hoisted: bool)
 ///   `label_divisions` are the divisions whose number should be shown in the
 ///   gutter of this segment (a division whose body starts with a child
-///   division shares its first line with that child). `tail` is a division
-///   whose solution should be rendered at the end of this segment.
+///   division shares its first line with that child).
 ///   `hoisted` marks a segment that wraps a single fr-height chunk pulled out
 ///   of its division's prose (see `plan_split`); `sticky` marks the segment
 ///   right before such a wrapper, which must not be separated from it.
@@ -80,7 +79,7 @@
   let flush(instructions, pending_labels, current, force: false, sticky: false) = {
     if current == none { return (instructions, pending_labels) }
     let whitespace = _segment_is_whitespace(items, current)
-    let keep_for_content = not whitespace or current.fr != none or current.tail != none
+    let keep_for_content = not whitespace or current.fr != none
     if current.first and whitespace and not keep_for_content and not force {
       // A first segment with nothing in it: let its label ride on the next
       // segment so e.g. "1." and "(a)" share a line.
@@ -100,7 +99,6 @@
       items: current.items,
       fr: current.fr,
       has_inner_break: current.has_inner_break,
-      tail: current.tail,
       sticky: sticky,
       hoisted: current.hoisted,
     ))
@@ -113,7 +111,6 @@
     items: (),
     fr: none,
     has_inner_break: false,
-    tail: none,
     hoisted: hoisted,
   )
 
@@ -128,9 +125,6 @@
       stack.push(ev.item)
       current = new_segment(ev.item, true)
     } else if ev.kind == "close" {
-      if items.at(ev.item).fields.solution != none {
-        current.tail = ev.item
-      }
       // Force: if this division's first segment is empty and nothing follows
       // inside it, it must still become a block so its label shows.
       let force = current.first and current.division == ev.item and pending_labels.len() == 0
@@ -194,7 +188,6 @@
       items: (),
       fr: none,
       has_inner_break: false,
-      tail: none,
       sticky: false,
       hoisted: false,
     ))

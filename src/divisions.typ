@@ -31,12 +31,6 @@
     default: none,
   ),
   e.field(
-    "solution",
-    e.types.option(content),
-    doc: "A solution, rendered at the end of the division when solutions are enabled.",
-    default: none,
-  ),
-  e.field(
     "rubric",
     e.types.option(content),
     doc: "A grading rubric (accepted, but not yet rendered).",
@@ -69,13 +63,23 @@
 /// argument list three times.
 #let _DIVISION_DOC = "Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively. The three functions take identical arguments; the numbering style is chosen by nesting depth, not by which function is called."
 
-#let _spec(name) = declare_function(name, doc: _DIVISION_DOC, fields: _DIVISION_FIELDS, group: "division")
+/// Names an author might reach for that the divisions do not take.
+#let _ALIASES = (
+  solution: "write the solution in the body, as `#solution[..]`, where it should be drawn",
+)
+
+#let _spec(name) = declare_function(
+  name,
+  doc: _DIVISION_DOC,
+  fields: _DIVISION_FIELDS,
+  aliases: _ALIASES,
+  group: "division",
+)
 
 #let _division(spec) = define(spec, it => {
   begin_marker((
     points: it.points,
     intent: it.intent,
-    solution: it.solution,
     rubric: it.rubric,
     number: it.number,
     indent: it.indent,

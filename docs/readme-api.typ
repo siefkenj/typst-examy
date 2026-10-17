@@ -7,12 +7,17 @@
 // Everything comes from api.typ, which reads the elembic declarations and
 // function specs, so nothing here repeats a name, a type, or a description.
 
-#import "api.typ": ENTRIES, IMPORT, alias_code, summary
+#import "api.typ": ENTRIES, IMPORT, alias_code, entry, page_path, summary
 
 #let HOMEPAGE = toml("/typst.toml").package.homepage
 
-/// The site's anchor for an export (see site/reference.typ).
-#let link_to(name) = HOMEPAGE + "reference.html#" + name
+/// The site's page for an export. A group, such as `question`/`part`/
+/// `subpart`, shares one, with an anchor for each name after the first (see
+/// `entry_page` in site/template.typ).
+#let link_to(name) = {
+  let x = entry(name)
+  HOMEPAGE + page_path(x) + if name != x.names.first() { "#api-" + name } else { "" }
+}
 
 /// One table row: the export's names, each linked, and what it is.
 #let row(entry) = {

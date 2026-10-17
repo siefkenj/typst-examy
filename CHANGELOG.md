@@ -1,7 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.0.0 (unreleased)
 
+- `show-solutions(get)` is now always `true` or `false`: unset, solutions
+  are shown, as `#solution` and the bubbles already took it, and it is
+  `true`, not `none`. `exam`'s `solutions-only` now agrees with them too: it
+  hid its content when `show-solutions` was unset.
+- **Breaking:** `question`, `part`, and `subpart` no longer take a
+  `solution:` argument. Write the solution in the body, as `#solution[..]`,
+  where it should be drawn. (The argument drew the solution after the
+  division's parts, run into the last line of its text.)
 - Documentation site: <https://siefkenj.github.io/typst-examy/>, with a guide
   whose examples are rendered from their own code, and a reference generated
   from the package itself. The README is shorter, and links to it.

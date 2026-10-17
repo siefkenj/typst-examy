@@ -3,6 +3,11 @@
   "build": {
     "dockerfile": "Dockerfile"
   },
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22"
+    }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -11,5 +16,13 @@
       ]
     }
   },
-  "postCreateCommand": "typst --version"
+  "forwardPorts": [
+    5173
+  ],
+  "portsAttributes": {
+    "5173": {
+      "label": "Docs dev server (npm run dev)"
+    }
+  },
+  "postCreateCommand": "typst --version && npm ci"
 }

@@ -58,7 +58,7 @@
     e.field(
       "show-solutions",
       e.types.option(bool),
-      doc: "Whether to show solutions",
+      doc: "Whether to show solutions. Unset, they are shown; the `--input show-solutions=..` command-line option overrides it",
     ),
     e.field(
       "institution",
@@ -138,7 +138,7 @@
     e.field(
       "points-position",
       e.types.union("start", "margin-left", "margin-right", "end"),
-      doc: "Where the points badge is drawn: `\"start\"` before the first word of the body; `\"margin-left\"` or `\"margin-right\"` in the page margin, level with the body's first line (the margin must be wide enough to hold it); `\"end\"` flush right, after all of the body's own text (answer boxes included) and before its first part; after an `fr` box, the box gives up a line to it",
+      doc: "Where the points badge is drawn.\n\n`\"start\"`: before the first word of the body.\n\n`\"margin-left\"` or `\"margin-right\"`: in the page margin, level with the body's first line. The margin must be wide enough to hold it.\n\n`\"end\"`: flush right, after all of the body's own text (answer boxes included) and before its first part. After an `fr` box, the box gives up a line to it",
       default: "start",
     ),
     e.field(
