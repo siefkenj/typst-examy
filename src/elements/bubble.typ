@@ -2,6 +2,7 @@
 #import "../config.typ": DEFAULT_BUBBLE_LABEL_FONT, config, solution_colors
 #import "solution.typ": show_solutions
 #import "../scan.typ": is_multi_par
+#import "../signature.typ": declare_function, define
 
 /// The size of a bubble: the round one's diameter, and the basis every
 /// other shape's size is derived from. Relative to the font size, so a
@@ -79,25 +80,24 @@
   )
 }
 
-/// Check an `outset` argument, so a mistake is reported in the bubble's
-/// terms rather than as a failure deep inside the box it is drawn in.
-#let _check_outset(caller, value) = {
+/// What is wrong with an `outset` argument, or `none` if nothing is, so a
+/// mistake is reported in the bubble's terms rather than as a failure deep
+/// inside the box it is drawn in.
+#let outset_error(caller, value) = {
   let hint = (
     " — give a length for the gap after the bubble (`outset: .6em`), or a dictionary of sides (`outset: (left: .2em, right: .6em)`)"
   )
-  if type(value) == dictionary {
-    for (key, v) in value {
-      assert(
-        key in _SIDE_KEYS,
-        message: caller + ": `outset` has no side `" + key + "`; the sides are " + _SIDE_KEYS.map(k => "`" + k + "`").join(", "),
-      )
-      assert(
-        type(v) == length,
-        message: caller + ": `outset` side `" + key + "` must be a length, got " + repr(v) + hint,
-      )
+  if type(value) != dictionary {
+    if type(value) == length { return none }
+    return caller + ": `outset` must be a length or a dictionary, got " + repr(value) + hint
+  }
+  for (key, v) in value {
+    if key not in _SIDE_KEYS {
+      return caller + ": `outset` has no side `" + key + "`; the sides are " + _SIDE_KEYS.map(k => "`" + k + "`").join(", ")
     }
-  } else {
-    assert(type(value) == length, message: caller + ": `outset` must be a length or a dictionary, got " + repr(value) + hint)
+    if type(v) != length {
+      return caller + ": `outset` side `" + key + "` must be a length, got " + repr(v) + hint
+    }
   }
 }
 
@@ -176,68 +176,32 @@
 
 /// The shape named by a `bubble:` option — `"circle"` or `"square"`, or
 /// Typst's own `circle`/`square` function, which reads the same at the call
+/// What is wrong with a `bubble:` option, or `none` if it names a shape (see
+/// `shape_name`).
+#let shape_error(value, caller) = {
+  let name = if type(value) == function { repr(value) } else { value }
+  if type(name) == str and name in _SHAPES { return none }
+  (
+    caller
+      + ": `bubble` must be \"circle\" (round, for \"select one\") or \"square\" (for \"select all that apply\"), got "
+      // A function's repr is often just `(..) => ..`, which names nothing.
+      + if type(value) == function { "a function" } else { repr(value) }
+  )
+}
+
 /// site (`bubble: square`) and is told apart by its name. `caller` names the
 /// function in the error message.
 #let shape_name(value, caller) = {
-  let name = if type(value) == function { repr(value) } else { value }
-  assert(
-    type(name) == str and name in _SHAPES,
-    message: caller
-      + ": `bubble` must be \"circle\" (round, for \"select one\") or \"square\" (for \"select all that apply\"), got "
-      // A function's repr is often just `(..) => ..`, which names nothing.
-      + if type(value) == function { "a function" } else { repr(value) },
-  )
-  name
+  let message = shape_error(value, caller)
+  if message != none { assert(false, message: message) }
+  if type(value) == function { repr(value) } else { value }
 }
-
-/// The named arguments `choice` takes.
-#let _CHOICE_ARGS = ("bubble", "correct", "size", "outset")
 
 /// Names an author might reach for to mark a choice as the answer.
 #let _CORRECT_ALIASES = ("filled", "fill", "checked", "check", "marked", "answer", "solution", "selected", "right")
 
 /// Names an author might reach for to pick the bubble's shape.
 #let _SHAPE_ALIASES = ("shape", "style", "kind", "type")
-
-/// Check the arguments of `choice`, so that a mistake is reported at the
-/// call, in its own terms, rather than as a failure inside the shape it draws.
-#let _check_choice_args(pos, named) = {
-  assert(
-    pos.len() <= 1,
-    message: "choice: a bubble labels one choice, so it takes at most one content argument, got "
-      + str(pos.len())
-      + " — to lay out several choices, use `#choices`",
-  )
-  if pos.len() == 1 {
-    assert(
-      type(pos.first()) != bool,
-      message: "choice: got `" + repr(pos.first()) + "` as the bubble's content; to mark the answer, write `correct: true`",
-    )
-  }
-  for key in named.keys() {
-    if key in _CORRECT_ALIASES {
-      panic("choice: unknown argument `" + key + "`; to mark the answer, write `correct: true`")
-    }
-    if key in _SHAPE_ALIASES {
-      panic("choice: unknown argument `" + key + "`; to pick the shape, write `bubble: \"circle\"` or `bubble: \"square\"`")
-    }
-    assert(
-      key in _CHOICE_ARGS,
-      message: "choice: unknown argument `" + key + "`; `choice` takes " + _CHOICE_ARGS.map(k => "`" + k + "`").join(", "),
-    )
-  }
-  let correct = named.at("correct", default: false)
-  assert(
-    type(correct) == bool,
-    message: "choice: `correct` must be `true` or `false`, got " + repr(correct),
-  )
-  let size = named.at("size", default: auto)
-  assert(
-    size == auto or type(size) == length,
-    message: "choice: `size` must be a length, such as `1.2em` or `12pt`, got " + repr(size),
-  )
-  if "outset" in named { _check_outset("choice", named.outset) }
-}
 
 /// Whether `body` holds nothing to show: empty, or only spaces. A bubble
 /// given such content (`#choice[]`) is drawn exactly as one given none.
@@ -258,28 +222,35 @@
 /// takes — a pattern such as `"a"` or `"(i)"`, or a function of the number.
 /// `caller` names the function in the error message and `name` the option,
 /// and `auto` is allowed where it means "as configured".
-#let check_enumerate(value, caller, name: "enumerate", allow-auto: false) = {
-  assert(
-    type(value) in (bool, str, function) or (allow-auto and value == auto),
-    message: caller
-      + ": `"
-      + name
-      + "` must be `true`, `false`, a numbering pattern such as \"a\" or \"(i)\", or a numbering function"
-      + if allow-auto { ", or `auto` to follow `config`'s `choices-enumerate`" } else { "" }
-      + "; got "
-      + repr(value),
-  )
-  if type(value) == str {
-    assert(
-      value.clusters().any(c => _COUNTING_SYMBOLS.contains(c)),
-      message: caller
+/// Returns the message saying what is wrong, or `none` if nothing is.
+#let enumerate_error(value, caller, name: "enumerate", allow-auto: false) = {
+  if not (type(value) in (bool, str, function) or (allow-auto and value == auto)) {
+    return (
+      caller
+        + ": `"
+        + name
+        + "` must be `true`, `false`, a numbering pattern such as \"a\" or \"(i)\", or a numbering function"
+        + if allow-auto { ", or `auto` to follow `config`'s `choices-enumerate`" } else { "" }
+        + "; got "
+        + repr(value)
+    )
+  }
+  if type(value) == str and not value.clusters().any(c => _COUNTING_SYMBOLS.contains(c)) {
+    return (
+      caller
         + ": `"
         + name
         + "` pattern "
         + repr(value)
-        + " has nothing to count with; it needs a counting symbol such as 1, a, A, i or I, as in \"a\" or \"(i)\"",
+        + " has nothing to count with; it needs a counting symbol such as 1, a, A, i or I, as in \"a\" or \"(i)\""
     )
   }
+}
+
+/// `enumerate_error`, failing the call if anything is wrong.
+#let check_enumerate(..args) = {
+  let message = enumerate_error(..args)
+  if message != none { assert(false, message: message) }
 }
 
 /// The label inside the bubble of the choice at `index` (counting from 0),
@@ -485,27 +456,83 @@
   })
 }
 
+#let _CHOICE = declare_function(
+  "choice",
+  doc: "A bubble for students to fill in, followed by the choice it labels. The two are kept whole, like a single word: a choice that wraps starts a line of its own, with its bubble on its first line and its further lines hanging under its content, not under the bubble. On the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key. For a list of choices, use `choices`.",
+  fields: (
+    e.field(
+      "body",
+      e.types.union(none, content, str, int, float),
+      doc: "The choice the bubble labels, shown after it. Omit it, or leave it empty (`#choice[]`), for a bare bubble, e.g. one in a table or a grid of its own.",
+      named: false,
+      default: none,
+      meta: (
+        check: v => if type(v) == bool {
+          "choice: got `" + repr(v) + "` as the bubble's content; to mark the answer, write `correct: true`"
+        },
+      ),
+    ),
+    e.field(
+      "bubble",
+      e.types.union(e.types.literal("circle"), e.types.literal("square"), function),
+      doc: "The shape of the bubble: round for \"select one\", square for \"select all that apply\". Typst's own `circle` and `square` work too.",
+      default: "circle",
+      meta: (check: v => shape_error(v, "choice")),
+    ),
+    e.field(
+      "correct",
+      bool,
+      doc: "Whether this choice is part of the answer, and so is filled in and checked when solutions are shown.",
+      default: false,
+      meta: (hint: "write `true` or `false`"),
+    ),
+    e.field(
+      "outset",
+      e.types.union(length, dictionary),
+      doc: "The space the bubble keeps around itself. A length sets the gap after the bubble, between it and its content (`outset: .6em`); a dictionary sets any of `left`, `right`, `top`, `bottom`, `x`, `y` and `rest`, as the `inset` of a box does, and leaves the sides it does not name at their defaults. The default parts the bubble from whatever follows — its content, an answer box, the next choice — so a gap need not be written at the call site.",
+      default: _OUTSET,
+      meta: (check: v => outset_error("choice", v)),
+    ),
+    e.field(
+      "size",
+      e.types.smart(length),
+      doc: "The diameter of a round bubble, or the side of a square one. `auto` is "
+        + repr(_BUBBLE_SIZE)
+        + " round and "
+        + repr(_SQUARE_SIZE)
+        + " square (a little smaller across than the circle, so the two read alike); relative to the font size, so a bubble scales with the surrounding text.",
+      default: auto,
+      meta: (hint: "such as `1.2em` or `12pt`"),
+    ),
+  ),
+  aliases: (
+    _CORRECT_ALIASES.map(k => (k, "to mark the answer, write `correct: true`"))
+      + _SHAPE_ALIASES.map(k => (k, "to pick the shape, write `bubble: \"circle\"` or `bubble: \"square\"`"))
+  ).to-dict(),
+  positional-error: n => (
+    "choice: a bubble labels one choice, so it takes at most one content argument, got "
+      + str(n)
+      + " — to lay out several choices, use `#choices`"
+  ),
+)
+
 /// A bubble for students to fill in, optionally followed by `body`, the
-/// choice it labels; see `draw_choice` for how it is drawn.
-///
-/// Takes its content as an *optional* positional argument, which a plain
-/// parameter list cannot express, so `#choice[Paris]`, `#choice[]` and a
+/// choice it labels; see `draw_choice` for how it is drawn. `body` is an
+/// *optional* positional argument, so `#choice[Paris]`, `#choice[]` and a
 /// bare `#choice()` all work.
-#let choice(..args) = {
-  let named = args.named()
-  _check_choice_args(args.pos(), named)
+#let choice = define(_CHOICE, it => {
   // A string or a number is shown as written, like any other content.
-  let body = args.pos().at(0, default: none)
+  let body = it.body
   if _is_blank(body) { body = none }
   if body != none and type(body) != content { body = [#body] }
   draw_choice(
     body,
-    shape: shape_name(named.at("bubble", default: "circle"), "choice"),
-    correct: named.at("correct", default: false),
-    size: named.at("size", default: auto),
-    outset: named.at("outset", default: _OUTSET),
+    shape: shape_name(it.bubble, "choice"),
+    correct: it.correct,
+    size: it.size,
+    outset: it.outset,
   )
-}
+})
 
 /// A round bubble: "select one".
 #let bubble = choice.with(bubble: "circle")
@@ -514,54 +541,10 @@
 /// than the round one (see `_SQUARE_SIZE`).
 #let square_bubble = choice.with(bubble: "square")
 
-/// API documentation for this module's exports, consumed by
-/// docs/generate-api.typ (keyed by export name). Kept next to the
-/// definitions — update both together.
+/// API documentation for this module's exports, consumed by docs/api.typ
+/// (keyed by export name).
 #let DOCS = (
-  choice: (
-    desc: "A bubble for students to fill in, followed by the choice it labels. The two are kept whole, like a single word: a choice that wraps starts a line of its own, with its bubble on its first line and its further lines hanging under its content, not under the bubble. On the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key. For a list of choices, use `choices`.",
-    args: (
-      (
-        name: "body",
-        type: "content | none",
-        named: false,
-        default: "none",
-        doc: "The choice the bubble labels, shown after it. Omit it, or leave it empty (`#choice[]`), for a bare bubble, e.g. one in a table or a grid of its own.",
-      ),
-      (
-        name: "bubble",
-        type: "\"circle\" | \"square\"",
-        default: "\"circle\"",
-        doc: "The shape of the bubble: round for \"select one\", square for \"select all that apply\". Typst's own `circle` and `square` work too.",
-      ),
-      (
-        name: "correct",
-        type: "bool",
-        default: "false",
-        doc: "Whether this choice is part of the answer, and so is filled in and checked when solutions are shown.",
-      ),
-      (
-        name: "outset",
-        type: "length | dictionary",
-        default: repr(_OUTSET),
-        doc: "The space the bubble keeps around itself. A length sets the gap after the bubble, between it and its content (`outset: .6em`); a dictionary sets any of `left`, `right`, `top`, `bottom`, `x`, `y` and `rest`, as the `inset` of a box does, and leaves the sides it does not name at their defaults. The default parts the bubble from whatever follows — its content, an answer box, the next choice — so a gap need not be written at the call site.",
-      ),
-      (
-        name: "size",
-        type: "auto | length",
-        default: "auto",
-        doc: "The diameter of a round bubble, or the side of a square one. `auto` is "
-          + repr(_BUBBLE_SIZE)
-          + " round and "
-          + repr(_SQUARE_SIZE)
-          + " square (a little smaller across than the circle, so the two read alike); relative to the font size, so a bubble scales with the surrounding text.",
-      ),
-    ),
-  ),
-  bubble: (
-    desc: "`choice.with(bubble: \"circle\")`: a round bubble, for \"select one\". Takes the same arguments as `choice`.",
-  ),
-  "square-bubble": (
-    desc: "`choice.with(bubble: \"square\")`: a square bubble, for \"select all that apply\". Takes the same arguments as `choice`.",
-  ),
+  choice: _CHOICE,
+  bubble: (alias-of: "choice", with: (bubble: "circle"), desc: "A round bubble, for \"select one\"."),
+  "square-bubble": (alias-of: "choice", with: (bubble: "square"), desc: "A square bubble, for \"select all that apply\"."),
 )

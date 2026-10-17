@@ -19,3 +19,17 @@
     [#metadata(none)<show-solutions-effective>]
   }
 })
+
+// A visual record: the three values involved, for the `--input` this was
+// compiled with (tests/run.sh compiles it with none, `true`, and `false`).
+#import "/tests/record.typ": cases, rule
+#set page(width: 6in, height: auto, margin: .5in)
+#rule[`show-solutions(get)`: the command-line override wins over `config`.]
+#e.get(get => cases(
+  ([`config`'s value], [`--input show-solutions`], [Effective]),
+  (
+    raw(repr(get(config).show-solutions)),
+    raw(repr(sys.inputs.at("show-solutions", default: none))),
+    raw(repr(show-solutions(get))),
+  ),
+))

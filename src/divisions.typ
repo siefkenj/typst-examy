@@ -2,135 +2,105 @@
 ///
 /// These are deliberately plain functions (not elembic elements): they must
 /// emit their markers *eagerly* so the exam pipeline can find them by content
-/// introspection, before any layout happens.
+/// introspection, before any layout happens. Their arguments are declared
+/// with `e.field` all the same (see signature.typ), which both checks them
+/// and documents them.
 
+#import "prelude.typ": e
 #import "markers.typ": begin_marker, end_marker
+#import "signature.typ": declare_function, define
 
-#let _division(
-  body,
-  points: none,
-  intent: none,
-  solution: none,
-  rubric: none,
-  number: auto,
-  indent: 1.5em,
-  label: none,
-  name: "division",
-) = {
-  assert(
-    type(body) in (content, str),
-    message: "examy: the body of a " + name + " must be content, found " + repr(type(body)),
-  )
-  assert(
-    points == none or type(points) in (int, float),
-    message: "examy: `points` must be a number or none, found " + repr(points),
-  )
-  assert(
-    intent in (none, "practice", "bonus"),
-    message: "examy: `intent` must be none, \"practice\", or \"bonus\", found " + repr(intent),
-  )
-  assert(
-    number == auto or number == none or type(number) in (int, str, content),
-    message: "examy: `number` must be auto, none, an integer, or content, found " + repr(number),
-  )
-  assert(
-    label == none or type(label) == std.label,
-    message: "examy: `label` must be a label (e.g. `<my-label>`) or none, found " + repr(label),
-  )
-  assert(
-    type(indent) == length,
-    message: "examy: `indent` must be a length, found " + repr(indent),
-  )
+/// The arguments of a question, part, or subpart, which take identical ones.
+#let _DIVISION_FIELDS = (
+  e.field(
+    "body",
+    e.types.union(content, str),
+    doc: "The body of the question.",
+    required: true,
+  ),
+  e.field(
+    "points",
+    e.types.union(int, float, none),
+    doc: "The number of points: shows a \"(2 points)\" badge and feeds the points table.",
+    default: none,
+  ),
+  e.field(
+    "intent",
+    e.types.union(e.types.literal("practice"), e.types.literal("bonus"), none),
+    doc: "Practice and bonus points are excluded from the regular totals; bonus points are tallied separately.",
+    default: none,
+  ),
+  e.field(
+    "solution",
+    e.types.option(content),
+    doc: "A solution, rendered at the end of the division when solutions are enabled.",
+    default: none,
+  ),
+  e.field(
+    "rubric",
+    e.types.option(content),
+    doc: "A grading rubric (accepted, but not yet rendered).",
+    default: none,
+  ),
+  e.field(
+    "number",
+    e.types.union(auto, int, str, content, none),
+    doc: "`auto` numbers sequentially; an integer is the number as displayed (later divisions continue from it); content is shown verbatim; `none` omits the number.",
+    default: auto,
+  ),
+  e.field(
+    "indent",
+    length,
+    doc: "Indentation of the body relative to the parent.",
+    default: 1.5em,
+  ),
+  e.field(
+    "label",
+    e.types.option(label),
+    doc: "Attach a label so the division can be referenced with `@name`.",
+    default: none,
+    meta: (hint: "write it in angle brackets, e.g. `label: <my-label>`"),
+  ),
+)
 
+/// The three take identical arguments and differ only in numbering style
+/// (chosen by nesting depth, not by which function is called), so the API
+/// reference documents them as one group instead of repeating the same
+/// argument list three times.
+#let _DIVISION_DOC = "Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively. The three functions take identical arguments; the numbering style is chosen by nesting depth, not by which function is called."
+
+#let _spec(name) = declare_function(name, doc: _DIVISION_DOC, fields: _DIVISION_FIELDS, group: "division")
+
+#let _division(spec) = define(spec, it => {
   begin_marker((
-    points: points,
-    intent: intent,
-    solution: solution,
-    rubric: rubric,
-    number: number,
-    indent: indent,
-    label: label,
-    name: name,
+    points: it.points,
+    intent: it.intent,
+    solution: it.solution,
+    rubric: it.rubric,
+    number: it.number,
+    indent: it.indent,
+    label: it.label,
+    name: spec.name,
   ))
-  [#body]
+  [#it.body]
   end_marker()
-}
+})
+
+#let _QUESTION = _spec("question")
+#let _PART = _spec("part")
+#let _SUBPART = _spec("subpart")
 
 /// Declare a question. Nesting `part`/`subpart` inside the body creates
 /// sub-divisions; the nesting depth (not the constructor name) determines
 /// the numbering style.
-#let question = _division.with(name: "question")
+#let question = _division(_QUESTION)
 
 /// Declare a part of a question.
-#let part = _division.with(name: "part")
+#let part = _division(_PART)
 
 /// Declare a subpart of a part.
-#let subpart = _division.with(name: "subpart")
+#let subpart = _division(_SUBPART)
 
-/// API documentation for this module's exports, consumed by
-/// docs/generate-api.typ (keyed by export name). Plain functions cannot be
-/// introspected the way elembic elements can, so this lives here, next to
-/// `_division`'s signature — update both together.
-#let _DIVISION_ARGS = (
-    (
-      name: "body",
-      type: "content",
-      required: true,
-      doc: "The body of the question.",
-    ),
-    (
-      name: "points",
-      type: "int | float | none",
-      default: "none",
-      doc: "The number of points: shows a \"(2 points)\" badge and feeds the points table.",
-    ),
-    (
-      name: "intent",
-      type: "\"practice\" | \"bonus\" | none",
-      default: "none",
-      doc: "Practice and bonus points are excluded from the regular totals; bonus points are tallied separately.",
-    ),
-    (
-      name: "solution",
-      type: "content | none",
-      default: "none",
-      doc: "A solution, rendered at the end of the division when solutions are enabled.",
-    ),
-    (
-      name: "rubric",
-      type: "content | none",
-      default: "none",
-      doc: "A grading rubric (accepted, but not yet rendered).",
-    ),
-    (
-      name: "number",
-      type: "auto | int | content | none",
-      default: "auto",
-      doc: "`auto` numbers sequentially; an integer is the number as displayed (later divisions continue from it); content is shown verbatim; `none` omits the number.",
-    ),
-    (
-      name: "indent",
-      type: "length",
-      default: "1.5em",
-      doc: "Indentation of the body relative to the parent.",
-    ),
-    (
-      name: "label",
-      type: "label | none",
-      default: "none",
-      doc: "Attach a label so the division can be referenced with `@name`.",
-    ),
-)
-
-/// A shared description for `question`/`part`/`subpart`: they take
-/// identical arguments and differ only in numbering style (chosen by
-/// nesting depth, not which function is called), so the API reference
-/// documents them as one group (see `group` below) instead of repeating
-/// the same argument list three times.
-#let _DIVISION_DESC = "Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively. The three functions take identical arguments; the numbering style is chosen by nesting depth, not by which function is called."
-
-#let DOCS = (
-  question: (group: "division", desc: _DIVISION_DESC, args: _DIVISION_ARGS),
-  part: (group: "division", desc: _DIVISION_DESC, args: _DIVISION_ARGS),
-  subpart: (group: "division", desc: _DIVISION_DESC, args: _DIVISION_ARGS),
-)
+/// API documentation for this module's exports, consumed by docs/api.typ
+/// (keyed by export name).
+#let DOCS = (question: _QUESTION, part: _PART, subpart: _SUBPART)

@@ -108,39 +108,70 @@
   footnote,
 )
 
-/// Tri-state: does `c` *begin* with inline-level content?
-/// - `true`: the first visible leaf is inline (text, an inline box, ...)
-/// - `false`: it is block-level (a block, enum, figure, ...), a parbreak,
-///   or something unknown (unknown defaults to block-level — the safe case)
-/// - `none`: `c` is invisible/transparent (spaces, metadata); keep looking
-#let starts_inline(c) = {
-  if type(c) == str {
-    return if c.trim() == "" { none } else { true }
-  }
-  if type(c) != content { return true }
+/// How `c` begins, for placing a gutter label beside its first line:
+/// `none` when `c` is invisible/transparent (spaces, metadata; keep looking),
+/// otherwise `(inline: bool, inset: length)`.
+/// - `inline`: whether the first visible leaf is inline (text, an inline
+///   box, ...), so a label can ride its baseline; `false` for a block-level
+///   one (a block, enum, figure, ...), a parbreak, or something unknown
+///   (unknown defaults to block-level — the safe case).
+/// - `inset`: how far below the top of `c` its first line of text starts,
+///   when `c` begins with a box sized to its content (the space inside the
+///   box above that content: its top inset), so that a label placed at the
+///   top can be moved down to that line; `0pt` otherwise.
+#let leading(c) = {
+  let inline = (inline: true, inset: 0pt)
+  let block_level = (inline: false, inset: 0pt)
+  if type(c) == str { return if c.trim() == "" { none } else { inline } }
+  if type(c) != content { return inline }
   let f = c.func()
-  if f == parbreak { return false }
+  if f == parbreak { return block_level }
   if ([ ].func(), metadata).contains(f) { return none }
   if f == SEQUENCE_FUNC {
     for child in c.children {
-      let r = starts_inline(child)
+      let r = leading(child)
       if r != none { return r }
     }
     return none
   }
-  if f == STYLED_FUNC { return starts_inline(c.at("child")) }
+  if f == STYLED_FUNC { return leading(c.at("child")) }
   // Equations, raw, and quotes are inline unless their `block` flag is set.
   if (math.equation, raw, quote).contains(f) {
-    return not c.at("block", default: false)
+    return if c.at("block", default: false) { block_level } else { inline }
   }
-  // A box with an explicit height (e.g. a fixed-height answer box) fills its
-  // line well past the text baseline; a gutter label must not ride that
-  // baseline. Only content-sized boxes count as text-like.
   if f == box {
-    return c.at("height", default: auto) == auto
+    // A box with an explicit height (e.g. a fixed-height answer box) fills
+    // its line well past the text baseline; a gutter label must not ride that
+    // baseline. Only content-sized boxes count as text-like. A full-width
+    // one does not either: it stands on a line of its own however many lines
+    // it holds (`answer-box(width: 100%)[..]`), and the label would ride the
+    // baseline of its last. A content-sized box's first line starts its top
+    // inset below its top.
+    let width = c.at("width", default: auto)
+    let full = type(width) in (ratio, relative) and width == 100%
+    if c.at("height", default: auto) != auto { return block_level }
+    let inset = c.at("inset", default: 0pt)
+    let top = if type(inset) == dictionary {
+      inset.at("top", default: inset.at("y", default: inset.at("rest", default: 0pt)))
+    } else { inset }
+    return (inline: not full, inset: top)
   }
-  if _INLINE_FUNCS.contains(f) { return true }
-  false
+  if _INLINE_FUNCS.contains(f) { return inline }
+  block_level
+}
+
+/// Tri-state: does `c` *begin* with inline-level content? `none` when it is
+/// invisible (see `leading`).
+#let starts_inline(c) = {
+  let r = leading(c)
+  if r == none { none } else { r.inline }
+}
+
+/// How far below the top of `c` its first line of text starts (see
+/// `leading`); `none` when it is invisible.
+#let leading_inset(c) = {
+  let r = leading(c)
+  if r == none { none } else { r.inset }
 }
 
 /// Strip leading space/parbreak elements from content (looking through

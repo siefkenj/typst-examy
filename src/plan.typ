@@ -119,7 +119,12 @@
 
   for ev in _events(items, root) {
     if ev.kind == "open" {
-      (instructions, pending_labels) = flush(instructions, pending_labels, current)
+      // A division with no text of its own before its first part keeps its
+      // label for the part's first line, unless a badge at the `"end"` of
+      // that (no) text needs a line of its own there, as it gets when drawn
+      // in one piece.
+      let force = current != none and current.first and items.at(current.division).badge_at_end
+      (instructions, pending_labels) = flush(instructions, pending_labels, current, force: force)
       stack.push(ev.item)
       current = new_segment(ev.item, true)
     } else if ev.kind == "close" {
@@ -144,12 +149,13 @@
       // so there is nothing to negotiate.
       let hoist = chunk.fr != none and not chunk.has_inner_break
       if hoist {
-        // A points badge takes a line, so letting one ride into the hoisted
-        // segment would spend the box's own fr share on it. Keep the head in a
-        // segment of its own instead. A bare gutter label is `place`d and
-        // costs no height, so it can still ride along.
+        // A points badge in the flow takes a line, so letting one ride into
+        // the hoisted segment would spend the box's own fr share on it. Keep
+        // the head in a segment of its own instead. A bare gutter label, or a
+        // badge in the margin, is `place`d and costs no height, so it can
+        // still ride along.
         let badged = (pending_labels + (current.division,)).any(d => (
-          items.at(d).fields.points != none
+          items.at(d).badge_takes_line
         ))
         (instructions, pending_labels) = flush(
           instructions,

@@ -3,9 +3,10 @@
 #import "../parse.typ": parse
 #import "../plan.typ": plan
 #import "../render.typ": render
-#import "../points.typ": compute_points_data, points_data_state
-#import "../config.typ": config
+#import "../points.typ": EXAMS_ENDED, EXAMS_STARTED, assign_badges, compute_points_data, points_data_state
+#import "../config.typ": config, exam_options
 #import "./solution.typ": show_solutions
+#import "../signature.typ": declare_function, define
 
 /// The exam title block (in the spirit of LaTeX's `\maketitle`): the
 /// institution, term, duration, and exam name, laid out as the head of a
@@ -20,17 +21,45 @@
 /// // or, overriding the configured term:
 /// #maketitle(term: [Summer 2026])
 /// ```
-#let maketitle(
-  institution: auto,
-  exam-name: auto,
-  term: auto,
-  duration: auto,
-) = e.get(get => {
+#let _MAKETITLE = declare_function(
+  "maketitle",
+  doc: "The exam title block (in the spirit of LaTeX's `\\maketitle`). Renders nothing if all four values resolve to `none`.",
+  fields: (
+    e.field(
+      "institution",
+      e.types.union(auto, content, none),
+      doc: "The institution name; `auto` takes `config`'s value, `none` suppresses it.",
+      default: auto,
+    ),
+    e.field(
+      "exam-name",
+      e.types.union(auto, content, none),
+      doc: "The exam name, shown bold; `auto` takes `config`'s value, `none` suppresses it.",
+      default: auto,
+    ),
+    e.field(
+      "term",
+      e.types.union(auto, content, none),
+      doc: "The term (e.g. Fall 2026); `auto` takes `config`'s value, `none` suppresses it.",
+      default: auto,
+    ),
+    e.field(
+      "duration",
+      e.types.union(auto, duration, none),
+      doc: "The exam length, shown under the term; `auto` takes `config`'s value, `none` suppresses it.",
+      default: auto,
+    ),
+  ),
+)
+
+#let maketitle = define(_MAKETITLE, it => e.get(get => {
   let c = get(config)
-  let institution = if institution == auto { c.institution } else { institution }
-  let exam_name = if exam-name == auto { c.at("exam-name") } else { exam-name }
-  let term = if term == auto { c.term } else { term }
-  let duration = if duration == auto { c.duration } else { duration }
+  // Each value is `config`'s unless given here.
+  let pick(key) = if it.at(key) == auto { c.at(key) } else { it.at(key) }
+  let institution = pick("institution")
+  let exam_name = pick("exam-name")
+  let term = pick("term")
+  let duration = pick("duration")
   if (institution, exam_name, term, duration).all(t => t == none) {
     return none
   }
@@ -56,7 +85,7 @@
       text(weight: "bold", size: 1.2em)[#exam_name]
     },
   )
-})
+}))
 
 /// The default rows for a name block.
 #let DEFAULT_NAME_FIELDS = ((prefix: [Name:]), (prefix: [Student ID:]))
@@ -96,7 +125,28 @@
 /// (both keys optional), rendered as the prefix, an underline extending to
 /// the end of the line, and the suffix sitting on the line at its right
 /// end — or arbitrary content, rendered verbatim as its own row.
-#let name_block(title: none, fields: DEFAULT_NAME_FIELDS) = {
+#let _NAME_BLOCK = declare_function(
+  "name-block",
+  doc: "A block of fill-in rows for a cover page or quiz header.",
+  fields: (
+    e.field(
+      "title",
+      e.types.option(content),
+      doc: "A heading shown centered above the block.",
+      default: none,
+    ),
+    e.field(
+      "fields",
+      e.types.array(e.types.union(dictionary, content)),
+      doc: "One entry per row. A `(prefix: .., suffix: ..)` dictionary (both keys optional) renders the prefix, an underline extending to the end of the line, and the suffix sitting on the line at its right end; any other entry is content rendered verbatim as its own row.",
+      default: DEFAULT_NAME_FIELDS,
+      meta: (default-shown: "((prefix: [Name:]), (prefix: [Student ID:]))"),
+    ),
+  ),
+)
+
+#let name_block = define(_NAME_BLOCK, it => {
+  let (title, fields) = (it.title, it.fields)
   set text(font: "DejaVu Sans Mono")
   if title != none and title != "" {
     set align(center)
@@ -111,68 +161,30 @@
     column-gutter: .3em,
     ..fields.map(_name_field_row).flatten()
   )
-}
+})
 
-/// API documentation for this module's exports, consumed by
-/// docs/generate-api.typ (keyed by export name). Kept next to the
-/// signatures — update both together. `exam` needs no argument docs here:
-/// elembic elements are introspected.
-#let DOCS = (
-  exam: (kind: "element"),
-  maketitle: (
-    desc: "The exam title block (in the spirit of LaTeX's `\\maketitle`). Renders nothing if all four values resolve to `none`.",
-    args: (
-      (
-        name: "institution",
-        type: "auto | content | none",
-        default: "auto",
-        doc: "The institution name; `auto` takes `config`'s value, `none` suppresses it.",
-      ),
-      (
-        name: "exam-name",
-        type: "auto | content | none",
-        default: "auto",
-        doc: "The exam name, shown bold; `auto` takes `config`'s value, `none` suppresses it.",
-      ),
-      (
-        name: "term",
-        type: "auto | content | none",
-        default: "auto",
-        doc: "The term (e.g. Fall 2026); `auto` takes `config`'s value, `none` suppresses it.",
-      ),
-      (
-        name: "duration",
-        type: "auto | duration | none",
-        default: "auto",
-        doc: "The exam length, shown under the term; `auto` takes `config`'s value, `none` suppresses it.",
-      ),
-    ),
-  ),
-  "name-block": (
-    desc: "A block of fill-in rows for a cover page or quiz header.",
-    args: (
-      (
-        name: "title",
-        type: "content | none",
-        default: "none",
-        doc: "A heading shown centered above the block.",
-      ),
-      (
-        name: "fields",
-        type: "(dictionary | content)[]",
-        default: "((prefix: [Name:]), (prefix: [Student ID:]))",
-        doc: "One entry per row. A `(prefix: .., suffix: ..)` dictionary (both keys optional) renders the prefix, an underline extending to the end of the line, and the suffix sitting on the line at its right end; any other entry is content rendered verbatim as its own row.",
-      ),
-    ),
-  ),
-)
+/// API documentation for this module's exports, consumed by docs/api.typ
+/// (keyed by export name). `exam` needs no argument docs here: elembic
+/// elements are introspected.
+#let DOCS = (exam: (kind: "element"), maketitle: _MAKETITLE, "name-block": _NAME_BLOCK)
 
 /// Run the questions content through the full pipeline:
-/// tokenize → parse → plan → render (+ record point totals).
-#let process_questions(questions) = {
-  let items = parse(tokenize(questions))
-  points_data_state.update(compute_points_data(items))
-  render(items, plan(items))
+/// tokenize → parse → badges → plan → render (+ record point totals).
+/// `opts` are the layout options resolved from `config` (see
+/// `exam_options`).
+#let process_questions(questions, opts) = {
+  let items = assign_badges(
+    parse(tokenize(questions)),
+    show-totals: opts.points-show-totals,
+    position: opts.points-position,
+  )
+  let data = compute_points_data(items, numberings: opts.numbering)
+  // Each exam keeps its own data, and marks where it starts and ends, so
+  // that a reader can tell which exam it is about (see `exam_points_data`).
+  EXAMS_STARTED.step()
+  points_data_state.update(all => all + (data,))
+  render(items, plan(items), opts: opts)
+  EXAMS_ENDED.step()
 }
 
 /// Start an exam or homework list.
@@ -183,8 +195,9 @@
   display: it => {
     // If `questions` is a function, call it with a `solutions_only` helper
     // that shows its argument only when solutions are enabled.
-    if type(it.questions) == function {
-      e.get(get => {
+    e.get(get => {
+      let opts = exam_options(get)
+      if type(it.questions) == function {
         let solutions_only(content, otherwise: none) = {
           if show_solutions(get) == true {
             content
@@ -192,11 +205,11 @@
             otherwise
           }
         }
-        process_questions((it.questions)(solutions_only))
-      })
-    } else {
-      process_questions(it.questions)
-    }
+        process_questions((it.questions)(solutions_only), opts)
+      } else {
+        process_questions(it.questions, opts)
+      }
+    })
   },
   fields: (
     e.field(

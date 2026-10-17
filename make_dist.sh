@@ -155,6 +155,11 @@ rm -rf "$bundletmp"
 echo "==> Regenerating the API reference in README.md"
 ./make_docs.sh
 
+echo "==> Building the documentation site (checks that every example compiles)"
+sitetmp=$(mktemp -d)
+./make_site.sh "$sitetmp/site"
+rm -rf "$sitetmp"
+
 echo "==> Rendering README screenshots"
 # Student-version screenshots pass `--input show-solutions=false` explicitly
 # so they stay solution-free no matter what the example file's own

@@ -41,6 +41,11 @@
   )
 }
 
+/// What a solution shows on the exam in its place: its `otherwise`, or `none`.
+/// A solution with one is, to the exam, that content: visible, and in the
+/// flow, where the answer key draws the solution over it (see `solution`).
+#let _otherwise(c) = e.fields(c).at("otherwise", default: none)
+
 /// Pass 1: what `c` contributes to the paragraph flow, as an array of events
 /// in document order: `"solution"`, `"break"` (a paragraph boundary),
 /// `"block"` (a block-level element, always between two breaks), `"context"`
@@ -57,11 +62,16 @@
 /// lines. `answer-box` asks for this where its solutions take no height: an
 /// inline solution is then highlighted line by line, which would leave a gap
 /// between each of its lines.
+/// It also makes a solution with an `otherwise` the content shown in its place
+/// (see `solution`), visible on the exam and drawn over on the key, rather
+/// than a solution: elsewhere, the key replaces it with the solution.
 #let par_events(c, split: false) = {
   // Only ever at the top: a body given as a string rather than as content.
   if type(c) == str { return if c.trim() == "" { () } else { ("text",) } }
   if type(c) != content { return () }
   if _is_solution(c) {
+    let otherwise = _otherwise(c)
+    if split and otherwise != none { return if is_multi_par(otherwise) { ("break", "block", "break") } else { ("text",) } }
     let body = e.fields(c).at("body", default: none)
     return if split and is_multi_par(body) { ("break", "solution", "break") } else { ("solution",) }
   }
@@ -116,10 +126,11 @@
 /// tree exactly as `par_events` does; `i` is the index of the next solution.
 /// `flags` holds, for each solution, whether to widen it, whether it is last,
 /// and what it draws after itself: `none`, the content of the rest of its
-/// run, or `"drop"` when the first of its run draws it instead. Returns the
-/// new content and the next index.
-#let _rewrite(c, flags, i) = {
+/// run, or `"drop"` when the first of its run draws it instead. `split` is
+/// as `par_events` was given it. Returns the new content and the next index.
+#let _rewrite(c, flags, i, split) = {
   if type(c) != content { return (c, i) }
+  if split and _is_solution(c) and _otherwise(c) != none { return (c, i) }
   if _is_solution(c) {
     let (wide, last, then) = flags.at(i)
     let new = if then == "drop" { [] } else if wide { _widen(c, last, then) } else { c }
@@ -128,13 +139,13 @@
   if ends_par(c) { return (c, i) }
   let f = c.func()
   if f == STYLED_FUNC {
-    let (child, next) = _rewrite(c.child, flags, i)
+    let (child, next) = _rewrite(c.child, flags, i, split)
     return (STYLED_FUNC(child, c.styles), next)
   }
   if f == SEQUENCE_FUNC {
     let out = ()
     for child in c.children {
-      let (new, next) = _rewrite(child, flags, i)
+      let (new, next) = _rewrite(child, flags, i, split)
       out.push(new)
       i = next
     }
@@ -146,7 +157,7 @@
 /// The solutions in `c`, in the order `par_events` and `_rewrite` meet them.
 #let _collect(c) = {
   if type(c) != content { return () }
-  if _is_solution(c) { return (c,) }
+  if _is_solution(c) { return if _otherwise(c) == none { (c,) } else { () } }
   if ends_par(c) { return () }
   let f = c.func()
   if f == STYLED_FUNC { return _collect(c.child) }
@@ -179,7 +190,7 @@
 /// A solution moved into the first of its run loses any set rule between
 /// the two.
 #let widen_par_solutions(body, events: auto, group: false, then: none) = {
-  if events == auto { events = par_events(body) }
+  if events == auto { events = par_events(body, split: group) }
   let alone = _alone_flags(events)
   if not alone.any(x => x) { return (body: body, took-then: false) }
   // A solution is last when it comes after the last visible event.
@@ -213,7 +224,7 @@
       for j in run.slice(1) { thens.at(j) = "drop" }
     }
   }
-  (body: _rewrite(body, alone.zip(lasts, thens), 0).first(), took-then: took-then)
+  (body: _rewrite(body, alone.zip(lasts, thens), 0, group).first(), took-then: took-then)
 }
 
 /// What `body` shows on the exam itself, that is, with its solutions, which
@@ -227,9 +238,10 @@
 /// the exam (empty, or holding only its solutions) keeps a fixed height for
 /// the student to write in, the same on the exam and the key. A solution
 /// inside an opaque element (`align`, `strong`, ...) is not seen, so it
-/// counts as `"yes"`: the box fits it. `events` is `par_events(body)`, if
-/// already at hand.
+/// counts as `"yes"`: the box fits it, as does one with an `otherwise`, which
+/// the exam shows. `events` is `par_events(body, split: true)`, if already at
+/// hand.
 #let exam_content(body, events: auto) = {
-  if events == auto { events = par_events(body) }
+  if events == auto { events = par_events(body, split: true) }
   if events.any(ev => ev == "text" or ev == "block") { "yes" } else if "context" in events { "maybe" } else { "no" }
 }

@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Regenerate the API reference inside README.md.
+# Regenerate the index of exports inside README.md.
 #
-# docs/generate-api.typ builds the reference as a Markdown string —
-# introspecting the elembic element declarations for their docs, argument
-# types, defaults, and required flags — and exposes it as
-# `#metadata(..) <api>`. This script extracts it with `typst eval`,
-# JSON-decodes the result, and splices it into README.md between the
-# `API-DOCS-START`/`API-DOCS-END` markers.
+# docs/readme-api.typ builds the index as a Markdown string — one row per
+# export, from the package's own declarations (see docs/api.typ) — and
+# exposes it as `#metadata(..) <api>`. This script extracts it with
+# `typst eval`, JSON-decodes the result, and splices it into README.md
+# between the `API-DOCS-START`/`API-DOCS-END` markers. The full reference is
+# on the documentation site (see make_site.sh).
 set -euo pipefail
 cd "$(dirname "$0")"
 
 api_tmp=$(mktemp)
 trap 'rm -f "$api_tmp"' EXIT
 
-typst eval 'query(<api>).first().value' --in docs/generate-api.typ --root . \
+typst eval 'query(<api>).first().value' --in docs/readme-api.typ --root . \
     | perl -MJSON::PP -0777 -ne 'print JSON::PP->new->decode($_)' \
     >"$api_tmp"
 
@@ -27,4 +27,4 @@ API_FILE="$api_tmp" perl -0pi -e '
         or die "API-DOCS-START\/END markers not found in README.md\n";
 ' README.md
 
-echo "Updated the API reference in README.md ($(wc -l <"$api_tmp") lines)"
+echo "Updated the API index in README.md ($(wc -l <"$api_tmp") lines)"

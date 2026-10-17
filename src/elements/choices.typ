@@ -1,13 +1,11 @@
 #import "../prelude.typ": *
 #import "../config.typ": config
-#import "bubble.typ": bubble, check_enumerate, draw_choice, shape_name, square_bubble
+#import "bubble.typ": bubble, check_enumerate, draw_choice, enumerate_error, shape_error, shape_name, square_bubble
+#import "../signature.typ": declare_function, define
 
 /// The default space between two choices side by side, inline or in columns
 /// (see `gap`). One per line, the default is the text's own line spacing.
 #let _SIDE_BY_SIDE_GAP = 1.5em
-
-/// The named arguments `choices` takes.
-#let _CHOICES_ARGS = ("correct", "bubble", "inline", "columns", "gap", "enumerate")
 
 /// Names an author might reach for in place of `correct`.
 #let _CORRECT_ALIASES = ("answer", "answers", "solution", "solutions", "correct-answer", "key", "right")
@@ -20,6 +18,9 @@
   if value == square_bubble { return "square" }
   shape_name(value, "choices")
 }
+
+/// What is wrong with a `bubble:` option of `choices`, or `none`.
+#let _choices_shape_error(value) = if value not in (bubble, square_bubble) { shape_error(value, "choices") }
 
 /// The plain text in `c`, gathered from whatever it is nested in.
 #let _plain_text(c) = {
@@ -153,46 +154,76 @@
   choices.enumerate().map(((i, c)) => (body: c.body, correct: c.marked or i in indices))
 }
 
-/// Check the arguments of `choices` that Typst's own parameter list cannot:
-/// `extra` holds any positional or named argument it does not take.
-#let _check_choices_args(extra, inline, columns, gap) = {
-  let pos = extra.pos()
-  assert(
-    pos.len() == 0,
-    message: "choices: the choices go in one argument — a list, one `- ..` item per choice, or an array such as `(\"a\", \"b\")` — but got "
-      + str(pos.len() + 1)
-      + " separate arguments",
-  )
-  for key in extra.named().keys() {
-    if key in _CORRECT_ALIASES {
-      panic(
-        "choices: unknown argument `"
-          + key
-          + "`; mark a correct choice with `+` in place of `-`, or name it by index with `correct:`",
-      )
-    }
-    panic(
-      "choices: unknown argument `" + key + "`; `choices` takes " + _CHOICES_ARGS.map(k => "`" + k + "`").join(", "),
-    )
-  }
-  assert(type(inline) == bool, message: "choices: `inline` must be `true` or `false`, got " + repr(inline))
-  assert(
-    columns == none or (type(columns) == int and columns >= 1),
-    message: "choices: `columns` must be a number of columns, such as `columns: 2`, got " + repr(columns),
-  )
-  assert(
-    not (inline and columns != none),
-    message: "choices: `inline` and `columns` are two different layouts; use one or the other",
-  )
-  assert(
-    gap == auto or type(gap) in (length, fraction),
-    message: "choices: `gap` must be a length, such as `1em`, got " + repr(gap),
-  )
-  assert(
-    type(gap) != fraction or inline or columns != none,
-    message: "choices: a fractional `gap` spreads choices across a line, so it needs `inline: true` or `columns`; one choice per line, give a length such as `1em`",
-  )
-}
+#let _CHOICES = declare_function(
+  "choices",
+  doc: "A multiple-choice answer: a bubble for each choice, filled in and checked on the answer key (when solutions are shown) for the correct ones, whose content is then set in the solution color. Mark a correct choice with `+` in place of `-`, or by its index with `correct`.",
+  fields: (
+    e.field(
+      "body",
+      e.types.union(content, array),
+      doc: "The choices: a list, one `- ..` item per choice (`+ ..` for a correct one), each starting its own line; or an array of the choices' content.",
+      required: true,
+      meta: (hint: "give the choices as a list, one `- ..` item per choice (`+ ..` for a correct one), or as an array such as `(\"a\", \"b\")`"),
+    ),
+    e.field(
+      "correct",
+      e.types.union(int, array, none),
+      doc: "The index of the correct choice, or an array of indices for several, counted as Typst counts an array's: from 0 at the first choice, or from -1 at the last. Adds to any choices marked with `+`.",
+      default: none,
+      meta: (hint: "name choices by their index (`correct: 1` for the second, `correct: (0, 2)` for several), or start a correct choice with `+` instead of `-`"),
+    ),
+    e.field(
+      "bubble",
+      e.types.union(e.types.literal("circle"), e.types.literal("square"), function),
+      doc: "The shape of the bubbles: round for \"select one\", square for \"select all that apply\". Typst's own `circle` and `square` work too, as do `bubble` and `square-bubble`.",
+      default: "circle",
+      meta: (check: _choices_shape_error),
+    ),
+    e.field(
+      "inline",
+      bool,
+      doc: "Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is kept whole: one longer than a line starts a line of its own, with its further lines hanging under its content. Cannot be combined with `columns`.",
+      default: false,
+      meta: (hint: "write `true` or `false`"),
+    ),
+    e.field(
+      "columns",
+      e.types.union(int, none),
+      doc: "Set the choices in this many equal columns, filled across each row in turn, rather than one per line. Cannot be combined with `inline`.",
+      default: none,
+      meta: (
+        hint: "give a number of columns, such as `columns: 2`",
+        check: v => if type(v) == int and v < 1 {
+          "choices: `columns` must be a number of columns, such as `columns: 2`, got " + repr(v)
+        },
+      ),
+    ),
+    e.field(
+      "gap",
+      e.types.union(auto, length, fraction),
+      doc: "The space between two choices. One per line, it is the space between one choice and the next below it, and `auto` sets them as close as the lines of a paragraph. Side by side, inline or in `columns`, it is the space between them, and `auto` is "
+        + repr(_SIDE_BY_SIDE_GAP)
+        + "; there, a fraction (`1fr`) spreads the choices across the line.",
+      default: auto,
+      meta: (hint: "give a length, such as `1em`"),
+    ),
+    e.field(
+      "enumerate",
+      e.types.union(auto, bool, str, function),
+      doc: "Labels inside the bubbles: `false` for none, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`\"a\"`, `\"1\"`, `\"(i)\"`). `auto` follows `config`'s `choices-enumerate`, which is `false` unless set. On the answer key, a correct labelled bubble is filled in like any other, with its label, in the solution color, in place of the check mark, and a thin ring inside its outline.",
+      default: auto,
+      meta: (check: v => enumerate_error(v, "choices", allow-auto: true)),
+    ),
+  ),
+  aliases: _CORRECT_ALIASES
+    .map(k => (k, "mark a correct choice with `+` in place of `-`, or name it by index with `correct:`"))
+    .to-dict(),
+  positional-error: n => (
+    "choices: the choices go in one argument — a list, one `- ..` item per choice, or an array such as `(\"a\", \"b\")` — but got "
+      + str(n)
+      + " separate arguments"
+  ),
+)
 
 /// A multiple-choice answer: a bubble for each choice, filled in and
 /// checked on the answer key for the correct ones.
@@ -206,20 +237,18 @@
 /// it is longer than a line. In both, `gap` is the space between two choices
 /// side by side; inline it is weak, so a choice that wraps to the start of a
 /// line is not indented by it.
-#let choices(
-  body,
-  ..extra,
-  correct: none,
-  bubble: "circle",
-  inline: false,
-  columns: none,
-  gap: auto,
-  enumerate: auto,
-) = {
-  _check_choices_args(extra, inline, columns, gap)
-  check_enumerate(enumerate, "choices", allow-auto: true)
-  let shape = choices_shape(bubble)
-  let resolved = resolve_choices(body, correct: correct)
+#let choices = define(_CHOICES, it => {
+  let (inline, columns, gap, enumerate) = (it.inline, it.columns, it.gap, it.enumerate)
+  assert(
+    not (inline and columns != none),
+    message: "choices: `inline` and `columns` are two different layouts; use one or the other",
+  )
+  assert(
+    type(gap) != fraction or inline or columns != none,
+    message: "choices: a fractional `gap` spreads choices across a line, so it needs `inline: true` or `columns`; one choice per line, give a length such as `1em`",
+  )
+  let shape = choices_shape(it.bubble)
+  let resolved = resolve_choices(it.body, correct: it.correct)
   let side_gap = if gap == auto { _SIDE_BY_SIDE_GAP } else { gap }
   // Every layout is a block — a paragraph of its own, so that choices
   // written on the line after a question start below it rather than running
@@ -260,60 +289,8 @@
       drawn.join()
     }
   }))
-}
+})
 
-/// API documentation for this module's exports, consumed by
-/// docs/generate-api.typ (keyed by export name). Kept next to the
-/// definitions — update both together.
-#let DOCS = (
-  choices: (
-    desc: "A multiple-choice answer: a bubble for each choice, filled in and checked on the answer key (when solutions are shown) for the correct ones, whose content is then set in the solution color. Mark a correct choice with `+` in place of `-`, or by its index with `correct`.",
-    args: (
-      (
-        name: "body",
-        type: "content | array",
-        required: true,
-        named: false,
-        doc: "The choices: a list, one `- ..` item per choice (`+ ..` for a correct one), each starting its own line; or an array of the choices' content.",
-      ),
-      (
-        name: "correct",
-        type: "int | array | none",
-        default: "none",
-        doc: "The index of the correct choice, or an array of indices for several, counted as Typst counts an array's: from 0 at the first choice, or from -1 at the last. Adds to any choices marked with `+`.",
-      ),
-      (
-        name: "bubble",
-        type: "\"circle\" | \"square\"",
-        default: "\"circle\"",
-        doc: "The shape of the bubbles: round for \"select one\", square for \"select all that apply\". Typst's own `circle` and `square` work too, as do `bubble` and `square-bubble`.",
-      ),
-      (
-        name: "inline",
-        type: "bool",
-        default: "false",
-        doc: "Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is kept whole: one longer than a line starts a line of its own, with its further lines hanging under its content. Cannot be combined with `columns`.",
-      ),
-      (
-        name: "columns",
-        type: "int | none",
-        default: "none",
-        doc: "Set the choices in this many equal columns, filled across each row in turn, rather than one per line. Cannot be combined with `inline`.",
-      ),
-      (
-        name: "gap",
-        type: "auto | length | fraction",
-        default: "auto",
-        doc: "The space between two choices. One per line, it is the space between one choice and the next below it, and `auto` sets them as close as the lines of a paragraph. Side by side, inline or in `columns`, it is the space between them, and `auto` is "
-          + repr(_SIDE_BY_SIDE_GAP)
-          + "; there, a fraction (`1fr`) spreads the choices across the line.",
-      ),
-      (
-        name: "enumerate",
-        type: "auto | bool | str | function",
-        default: "auto",
-        doc: "Labels inside the bubbles: `false` for none, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`\"a\"`, `\"1\"`, `\"(i)\"`). `auto` follows `config`'s `choices-enumerate`, which is `false` unless set. On the answer key, a correct labelled bubble is filled in like any other, with its label, in the solution color, in place of the check mark, and a thin ring inside its outline.",
-      ),
-    ),
-  ),
-)
+/// API documentation for this module's exports, consumed by docs/api.typ
+/// (keyed by export name).
+#let DOCS = (choices: _CHOICES)

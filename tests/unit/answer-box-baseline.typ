@@ -5,7 +5,7 @@
 // instead and ended up dropped a half-box-height below the text. An empty
 // box was unaffected, so the two must agree.
 #import "/src/lib.typ": *
-#import "/src/scan.typ": starts_inline
+#import "/src/scan.typ": leading_inset, starts_inline
 
 #set page(paper: "us-letter", margin: 1in)
 #show: e.prepare()
@@ -57,3 +57,32 @@ Solution: #here(<base-c>)#answer-box(height: 1in, width: 1in)[
   starts_inline(answer-box(height: 1in, width: 1in)[]) == false,
   message: "a fixed-height inline answer box is classified as text-like",
 )
+
+// A full-width answer box sized to its content stands on a line of its own,
+// however many lines it holds, so a gutter label goes at its top, moved down
+// by the box's inset to its first line of text: not riding the baseline of
+// its last line.
+#assert(
+  starts_inline(answer-box(width: 100%)[One line.]) == false,
+  message: "a full-width answer box is classified as text-like",
+)
+#assert(leading_inset(answer-box(width: 100%)[One line.]) == 5pt)
+#assert(leading_inset([ #metadata(none) text]) == 0pt)
+#assert(leading_inset([ ]) == none)
+#{
+  // The label marks where it is drawn, as does the first line of each body.
+  show: e.set_(config, division-numbering: (n => [#metadata(n)<gutter>#n.],))
+  exam(questions: [
+    #question[A#metadata(1)<first> question of one line.]
+    #question[#answer-box(width: 100%)[A#metadata(2)<first> box of #linebreak() two lines.]]
+  ])
+}
+#context {
+  // The label is as far from the first line in the box as from a line of
+  // plain text.
+  let (plain, boxed) = (1, 2).map(n => {
+    let at(lbl) = query(lbl).find(m => m.value == n).location().position().y
+    at(<gutter>) - at(<first>)
+  })
+  assert(calc.abs((plain - boxed).pt()) < 0.5, message: "plain " + repr(plain) + ", boxed " + repr(boxed))
+}

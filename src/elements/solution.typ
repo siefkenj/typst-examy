@@ -2,6 +2,7 @@
 #import "../constants.typ": SHOW_SOLUTIONS_OVERRIDE
 #import "../config.typ": config, solution_colors
 #import "../scan.typ": is_multi_par
+#import "../signature.typ": declare_function, define
 
 /// Whether or not solutions should be shown given the current configuration and command-line overrides.
 #let show_solutions(get) = {
@@ -14,24 +15,29 @@
   }
 }
 
-/// API documentation for this module's exports, consumed by
-/// docs/generate-api.typ (keyed by export name). Kept next to the
-/// signatures — update both together. `solution` needs no argument docs
-/// here: elembic elements are introspected.
-#let DOCS = (
-  solution: (kind: "element"),
-  "show-solutions": (
-    desc: "Returns the effective show-solutions setting: the `--input show-solutions=..` command-line override if given, otherwise `config`'s value. Use it to conditionally render content that `#solution[..]` cannot wrap (e.g. one curve of a plot).",
-    args: (
-      (
-        name: "get",
-        type: "function",
-        required: true,
-        doc: "The accessor provided by `e.get(get => ..)`.",
-      ),
+#let _SHOW_SOLUTIONS = declare_function(
+  "show-solutions",
+  doc: "Returns the effective show-solutions setting: the `--input show-solutions=..` command-line override if given, otherwise `config`'s value. Use it to conditionally render content that `#solution[..]` cannot wrap (e.g. one curve of a plot).",
+  fields: (
+    e.field(
+      "get",
+      function,
+      doc: "The accessor provided by `e.get(get => ..)`.",
+      required: true,
+      meta: (hint: "call it inside `e.get(get => ..)` and pass it `get`"),
     ),
   ),
 )
+
+/// `show_solutions` as exported, with its argument checked. The package
+/// itself calls `show_solutions`, which is called for every solution and
+/// bubble, directly.
+#let show_solutions_checked = define(_SHOW_SOLUTIONS, it => show_solutions(it.get))
+
+/// API documentation for this module's exports, consumed by docs/api.typ
+/// (keyed by export name). `solution` needs no argument docs here: elembic
+/// elements are introspected.
+#let DOCS = (solution: (kind: "element"), "show-solutions": _SHOW_SOLUTIONS)
 
 /// An inline solution that makes no line taller: its text highlighted where it
 /// stands, so it flows and wraps with the words around it, rather than boxed.
@@ -96,6 +102,23 @@
   box(width: width, fill: colors.background, inset: (x: 3pt), outset: (y: 3pt), text(fill: colors.color, body))
 }
 
+/// A solution taking no height (see `answer-box`) with an `otherwise`,
+/// drawn on the key in the space its `otherwise` takes on the exam: the
+/// `otherwise` hidden, and the solution placed over it, so that it takes no
+/// room of its own. A paragraph of its own (the `otherwise` runs over
+/// several, or holds blocks) is placed at the top of that space; one within
+/// a line sits on the bottom of it, as an answer written on a blank does.
+#let _over_otherwise(it, colors) = {
+  let w = if it.width == none { auto } else { it.width }
+  if is_multi_par(it.otherwise) {
+    let body = text(fill: colors.color, it.body)
+    let drawn = if it.boxed { block(width: if w == auto { 100% } else { w }, fill: colors.background, inset: 3pt, body) } else { body }
+    block(width: 100%, hide(it.otherwise) + place(top + left, drawn))
+  } else {
+    box(hide(it.otherwise) + place(bottom + left, _in_line_no_height(it, it.body, colors, w)))
+  }
+}
+
 /// (Conditionally) show a solution for a question/part/subpart.
 #let solution = e.element.declare(
   "solution",
@@ -103,8 +126,15 @@
   doc: "Declare a solution to a question, part, or subpart; this is only rendered if the config option to show solutions is enabled.",
   display: it => {
     e.get(get => {
-      if show_solutions(get) != false {
-        let colors = solution_colors(get)
+      if show_solutions(get) == false { return it.otherwise }
+      let colors = solution_colors(get)
+      // On the key, a solution taking no height that has something in its
+      // place on the exam is drawn over that, hidden, so the key lays out
+      // exactly like the exam.
+      if it._no-height and it.otherwise != none {
+        return _over_otherwise(it, colors)
+      }
+      {
         show: it_ => {
           // `width: none` means "not chosen": the context decides. `_fill-width`
           // is how an enclosing element (`answer-box`) asks for the full width,
@@ -148,9 +178,15 @@
       doc: "Width of the solution box. `auto` shrink-wraps it to its content; `none` lets the context choose (`answer-box` fills its width for a solution standing alone in a paragraph, otherwise it shrink-wraps).",
       default: none,
     ),
+    e.field(
+      "otherwise",
+      e.types.option(content),
+      doc: "What is shown in the solution's place when solutions are not: a blank to fill in, some lines to write on. In an `answer-box` with no `height`, the answer key draws the solution over it, in the space it takes, so the key lays out exactly like the exam; elsewhere, the solution replaces it.",
+      default: none,
+    ),
     // Internal: how `answer-box` asks a solution standing alone in a paragraph
     // to fill its width. Kept off the public API (`internal` is what
-    // docs/generate-api.typ filters on) because it is a channel between the
+    // docs/api.typ filters on) because it is a channel between the
     // two elements, not a knob for documents: authors choose a width with
     // `width`, which takes precedence over this.
     e.field(

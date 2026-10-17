@@ -18,6 +18,7 @@ jobs:
           runCmd: |
             set -eu
             ./tests/run.sh
+            ./make_site.sh
             typst compile --root . -f pdf examples/final-exam.typ final-exam.pdf
             typst compile --root . -f pdf examples/quiz.typ quiz.pdf
             typst compile --root . -f pdf --input show-solutions=true examples/quiz.typ quiz-solutions.pdf

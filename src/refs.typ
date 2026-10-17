@@ -9,15 +9,18 @@
 
 #import "prelude.typ": *
 
-/// Numbering patterns per level: questions, parts, subparts.
-#let LABELLING = ("1.", "(a)", "i.")
+#import "config.typ": DEFAULT_DIVISION_NUMBERING
+
+/// The numbering pattern (or function) of a 0-based level index.
+/// `numberings` is `config`'s `division-numbering`.
+#let level_numbering(numberings, level_index) = numberings.at(level_index, default: "1.")
 
 /// The number as displayed in the document gutter (trailing dot kept).
 /// `level` is 1-based; `number` is a 0-based int, content, or none.
-#let display_number(level, number) = {
+#let display_number(level, number, numberings: DEFAULT_DIVISION_NUMBERING) = {
   if number == none { return none }
   if type(number) == int {
-    numbering(LABELLING.at(level - 1, default: "1."), number + 1)
+    numbering(level_numbering(numberings, level - 1), number + 1)
   } else {
     [#number]
   }
@@ -26,9 +29,9 @@
 /// One address component as displayed in a reference (trailing "." stripped,
 /// so a question+part reference reads "1 (a)", not "1. (a)").
 /// `level_index` is 0-based.
-#let format_component(level_index, number) = {
+#let format_component(level_index, number, numberings: DEFAULT_DIVISION_NUMBERING) = {
   if type(number) == int {
-    let s = numbering(LABELLING.at(level_index, default: "1."), number + 1)
+    let s = numbering(level_numbering(numberings, level_index), number + 1)
     if type(s) == str and s.ends-with(".") { s = s.slice(0, -1) }
     [#s]
   } else if number == none {
@@ -51,9 +54,9 @@
 }
 
 /// Render the reference body for a target address as seen from `current`.
-#let reference_body(target, current) = {
+#let reference_body(target, current, numberings: DEFAULT_DIVISION_NUMBERING) = {
   relative_components(target, current)
-    .map(((lvl, n)) => format_component(lvl, n))
+    .map(((lvl, n)) => format_component(lvl, n, numberings: numberings))
     .join(sym.space.thin)
 }
 
@@ -79,7 +82,7 @@
       let target = it.full_address
       context {
         let current = _current_address.get()
-        let body = reference_body(target, current)
+        let body = reference_body(target, current, numberings: it.numberings)
         if it.label_name != none {
           link(it.label_name, body)
         } else {
@@ -98,6 +101,13 @@
       "full_address",
       e.types.array(e.types.any),
       doc: "The full address of the division, root first, e.g. (1, 0) for question 2 part a. 0-based ints for numbered levels; content for custom numbers.",
+    ),
+    e.field(
+      "numberings",
+      e.types.array(e.types.any),
+      doc: "The `division-numbering` the division is drawn with, which its references are numbered with too.",
+      default: DEFAULT_DIVISION_NUMBERING,
+      folds: false,
     ),
   ),
 )

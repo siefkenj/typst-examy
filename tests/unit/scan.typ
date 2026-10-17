@@ -1,124 +1,166 @@
+// The content scans the exam pipeline runs before layout (src/scan.typ):
+// what is a break, what height a chunk asks for, what a scan finds (markers,
+// breaks, fr heights), how a body begins, and what counts as whitespace.
+//
+// Each case is written as markup source, evaluated for the check, so that
+// the visual record at the end can show it as written.
 #import "/src/scan.typ": (
   extract_height, is_break, is_whitespace_content, scan, starts_inline,
   trim_leading_space,
 )
 #import "/src/markers.typ": begin_marker, end_marker, height_hint
 #import "/src/divisions.typ": part, question
+#import "/src/lib.typ": e
+#import "/tests/record.typ": cases, rule
 
-// --- is_break ---
-#assert(is_break(pagebreak()))
-#assert(is_break(colbreak()))
-#assert(not is_break([hello]))
+#set page(width: 6.5in, height: auto, margin: .5in)
+#show: e.prepare()
+
+#let SCOPE = (
+  begin_marker: begin_marker,
+  end_marker: end_marker,
+  height_hint: height_hint,
+  question: question,
+  part: part,
+)
+#let ev(src) = eval(src, mode: "markup", scope: SCOPE)
+
+/// Check `f` on each `(source, expected)` case, and return the cases for the
+/// record.
+#let check(name, f, cases) = {
+  for (src, expected) in cases {
+    let got = f(ev(src))
+    assert(got == expected, message: name + "(" + src + "): expected " + repr(expected) + ", got " + repr(got))
+  }
+  cases
+}
+
+#let IS_BREAK = check("is_break", is_break, (
+  ("#pagebreak()", true),
+  ("#colbreak()", true),
+  ("hello", false),
+))
+// A string is never a break either.
 #assert(not is_break("hello"))
 
-// --- extract_height ---
-#assert(extract_height(v(2fr)) == 2fr)
-#assert(extract_height(box(height: 3cm)[x]) == 3cm)
-#assert(extract_height(block(height: 4cm)) == 4cm)
-#assert(extract_height(box[x]) == none)
-#assert(extract_height(height_hint(1fr)) == 1fr)
-#assert(extract_height([plain]) == none)
+#let EXTRACT_HEIGHT = check("extract_height", extract_height, (
+  ("#v(2fr)", 2fr),
+  ("#box(height: 3cm)[x]", 3cm),
+  ("#block(height: 4cm)", 4cm),
+  ("#box[x]", none),
+  ("#height_hint(1fr)", 1fr),
+  ("plain", none),
+))
 
-// --- scan: markers ---
-#assert(scan([plain text]).has_marker == false)
-#assert(scan(begin_marker((name: "part"))).has_marker == true)
-#assert(scan(begin_marker((name: "part"))).marker_names == ("part",))
-#assert(scan(end_marker()).has_marker == true)
-// marker nested in a sequence
-#assert(scan([a #begin_marker((name: "question")) b]).has_marker == true)
-// marker nested inside a block
-#assert(scan(block[#begin_marker((name: "part"))]).has_marker == true)
-// full division emits found markers
-#assert(scan([#question[hi]]).marker_names == ("question",))
-// marker inside styled content is found
-#assert(
-  scan({
-    set text(fill: red)
-    question[hi]
-  }).has_marker
-    == true,
-)
+#let SCAN_MARKERS = check("scan(..).has_marker", c => scan(c).has_marker, (
+  ("plain text", false),
+  ("#begin_marker((name: \"part\"))", true),
+  ("#end_marker()", true),
+  // A marker nested in a sequence, or inside a block.
+  ("a #begin_marker((name: \"question\")) b", true),
+  ("#block[#begin_marker((name: \"part\"))]", true),
+  // A marker inside styled content.
+  ("#set text(fill: red)\n#question[hi]", true),
+))
+#let SCAN_NAMES = check("scan(..).marker_names", c => scan(c).marker_names, (
+  ("#begin_marker((name: \"part\"))", ("part",)),
+  // A whole division reports the markers it emits.
+  ("#question[hi]", ("question",)),
+))
 
-// --- scan: breaks ---
-#assert(scan([a #pagebreak() b]).has_break == true)
-#assert(scan([a b]).has_break == false)
-#assert(scan(block[#colbreak()]).has_break == true)
+#let SCAN_BREAKS = check("scan(..).has_break", c => scan(c).has_break, (
+  ("a #pagebreak() b", true),
+  ("a b", false),
+  ("#block[#colbreak()]", true),
+))
 
-// --- scan: fr heights ---
-#assert(scan([#v(1fr)]).fr == 1fr)
-#assert(scan([#v(1fr) #v(2fr)]).fr == 3fr)
-#assert(scan([#block(height: 1fr)[x]]).fr == 1fr)
-#assert(scan([#height_hint(2fr) some box]).fr == 2fr)
-// fr inside an explicitly-sized container does not propagate
-#assert(scan([#block(height: 2cm)[#v(1fr)]]).fr == none)
-// ...but the sized container's own fr height counts
-#assert(scan([#block(height: 1fr)[#v(1fr)]]).fr == 1fr)
-// non-fr heights don't contribute
-#assert(scan([#v(1cm)]).fr == none)
+#let SCAN_FR = check("scan(..).fr", c => scan(c).fr, (
+  ("#v(1fr)", 1fr),
+  ("#v(1fr) #v(2fr)", 3fr),
+  ("#block(height: 1fr)[x]", 1fr),
+  ("#height_hint(2fr) some box", 2fr),
+  // An fr inside an explicitly-sized container does not propagate...
+  ("#block(height: 2cm)[#v(1fr)]", none),
+  // ...but the sized container's own fr height counts.
+  ("#block(height: 1fr)[#v(1fr)]", 1fr),
+  // Non-fr heights don't contribute.
+  ("#v(1cm)", none),
+))
 
-// --- starts_inline ---
-// inline starts
-#assert(starts_inline([plain text]) == true)
-#assert(starts_inline([#box[x] more]) == true)
-#assert(starts_inline([*bold* start]) == true)
-#assert(starts_inline([$x + y$ inline math]) == true)
-#assert(starts_inline([#link("https://x.test")[a link]]) == true)
-// leading space is transparent; the text after decides
-#assert(starts_inline([ text after a space]) == true)
-// an explicitly-sized box fills its line past the baseline: not text-like
-#assert(starts_inline([#box(height: 2cm, width: 100%)[] text]) == false)
-// block-level starts
-#assert(starts_inline(block[a block]) == false)
-#assert(starts_inline([#block[a block] then text]) == false)
-#assert(starts_inline([$ x + y $]) == false) // block equation
-#assert(starts_inline([
-  + an enum item
-]) == false)
-#assert(starts_inline(figure([x])) == false)
-// a leading parbreak means the first text is a fresh paragraph
-#assert(starts_inline([#parbreak()text]) == false)
-// invisible content is transparent
-#assert(starts_inline([ ]) == none)
-#assert(starts_inline([#metadata("x")]) == none)
-#assert(starts_inline([#metadata("x") text]) == true)
-// styled wrappers are transparent
-#assert(
-  starts_inline({
-    set text(fill: red)
-    [styled text]
-  })
-    == true,
-)
+#let STARTS_INLINE = check("starts_inline", starts_inline, (
+  // Inline starts.
+  ("plain text", true),
+  ("#box[x] more", true),
+  ("*bold* start", true),
+  ("$x + y$ inline math", true),
+  ("#link(\"https://x.test\")[a link]", true),
+  // A leading space is transparent; the text after decides.
+  (" text after a space", true),
+  // An explicitly-sized box fills its line past the baseline: not text-like.
+  ("#box(height: 2cm, width: 100%)[] text", false),
+  // Block-level starts.
+  ("#block[a block]", false),
+  ("#block[a block] then text", false),
+  ("$ x + y $", false),
+  ("+ an enum item", false),
+  ("#figure([x])", false),
+  // A leading parbreak means the first text is a fresh paragraph.
+  ("#parbreak()text", false),
+  // Invisible content is transparent.
+  (" ", none),
+  ("#metadata(\"x\")", none),
+  ("#metadata(\"x\") text", true),
+  // Styled wrappers are transparent.
+  ("#set text(fill: red)\nstyled text", true),
+))
 
-// --- trim_leading_space ---
-// a body written on its own markup line loses its leading space
-#assert(trim_leading_space([ leading space]) == [leading space])
-// (the trailing space is untouched — only the leading one matters)
-#assert(trim_leading_space([
-  own line body
-]) == [own line body ])
-// leading parbreaks are stripped too
-#assert(trim_leading_space([#parbreak()after break]) == [after break])
-// interior spaces untouched
-#assert(trim_leading_space([a b]) == [a b])
-// pure whitespace trims to nothing
-#assert(trim_leading_space([ ]) == none)
-// styled wrappers are preserved around the trimmed content
+// --- trim_leading_space: each case's result as Typst prints it ---
+#let TRIM = check("trim_leading_space", c => repr(trim_leading_space(c)), (
+  // A body written on its own markup line loses its leading space (the
+  // trailing space is untouched: only the leading one matters).
+  (" leading space", repr([leading space])),
+  ("\n  own line body\n", repr([own line body ])),
+  // Leading parbreaks are stripped too.
+  ("#parbreak()after break", repr([after break])),
+  // Interior spaces are untouched.
+  ("a b", repr([a b])),
+  // Pure whitespace trims to nothing.
+  (" ", repr(none)),
+))
+// Styled wrappers are preserved around the trimmed content.
 #{
-  let styled = {
-    set text(fill: red)
-    [ padded]
-  }
-  let trimmed = trim_leading_space(styled)
+  let trimmed = trim_leading_space(ev("#set text(fill: red)\n padded"))
   assert(repr(trimmed.func()) == "styled")
 }
 
-// --- is_whitespace_content ---
-#assert(is_whitespace_content([ ]))
-#assert(is_whitespace_content(parbreak()))
-#assert(is_whitespace_content([
-  #parbreak()
-]))
-#assert(is_whitespace_content([#metadata("x")]))
-#assert(not is_whitespace_content([hi]))
-#assert(not is_whitespace_content([ x ]))
+#let WHITESPACE = check("is_whitespace_content", is_whitespace_content, (
+  (" ", true),
+  ("#parbreak()", true),
+  ("\n  #parbreak()\n", true),
+  ("#metadata(\"x\")", true),
+  ("hi", false),
+  (" x ", false),
+))
+
+// A visual record of each case above: the source, and what came of it.
+#let record(desc, f, rows, fmt: repr) = {
+  rule(desc)
+  cases(
+    ([Source], [Expected], [Got]),
+    ..rows.map(((src, expected)) => (
+      // Line breaks shown as ⏎, and a source of only spaces as ␣.
+      raw(if src.trim() == "" { src.replace(" ", "␣").replace("\n", "⏎") } else { src.replace("\n", "⏎") }, lang: "typ"),
+      raw(fmt(expected)),
+      raw(fmt(f(ev(src)))),
+    )),
+  )
+}
+#record([`is_break`: a page or column break.], is_break, IS_BREAK)
+#record([`extract_height`: the height a chunk asks for.], extract_height, EXTRACT_HEIGHT)
+#record([`scan(..).has_marker`: a division's marker anywhere inside.], c => scan(c).has_marker, SCAN_MARKERS)
+#record([`scan(..).marker_names`: which markers.], c => scan(c).marker_names, SCAN_NAMES)
+#record([`scan(..).has_break`: a break anywhere inside.], c => scan(c).has_break, SCAN_BREAKS)
+#record([`scan(..).fr`: the fr height a chunk negotiates with.], c => scan(c).fr, SCAN_FR)
+#record([`starts_inline`: whether a body begins inline (`none`: invisible).], starts_inline, STARTS_INLINE)
+#record([`trim_leading_space`: the body with its leading space removed.], c => repr(trim_leading_space(c)), TRIM, fmt: x => x)
+#record([`is_whitespace_content`: nothing visible.], is_whitespace_content, WHITESPACE)

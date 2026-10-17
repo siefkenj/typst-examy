@@ -14,7 +14,7 @@
   ),
 )
 
-/// API documentation for `presets`, consumed by docs/generate-api.typ
+/// API documentation for `presets`, consumed by docs/api.typ
 /// (keyed by export name).
 #let DOCS = (
   presets: (
