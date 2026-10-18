@@ -5,7 +5,11 @@ near the top of the document, after `#show: e.prepare()`:
 
 ```typ
 #show: e.prepare()
-#show: e.set_(config, show-solutions: false, points-position: "margin-right")
+#show: e.set_(
+  config,
+  show-solutions: false,
+  points-position: "margin-right",
+)
 ```
 
 Like a `set` rule, a setting applies from where it is made to the end of the
@@ -43,7 +47,11 @@ own title or page header.
 
 #example(
   ```typ
-  #show: e.set_(config, exam-name: [MAT 101 Quiz 3], term: [Fall 2026])
+  #show: e.set_(
+    config,
+    exam-name: [MAT 101 Quiz 3],
+    term: [Fall 2026],
+  )
 
   #e.get(get => [*#get(config).exam-name*, #get(config).term])
   ```,

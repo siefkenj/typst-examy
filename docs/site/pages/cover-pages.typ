@@ -85,9 +85,10 @@ overridden by passing arguments to `maketitle()`, e.g.
 ))
 
 #underline[_Instructions:_]
-- Fill out your name and student information at the top of this page.
-- Answer each question in the box provided; work outside the boxes will
-  not be graded.
+- Fill out your name and student information at the top of this
+  page.
+- Answer each question in the box provided; work outside the
+  boxes will not be graded.
 - No calculators or other aids are permitted.
 
 #v(1fr)

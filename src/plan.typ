@@ -12,6 +12,11 @@
 /// - (kind: "verbatim", item: idx)            — top-level chunk, rendered as-is
 /// - (kind: "break", target, weak)            — real page/column break
 /// - (kind: "nested", root: idx)              — render subtree as nested blocks
+/// - (kind: "frame", division: idx, labels: (idx, ..))
+///                                            — a division given a `height`:
+///   one block of that height, its subtree planned and rendered inside it
+///   (see `frame_plan`). `labels` are ancestors whose number shares its
+///   first line, as `label_divisions` below.
 /// - (kind: "segment", division: idx, first: bool, indent: length,
 ///    label_divisions: (idx, ..), items: (idx, ..), fr: fraction | none,
 ///    has_inner_break: bool, sticky: bool, hoisted: bool)
@@ -36,10 +41,16 @@
   total
 }
 
-/// Whether the subtree rooted at `idx` must be split into peer segments.
+/// Whether a division is given a `height`, and so is laid out as one block.
+#let has_height(it) = it.kind == "division" and it.fields.height != auto
+
+/// Whether the subtree rooted at `idx` must be split into peer segments. A
+/// division with a `height` inside it must be laid out as a peer of its own
+/// (see `plan_split`); it is never asked about itself, but about its
+/// children (see `frame_plan`).
 #let needs_split(items, idx) = {
   let it = items.at(idx)
-  if it.kind == "break" { return true }
+  if it.kind == "break" or has_height(it) { return true }
   if it.kind == "chunk" {
     return it.has_inner_break or it.fr != none
   }
@@ -47,13 +58,16 @@
 }
 
 /// Depth-first event list for a subtree: open/close for divisions,
-/// chunk/break for leaves.
-#let _events(items, idx) = {
+/// chunk/break for leaves, and frame for a division inside it given a
+/// `height`, which is laid out whole.
+#let _events(items, idx, top: true) = {
   let it = items.at(idx)
-  if it.kind == "division" {
+  if not top and has_height(it) {
+    ((kind: "frame", item: idx),)
+  } else if it.kind == "division" {
     (
       ((kind: "open", item: idx),)
-        + it.children.map(c => _events(items, c)).flatten()
+        + it.children.map(c => _events(items, c, top: false)).flatten()
         + ((kind: "close", item: idx),)
     )
   } else if it.kind == "chunk" {
@@ -169,6 +183,15 @@
         (instructions, pending_labels) = flush(instructions, pending_labels, current)
         current = new_segment(stack.at(-1), false)
       }
+    } else if ev.kind == "frame" {
+      // A division with a `height`: a peer of its own, laid out whole. Its
+      // parent's text before it ends here; a parent with no text before it
+      // has its number on the frame's first line, as with any part.
+      let force = current.first and items.at(current.division).badge_at_end
+      (instructions, pending_labels) = flush(instructions, pending_labels, current, force: force)
+      instructions.push((kind: "frame", division: ev.item, labels: pending_labels))
+      pending_labels = ()
+      current = new_segment(stack.at(-1), false)
     } else {
       // break
       (instructions, pending_labels) = flush(instructions, pending_labels, current, force: true)
@@ -205,6 +228,8 @@
       instructions.push((kind: "verbatim", item: i))
     } else if it.kind == "break" {
       instructions.push((kind: "break", target: it.target, weak: it.weak))
+    } else if has_height(it) {
+      instructions.push((kind: "frame", division: i, labels: ()))
     } else if needs_split(items, i) {
       instructions += plan_split(items, i)
     } else {
@@ -212,4 +237,41 @@
     }
   }
   instructions
+}
+
+/// The plan of what goes inside a division given a `height` (see the
+/// `frame` instruction): the division as nested blocks, when it is a
+/// question with nothing inside it that needs splitting, and otherwise its
+/// peer segments (at the indents they would have on the page), so that `fr`
+/// answer boxes inside it share the block's height. `labels`, ancestors
+/// whose number shares the frame's first line, go with what it starts with:
+/// its first segment, or a frame it starts with (passed on down), or, if it
+/// holds nothing, a segment of their own.
+#let frame_plan(items, idx, labels: ()) = {
+  let it = items.at(idx)
+  if it.parent == none and not it.children.any(c => needs_split(items, c)) {
+    return ((kind: "nested", root: idx),)
+  }
+  let inner = plan_split(items, idx)
+  if labels.len() == 0 { return inner }
+  let first = inner.at(0, default: none)
+  if first != none and first.kind == "segment" {
+    inner.at(0).label_divisions = labels + first.label_divisions
+  } else if first != none and first.kind == "frame" {
+    inner.at(0).labels = labels + first.labels
+  } else {
+    inner.insert(0, (
+      kind: "segment",
+      division: labels.at(-1),
+      first: true,
+      indent: cumulative_indent(items, labels.at(-1)),
+      label_divisions: labels,
+      items: (),
+      fr: none,
+      has_inner_break: false,
+      sticky: false,
+      hoisted: false,
+    ))
+  }
+  inner
 }

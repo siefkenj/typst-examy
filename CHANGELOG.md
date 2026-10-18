@@ -22,6 +22,12 @@
   exam and its key), `num-points`, `num-questions`, `num-bonus-points`, and
   `points-table` showed the last exam's numbers everywhere. Each is now about
   the exam it is in, else the next one, else the last.
+- `question`, `part`, and `subpart` take a `height` (a length, or `1fr` for
+  a share of what is left of the page): the division is laid out as one
+  block of that height, in which `fr` answer boxes share what its text
+  leaves. A `#pagebreak()` inside such a division is an error. An answer box
+  (`stroke: none` for no border) is still the preferred way to give a
+  question room to write in.
 - Fixed: a `#show: e.set_(..)` rule inside a question or part hid the parts
   after it from the exam: they were drawn as plain text, unnumbered. The
   rule now applies to the rest of its division, parts included.

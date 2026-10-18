@@ -14,7 +14,8 @@ when enabled, so the same source produces both the exam and the answer key:
   ]
   #question(points: 1)[
     True or false: every continuous function is differentiable.
-    #solution[False: $|x|$ is continuous but not differentiable at $0$.]
+    #solution[False: $|x|$ is continuous but not
+      differentiable at $0$.]
   ]
   ```,
 )
@@ -33,9 +34,12 @@ used in build scripts that must produce a specific variant regardless of what
 the source file currently configures.
 
 ```bash
-typst compile exam.typ                                 # whatever the document configures
-typst compile --input show-solutions=false exam.typ    # student version (force solutions off)
-typst compile --input show-solutions=true exam.typ     # answer key (force solutions on)
+# whatever the document configures
+typst compile exam.typ
+# student version (force solutions off)
+typst compile --input show-solutions=false exam.typ
+# answer key (force solutions on)
+typst compile --input show-solutions=true exam.typ
 ```
 
 Typst's (experimental) _bundle_ export can also emit both PDFs from a single
@@ -73,17 +77,23 @@ it.
 
 #example(
   ```typ
-  #let lines = block(width: 100%, for _ in range(3) { v(1.6em); line(length: 100%) })
+  #let lines = block(width: 100%, for _ in range(3) {
+    v(1.6em)
+    line(length: 100%)
+  })
 
   #question[
     Differentiate $f(x) = x^2$.
     #answer-box(width: 100%, stroke: none)[
-      #solution(otherwise: lines)[By the power rule, $f'(x) = 2x$.]
+      #solution(otherwise: lines)[By the power rule,
+        $f'(x) = 2x$.]
     ]
   ]
   #question[
     #answer-box(width: 100%, stroke: none)[
-      The capital of Canada is #solution(otherwise: box(width: 3cm, stroke: (bottom: .5pt)))[Ottawa].
+      The capital of Canada is #solution(
+        otherwise: box(width: 3cm, stroke: (bottom: .5pt)),
+      )[Ottawa].
     ]
   ]
   ```,
@@ -108,9 +118,19 @@ from the set color.
 )
 
 ```typ
-#show: e.set_(config, solution-color: maroon)                        // highlight follows
-#show: e.set_(config, solution-background-color: olive.lighten(90%)) // text follows
-#show: e.set_(config, solution-color: maroon, solution-background-color: luma(93%))
+// The highlight follows the text color:
+#show: e.set_(config, solution-color: maroon)
+// The text color follows the highlight:
+#show: e.set_(
+  config,
+  solution-background-color: olive.lighten(90%),
+)
+// Both set:
+#show: e.set_(
+  config,
+  solution-color: maroon,
+  solution-background-color: luma(93%),
+)
 ```
 
 == An answer key that differs from the exam
@@ -129,11 +149,16 @@ solution.
     #question(points: 2)[
       Compute $integral_0^1 2x dif x$.
       // Room to write on the exam; on the key, just the answer.
-      #answer-box(width: 100%, height: solutions-only(auto, otherwise: 2cm))[
+      #answer-box(
+        width: 100%,
+        height: solutions-only(auto, otherwise: 2cm),
+      )[
         #solution[$lr(x^2 |)_0^1 = 1$]
       ]
       // A note to the grader, on the key only.
-      #solutions-only(part(number: none)[_Award 1 point for the antiderivative._])
+      #solutions-only(part(number: none)[
+        _Award 1 point for the antiderivative._
+      ])
     ]
     #question(points: 1)[Is $f(x) = x^2$ even?]
   ])
@@ -154,11 +179,16 @@ nothing on the exam, wherever it is used in the questions, code included.
   ```typ
   #exam(questions: solutions-only => [
     #question[
-      Draw the line through the box's center, perpendicular to the one shown.
+      Draw the line through the box's center, perpendicular to
+      the one shown.
       #let s = 2.5cm
       #box(width: s, height: s, stroke: .5pt, {
         place(line(start: (0pt, s), end: (s, 0pt), stroke: gray))
-        solutions-only(place(line(start: (0pt, 0pt), end: (s, s), stroke: 1.5pt + blue)))
+        solutions-only(place(line(
+          start: (0pt, 0pt),
+          end: (s, s),
+          stroke: 1.5pt + blue,
+        )))
       })
     ]
   ])
@@ -179,7 +209,11 @@ effective setting, command-line override included, inside `e.get`.
     box(width: s, height: s, stroke: .5pt, {
       place(line(start: (0pt, s), end: (s, 0pt), stroke: gray))
       if should-show-solution {
-        place(line(start: (0pt, 0pt), end: (s, s), stroke: 1.5pt + blue))
+        place(line(
+          start: (0pt, 0pt),
+          end: (s, s),
+          stroke: 1.5pt + blue,
+        ))
       }
     })
   })

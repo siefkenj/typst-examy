@@ -43,6 +43,12 @@
     default: auto,
   ),
   e.field(
+    "height",
+    e.types.union(auto, length, fraction),
+    doc: "How tall the division is, its parts included. `auto` (the default) is as tall as what it holds. A length, or a fraction such as `1fr` (a share of what is left of the page, as an answer box's), makes it one block of that height: `fr` answer boxes inside it share what its own text leaves of it, and the exam lays it out whole. Being one block, it cannot break across pages: a `#pagebreak()` inside it is an error. Content taller than the `height` runs out of the block, over what comes after it.\n\nTo give a question room to write in, prefer an answer box: `#answer-box(width: 100%, height: 3cm)[]`, or with `stroke: none` for blank space with no border.",
+    default: auto,
+  ),
+  e.field(
     "indent",
     length,
     doc: "Indentation of the body relative to the parent.",
@@ -82,6 +88,7 @@
     intent: it.intent,
     rubric: it.rubric,
     number: it.number,
+    height: it.height,
     indent: it.indent,
     label: it.label,
     name: spec.name,

@@ -22,9 +22,12 @@
 #let MANUAL_PDF = "examy-manual.pdf"
 
 /// The guide's pages and the reference's index, in the order of the sidebar:
-/// `(path, title, file)`, `file` relative to site.typ.
+/// `(path, title, file)`, `file` relative to site.typ, and optionally
+/// `heading`, what the page's heading on the site shows if not its title.
 #let PAGES = (
-  (path: "index.html", title: "Getting started", file: "pages/index.typ"),
+  // Headed "examy", as the README is, so that it opens with the README's
+  // first paragraph.
+  (path: "index.html", title: "Getting started", file: "pages/index.typ", heading: [examy]),
   (path: "questions.html", title: "Questions and numbering", file: "pages/questions.typ"),
   (path: "points.html", title: "Points", file: "pages/points.typ"),
   (path: "answer-boxes.html", title: "Answer boxes", file: "pages/answer-boxes.typ"),
@@ -273,10 +276,11 @@
   let paged() = {
     block(sticky: true, raw(src, lang: "typ", block: true))
     // Laid out as on the site, not as the manual's text is, nor centered
-    // as the panel is.
+    // as the panel is: both ways, since an alignment set one way only keeps
+    // the other from around it, and the panel centers its papers vertically.
     let view(solutions) = {
       set par(justify: false)
-      set align(start)
+      set align(start + top)
       render(src, solutions: solutions, wrap: wrap, width: width, height: height, inset: inset)
     }
     block(breakable: false, _paged_output(views.map(((solutions, label)) => (view(solutions), label))))

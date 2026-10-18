@@ -3,7 +3,7 @@
 #import "prelude.typ": *
 #import "scan.typ": is_whitespace_content, leading
 #import "tokenize.typ": apply_styles
-#import "plan.typ": cumulative_indent
+#import "plan.typ": cumulative_indent, frame_plan
 #import "config.typ": DEFAULT_EXAM_OPTIONS
 #import "points.typ": conflict_warning, points_marker
 #import "refs.typ": display_number, division_anchor, update_current_address
@@ -328,14 +328,16 @@
   let ends = (:)
   let closed = (:)
   for (n, instr) in instructions.enumerate() {
-    if instr.kind != "segment" { continue }
+    // A frame (a part with a `height`) closes its parent's text, as one of
+    // its segments would.
+    if instr.kind not in ("segment", "frame") { continue }
     let owner = instr.division
     let ancestor = items.at(owner).parent
     while ancestor != none {
       closed.insert(str(ancestor), true)
       ancestor = items.at(ancestor).parent
     }
-    if str(owner) not in closed and _badge_position(items.at(owner), opts) == "end" {
+    if instr.kind == "segment" and str(owner) not in closed and _badge_position(items.at(owner), opts) == "end" {
       ends.insert(str(owner), n)
     }
   }
@@ -360,6 +362,17 @@
       render_nested(items, instr.root, opts)
     } else if instr.kind == "segment" {
       render_segment(items, instr, opts, ends: ends, n: n)
+    } else if instr.kind == "frame" {
+      // A division with a `height`: one block of that height, which cannot
+      // break across pages (see `fixed_height_break_error`), with what it
+      // holds planned and rendered inside it, so that `fr` answer boxes in
+      // it share its height.
+      let inner = frame_plan(items, instr.division, labels: instr.labels)
+      block(width: 100%, height: items.at(instr.division).fields.height, breakable: false, render(
+        items,
+        inner,
+        opts: opts,
+      ))
     } else {
       panic("examy: unknown render instruction: " + repr(instr.kind))
     }

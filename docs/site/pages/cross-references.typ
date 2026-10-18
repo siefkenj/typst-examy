@@ -9,10 +9,17 @@ uniquely identifies the question/part/subpart: question 1's part (a) reads
   ```typ
   #question[
     Let $f(x) = x^2$.
-    #part(points: 2, label: <continuity>)[Show that $f$ is continuous at $0$.]
-    #part[From a sibling part, @continuity shows as its short name.]
+    #part(points: 2, label: <continuity>)[
+      Show that $f$ is continuous at $0$.
+    ]
+    #part[
+      From a sibling part, @continuity shows as its short name.
+    ]
   ]
-  #question[From another question, @continuity shows with its question number.]
+  #question[
+    From another question, @continuity shows with its question
+    number.
+  ]
   ```,
 )
 

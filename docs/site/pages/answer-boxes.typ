@@ -12,7 +12,8 @@ boxes on one page share it in proportion.
     #answer-box(width: 100%, height: 1.5cm)[]
   ]
   #question[
-    Two boxes sharing what is left of the page, one twice the other.
+    Two boxes sharing what is left of the page, one twice the
+    other.
     #part[#answer-box(width: 100%, height: 1fr)[]]
     #part[#answer-box(width: 100%, height: 2fr)[]]
   ]
@@ -26,7 +27,8 @@ like a word, which suits a short answer in a sentence:
 #example(
   ```typ
   #question[
-    The derivative of $x^3$ at $x = 2$ is #answer-box[#solution[12]].
+    The derivative of $x^3$ at $x = 2$ is
+    #answer-box[#solution[12]].
   ]
   ```,
 )
@@ -105,7 +107,11 @@ space with no outline:
     #answer-box(width: 100%, height: 1.5cm, stroke: none)[]
   ]
   #question[
-    A rule to write on: #answer-box(width: 4cm, height: 1em, stroke: (bottom: .5pt))[]
+    A rule to write on: #answer-box(
+      width: 4cm,
+      height: 1em,
+      stroke: (bottom: .5pt),
+    )[]
   ]
   ```,
 )
@@ -120,7 +126,8 @@ the import; a box can still set its own:
 
   #question[
     Every box is a rule, #answer-box(height: 1em)[]
-    unless it says otherwise: #answer-box(height: 1em, stroke: .5pt)[]
+    unless it says otherwise:
+    #answer-box(height: 1em, stroke: .5pt)[]
   ]
   ```,
 )

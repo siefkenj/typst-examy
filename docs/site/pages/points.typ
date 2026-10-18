@@ -29,8 +29,11 @@ Related to points are:
       #part(points: 3)[Three points.]
     ]
     #question(points: 4)[
-      Bonus points are tallied separately and excluded from the totals.
-      #part(points: 2, intent: "bonus")[*Bonus:* not counted above.]
+      Bonus points are tallied separately and excluded from the
+      totals.
+      #part(points: 2, intent: "bonus")[
+        *Bonus:* not counted above.
+      ]
     ]
   ])
   ```,
@@ -57,7 +60,11 @@ the word "points" is translated:
 
 #example(
   ```typ
-  #show: e.set_(config, points-position: "end", points-format: p => [[#p]])
+  #show: e.set_(
+    config,
+    points-position: "end",
+    points-format: p => [[#p]],
+  )
 
   #question(points: 2)[What is $2 + 2$?]
   #question(points: 1)[
@@ -69,7 +76,10 @@ the word "points" is translated:
 
 #example(
   ```typ
-  #show: e.set_(config, points-format: p => [(#p #if p == 1 [Punkt] else [Punkte])])
+  #show: e.set_(
+    config,
+    points-format: p => [(#p #if p == 1 [Punkt] else [Punkte])],
+  )
 
   #question(points: 1)[Ein Punkt.]
   #question(points: 2)[Zwei Punkte.]
@@ -92,7 +102,8 @@ not counted again in #api("num-points") or the points table.
     #part(points: 2)[Two more.]
   ]
   #question(points: 4)[
-    A question with points of its own *and* on its parts has no single total.
+    A question with points of its own *and* on its parts has no
+    single total.
     #part(points: 1)[One point.]
   ]
   ```,
@@ -115,9 +126,12 @@ differently from the rest, set these in a scope around it:
   #[
     #show: e.set_(
       config,
-      points-table-direction: "vertical", // a row per question; default "horizontal"
-      points-table-score: true,           // an empty Score row for the grader
-      points-table-bonus: true,           // a Bonus row, when there are bonus points
+      // A row per question (the default is "horizontal").
+      points-table-direction: "vertical",
+      // An empty Score row for the grader.
+      points-table-score: true,
+      // A Bonus row, when there are bonus points.
+      points-table-bonus: true,
     )
     #points-table
   ]
@@ -125,7 +139,10 @@ differently from the rest, set these in a scope around it:
   #exam(questions: [
     #question(points: 2)[First.]
     #question(points: 3)[Second.]
-    #question(points: 5)[Third. #part(points: 1, intent: "bonus")[Bonus.]]
+    #question(points: 5)[
+      Third.
+      #part(points: 1, intent: "bonus")[Bonus.]
+    ]
   ])
   ```,
   width: 9cm,
@@ -149,6 +166,10 @@ without points:
 // Or one of your own:
 #set page(footer: context {
   let points = page-points()
-  if points > 0 [Page total: #box(width: 2em, stroke: (bottom: .5pt)) out of #points]
+  if points > 0 [
+    Page total:
+    #box(width: 2em, stroke: (bottom: .5pt))
+    out of #points
+  ]
 })
 ```

@@ -12,6 +12,7 @@
   intent: none,
   rubric: none,
   number: auto,
+  height: auto,
   indent: 1.5em,
   label: none,
   // Name of the constructor ("question"/"part"/...); used only for diagnostics.

@@ -15,7 +15,7 @@
 #import "site/template.typ": PAGES, REFERENCE_PAGES, entry_heading, entry_page, layout, output_css
 
 #for p in PAGES {
-  document(p.path, title: p.title, layout(p, include "site/" + p.file))
+  document(p.path, title: p.title, layout(p, include "site/" + p.file, heading: p.at("heading", default: auto)))
 }
 
 // The reference: a page per export, generated from its declaration.

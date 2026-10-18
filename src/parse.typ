@@ -181,9 +181,36 @@
   items
 }
 
+/// The error for a page or column break inside a division given a
+/// `height`, which is laid out as one block of that height and so cannot
+/// break across pages; `none` when there is no such break. A break inside
+/// other content (a `#pagebreak()` in a block, say) counts too.
+#let fixed_height_break_error(items) = {
+  for it in items {
+    if not (it.kind == "break" or it.kind == "chunk" and it.has_inner_break) { continue }
+    let cur = it.parent
+    while cur != none {
+      let d = items.at(cur)
+      if d.fields.height != auto {
+        return (
+          "examy: a page or column break inside a `"
+            + d.fields.name
+            + "` with a `height`: a division given a height is laid out as one block of that height, "
+            + "which cannot break across pages. Remove the break, or the `height`."
+        )
+      }
+      cur = d.parent
+    }
+  }
+  none
+}
+
 /// Full parse: tokens → items with numbering, addresses, and point totals.
 #let parse(tokens) = {
-  check_duplicate_labels(assign_points(assign_numbers(trim_division_bodies(
+  let items = check_duplicate_labels(assign_points(assign_numbers(trim_division_bodies(
     build_items(tokens),
   ))))
+  let error = fixed_height_break_error(items)
+  assert(error == none, message: if error == none { "" } else { error })
+  items
 }

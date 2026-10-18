@@ -43,7 +43,8 @@ The choices can also be given as an array:
 #example(
   ```typ
   #question(points: 2)[
-    Which of these functions are continuous at $x = 0$? _Select all that apply._
+    Which of these functions are continuous at $x = 0$?
+    _Select all that apply._
     #choices(bubble: "square", columns: 2)[
       + $sin x$
       - $1/x$
@@ -102,7 +103,9 @@ are the same with the shape fixed, and draw a bare bubble without content:
     )
   ]
   #question[
-    #choice[Agree] #h(1em) #choice(correct: true)[Disagree] #h(1em) #choice[Unsure]
+    #choice[Agree] #h(1em)
+    #choice(correct: true)[Disagree] #h(1em)
+    #choice[Unsure]
   ]
   ```,
   width: 10cm,
