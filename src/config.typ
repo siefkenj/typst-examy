@@ -8,7 +8,7 @@
   config: (
     kind: "element",
     show-signature: false,
-    desc: "Package options. Set them with a show rule: `#show: e.set_(config, show-solutions: false, ...)`.",
+    desc: "Global configuration of package options. Options set via elembic. For example `#show: e.set_(config, show-solutions: true)` to show solutions globally.",
   ),
 )
 

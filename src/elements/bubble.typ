@@ -458,7 +458,7 @@
 
 #let _CHOICE = declare_function(
   "choice",
-  doc: "A bubble for students to fill in, followed by the choice it labels. The two are kept whole, like a single word: a choice that wraps starts a line of its own, with its bubble on its first line and its further lines hanging under its content, not under the bubble.\n\nOn the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key.\n\nFor a list of choices, use `choices`.",
+  doc: "A round or square bubble (used for multiple-choice questions) followed by the choice it labels. The two are kept whole, like a single word: a choice that wraps starts a line of its own, with its bubble on its first line and its further lines hanging under its content, not under the bubble.\n\nOn the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key.\n\nFor a list of choices, use `choices`.",
   fields: (
     e.field(
       "body",

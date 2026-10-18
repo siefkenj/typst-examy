@@ -156,7 +156,7 @@
 
 #let _CHOICES = declare_function(
   "choices",
-  doc: "A multiple-choice answer: a bubble for each choice, filled in and checked on the answer key (when solutions are shown) for the correct ones, whose content is then set in the solution color. Mark a correct choice with `+` in place of `-`, or by its index with `correct`.",
+  doc: "An enumerate environment for multiple-choice answers. Every list item gets turned into a `#choice`, with a round/square bubble as its list marker. On the answer key (when solutions are shown), the bubbles of the correct choices are filled in and checked, and their content is set in the solution color. Mark a correct choice with `+` in place of `-`, or by its index with `correct`.",
   fields: (
     e.field(
       "body",

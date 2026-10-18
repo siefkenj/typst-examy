@@ -23,7 +23,7 @@
 /// ```
 #let _MAKETITLE = declare_function(
   "maketitle",
-  doc: "The exam title block (in the spirit of LaTeX's `\\maketitle`). Renders nothing if all four values resolve to `none`.",
+  doc: "The exam title block (in the spirit of LaTeX's `\\maketitle`). Exam information is read from the global `config`. Renders nothing if all four values resolve to `none`.",
   fields: (
     e.field(
       "institution",
@@ -127,7 +127,7 @@
 /// end — or arbitrary content, rendered verbatim as its own row.
 #let _NAME_BLOCK = declare_function(
   "name-block",
-  doc: "A block of fill-in rows for a cover page or quiz header.",
+  doc: "A block of fill-in rows for a student to write their name.",
   fields: (
     e.field(
       "title",
@@ -191,7 +191,7 @@
 #let exam = e.element.declare(
   "exam",
   prefix: PREFIX,
-  doc: "The exam: its questions, parts, and subparts, numbered and laid out, with their points totalled for `points-table` and the other point counts.",
+  doc: "Entry point for the questions of an exam. Its questions, parts, and subparts are numbered and laid out, and their points totalled for `points-table` and the other point counts.",
   display: it => {
     // If `questions` is a function, call it with a `solutions_only` helper
     // that shows its argument only when solutions are enabled.

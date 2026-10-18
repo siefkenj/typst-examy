@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Regenerate the index of exports inside README.md.
+# Regenerate the Basic API Reference inside README.md.
 #
-# docs/readme-api.typ builds the index as a Markdown string — one row per
-# export, from the package's own declarations (see docs/api.typ) — and
-# exposes it as `#metadata(..) <api>`. This script extracts it with
+# docs/readme-api.typ builds it as a Markdown string — its hand-picked rows,
+# with each export's link and signature from the package's own declarations
+# (see docs/api.typ) — and exposes it as `#metadata(..) <api>`. This script extracts it with
 # `typst eval`, JSON-decodes the result, and splices it into README.md
 # between the `API-DOCS-START`/`API-DOCS-END` markers. The full reference is
 # on the documentation site (see docs/site/build.sh).

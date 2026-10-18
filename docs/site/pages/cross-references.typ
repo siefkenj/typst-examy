@@ -1,8 +1,9 @@
 #import "../template.typ": *
 
 Label a question, part, or subpart with `label: <name>` and refer to it with
-`@name`. What the reference shows depends on where it is: question 1's part
-(a) reads "1 (a)" from question 2, but just "(a)" from elsewhere in question 1.
+`@name`. A `@name` reference to a question will show a minimal string that
+uniquely identifies the question/part/subpart: question 1's part (a) reads
+"1 (a)" from question 2, but just "(a)" from elsewhere in question 1.
 
 #example(
   ```typ

@@ -51,7 +51,7 @@
     + m-presets.DOCS
     + (
       e: (
-        desc: "A re-export of [elembic](https://typst.app/universe/package/elembic). Every document needs `#show: e.prepare()`; options are set with `#show: e.set_(config, ..)`; element state is read with `e.get(get => ..)`.",
+        desc: "A re-export of [elembic](https://typst.app/universe/package/elembic), used mainly for `e.set_`. Every document needs `#show: e.prepare()`; options are set with `#show: e.set_(config, ..)`; element state is read with `e.get(get => ..)`.",
       ),
     )
 )

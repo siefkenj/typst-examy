@@ -13,22 +13,22 @@ on and off. This package follows the spirit of the
 
 == Installation
 
-Start a new exam from the template, a cover page with a points table followed
-by questions with answer boxes, parts, and multiple choice:
+A quick-start template is available by choosing examy under _Start from
+template_ in the Typst web app or in the command line by running
 
 ```bash
 typst init @preview/examy
 ```
 
-or choose examy under _Start from template_ in the Typst web app. To use
-examy in a document of your own, import it:
+To use examy in a document of your own, import it:
 
 #raw(IMPORT, lang: "typ", block: true)
 
 == A first exam
 
-A minimal document. Every example in these docs is rendered by examy itself
-from the code shown with it, here both as the exam and as its answer key:
+A basic document looks like this. Every example in these docs is rendered by
+examy itself from the code shown with it, here both as the exam and as its
+answer key:
 
 #example(
   ```typ
@@ -69,13 +69,13 @@ package's options (see #page-link("configuration.html")[Configuration]).
 == What's in the box
 
 #features(
-  ("questions.html", [Questions and numbering], [Questions, parts, and subparts, numbered your way, with page breaks inside them.]),
-  ("points.html", [Points], [Point badges, totals, bonus points, a points table, and points per page.]),
-  ("answer-boxes.html", [Answer boxes], [Boxes of a set size, or ones that share the rest of the page.]),
-  ("solutions.html", [Solutions], [One source for the exam and its answer key, with the key laid out like the exam.]),
-  ("choices.html", [Multiple choice], [Bubbles for "select one" and "select all that apply", lettered or not.]),
-  ("cross-references.html", [Cross-references], [`@labels` that read "(a)" or "1 (a)" depending on where they are.]),
-  ("cover-pages.html", [Cover pages], [A title block, name fields, and institution presets.]),
+  ("questions.html", [Questions and numbering], [Questions, parts, and subparts, numbered automatically.]),
+  ("points.html", [Points], [Points listed on a per-question basis as well as points tables and points per page displays.]),
+  ("answer-boxes.html", [Answer boxes], [Providing a student with space to write. These can have a fixed size or can use available space via fractional units (e.g. `height: 1fr`).]),
+  ("solutions.html", [Solutions], [Written solutions can be globally toggled as visible/invisible to make key/blank versions of a test.]),
+  ("choices.html", [Multiple choice], [With round or square bubbles, optionally enumerated.]),
+  ("cross-references.html", [Smart cross-references], [A `@name` reference to a question will show a minimal string that uniquely identifies the question/part/subpart.]),
+  ("cover-pages.html", [Cover pages], [Basic commands for creating name/exam info areas.]),
   ("configuration.html", [Configuration], [Every package option, by topic, and how to set them.]),
   ("reference.html", [Reference], [Every function and option, generated from the package itself.]),
 )
