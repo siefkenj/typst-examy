@@ -25,7 +25,9 @@ like a word, which suits a short answer in a sentence:
 
 #example(
   ```typ
-  #question[The derivative of $x^3$ at $x = 2$ is #answer-box[#solution[12]].]
+  #question[
+    The derivative of $x^3$ at $x = 2$ is #answer-box[#solution[12]].
+  ]
   ```,
 )
 
