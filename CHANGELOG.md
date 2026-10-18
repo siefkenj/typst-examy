@@ -22,6 +22,9 @@
   exam and its key), `num-points`, `num-questions`, `num-bonus-points`, and
   `points-table` showed the last exam's numbers everywhere. Each is now about
   the exam it is in, else the next one, else the last.
+- Fixed: a `#show: e.set_(..)` rule inside a question or part hid the parts
+  after it from the exam: they were drawn as plain text, unnumbered. The
+  rule now applies to the rest of its division, parts included.
 - **Breaking:** an answer box with no `height` now fits its content instead
   of always being `default_height` tall. A box holding only a prompt shrinks to
   the prompt; give it a height (e.g. `height: 2cm`) to keep room to write.

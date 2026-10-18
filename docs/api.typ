@@ -192,9 +192,10 @@
   entry.alias-of + ".with(" + entry.with.pairs().map(((k, v)) => k + ": " + repr(v)).join(", ") + ")"
 )
 
-/// The first sentence of `s`, for a one-line summary.
+/// The first sentence of `s`, for a one-line summary. The full stops of
+/// "e.g." and "i.e." do not end it.
 #let summary(s) = {
-  let m = s.match(regex("^.*?[.!?](\s|$)"))
+  let m = s.match(regex("^(e\.g\.|i\.e\.|.)*?[.!?](\s|$)"))
   if m == none { s } else { m.text.trim() }
 }
 

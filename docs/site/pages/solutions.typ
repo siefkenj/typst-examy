@@ -1,8 +1,8 @@
 #import "../template.typ": *
 
-Wrap a solution in #api("solution"), anywhere in the document — inside an
-answer box, or on its own. Solutions are only shown when they are turned on,
-so the same source produces both the exam and its answer key:
+Wrap solutions in #api("solution", body: raw("#solution[...]")) (anywhere in
+your document, including inside an answer box). Solutions are only rendered
+when enabled, so the same source produces both the exam and the answer key:
 
 #example(
   ```typ
@@ -27,8 +27,10 @@ Solutions are turned on in the document, with #api("config"):
 
 == Exam and answer key from the command line
 
-The `show-solutions` input overrides the document's setting, so that a build
-script can produce either version whatever the source currently says:
+When given on the command line, the `show-solutions` input overrides the
+document setting `#show: e.set_(config, show-solutions: ...)`. This can be
+used in build scripts that must produce a specific variant regardless of what
+the source file currently configures.
 
 ```bash
 typst compile exam.typ                                 # whatever the document configures
@@ -89,8 +91,9 @@ it.
 
 == Solution colors
 
-Solutions are drawn in a pair of colors: the text, and the highlight behind
-it. Set one and the other is derived from it.
+Solutions are drawn in a configurable pair of colors — the text color and the
+highlight behind it. If only one of these is set, the other color is derived
+from the set color.
 
 #example(
   ```typ
@@ -142,18 +145,40 @@ A question only on the key would renumber the questions after it, so give one
 
 == Solutions `#solution` cannot wrap
 
-Some answers cannot be wrapped in a solution, such as one curve of a plot that
-only the key should draw. #api("show-solutions") reads the effective setting,
-command-line override included, inside `e.get`:
+Solutions are wrapped in `context {...}`, which limits their use in some
+cases. In these cases, give #api("exam") its questions as a function, as in
+the previous section: `solutions-only(x)` is `x` on the answer key and
+nothing on the exam, wherever it is used in the questions, code included.
+
+#example(
+  ```typ
+  #exam(questions: solutions-only => [
+    #question[
+      Draw the line through the box's center, perpendicular to the one shown.
+      #let s = 2.5cm
+      #box(width: s, height: s, stroke: .5pt, {
+        place(line(start: (0pt, s), end: (s, 0pt), stroke: gray))
+        solutions-only(place(line(start: (0pt, 0pt), end: (s, s), stroke: 1.5pt + blue)))
+      })
+    ]
+  ])
+  ```,
+  key: true,
+  width: 7cm,
+)
+
+Outside of an exam's questions, you can manually access the `show-solutions`
+config variable via elembic methods: #api("show-solutions") gives the
+effective setting, command-line override included, inside `e.get`.
 
 #example(
   ```typ
   #e.get(get => {
-    let solutions = show-solutions(get)
+    let should-show-solution = show-solutions(get)
     let s = 2.5cm
     box(width: s, height: s, stroke: .5pt, {
       place(line(start: (0pt, s), end: (s, 0pt), stroke: gray))
-      if solutions {
+      if should-show-solution {
         place(line(start: (0pt, 0pt), end: (s, s), stroke: 1.5pt + blue))
       }
     })

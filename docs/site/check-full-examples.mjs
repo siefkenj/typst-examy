@@ -10,8 +10,8 @@ import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync,
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-const site = resolve(process.argv[2] ?? "_site");
-const repo = resolve(import.meta.dirname, "..");
+const site = resolve(process.argv[2] ?? join(import.meta.dirname, "../../_site"));
+const repo = resolve(import.meta.dirname, "../..");
 const version = readFileSync(join(repo, "typst.toml"), "utf8").match(/^version = "(.*)"/m)[1];
 
 const decode = (s) =>
@@ -28,7 +28,12 @@ let checked = 0;
 const failures = [];
 for (const page of readdirSync(site, { recursive: true }).filter((f) => f.endsWith(".html")).sort()) {
   const html = readFileSync(join(site, page), "utf8");
-  for (const [, full] of html.matchAll(/data-full="([^"]*)"/g)) {
+  // Each example's whole document: its own code, where that is one already.
+  // (Attribute by attribute: their values may hold a `>`, as in `=>`.)
+  for (const [, attrs] of html.matchAll(/<figure class="example[^"]*"((?:\s+[\w-]+="[^"]*")*)\s*>/g)) {
+    const attr = (name) => attrs.match(new RegExp(`\\b${name}="([^"]*)"`))?.[1];
+    const full = attr("data-full") ?? attr("data-source");
+    if (full === undefined) continue;
     const file = join(work, `${page.replace(/\W/g, "-")}-${++checked}.typ`);
     writeFileSync(file, decode(full));
     try {

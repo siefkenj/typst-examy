@@ -157,7 +157,7 @@ echo "==> Regenerating the API reference in README.md"
 
 echo "==> Building the documentation site (checks that every example compiles)"
 sitetmp=$(mktemp -d)
-./make_site.sh "$sitetmp/site"
+docs/site/build.sh "$sitetmp/site"
 rm -rf "$sitetmp"
 
 echo "==> Rendering README screenshots"

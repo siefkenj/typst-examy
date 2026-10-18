@@ -1,7 +1,19 @@
 #import "../template.typ": *
 
-Give a question, part, or subpart `points` and it shows a badge, "(2 points)",
-and counts toward the exam's totals. A part's points add up to its question's.
+Giving any question/part/subpart a value with `points: x` will cause an
+"(x points)" annotation to show next to the question/part/subpart.
+Related to points are:
+
+- #api("points-table", body: raw("#points-table")) renders a scoring table.
+- #api("num-points", body: raw("#num-points")) and
+  #api("num-questions", body: raw("#num-questions")) give the total number of
+  points and questions; #api("num-bonus-points", body: raw("#num-bonus-points"))
+  the total number of bonus points.
+- `intent: "bonus"`: bonus points are tracked separately and excluded from the
+  regular totals.
+- #api("page-points", body: raw("page-points()")) gives the number of points on
+  a page, and #api("page-score-box", body: raw("#page-score-box")) draws a score
+  box for a page footer.
 
 #example(
   ```typ
@@ -24,14 +36,9 @@ and counts toward the exam's totals. A part's points add up to its question's.
   ```,
 )
 
-- #api("num-points") and #api("num-questions") are the exam's totals, and
-  #api("num-bonus-points") the total of its bonus points. They work anywhere
-  in the document, even before the exam.
-- `intent: "bonus"` makes a division's points bonus points: tallied
-  separately, and left out of the regular totals. `intent: "practice"` leaves
-  them out of every total.
-- #api("points-table") draws a table of the points, and #api("page-points")
-  and #api("page-score-box") count them page by page.
+The totals work anywhere in the document, even before the exam, and a
+part's points add up to its question's. `intent: "practice"` leaves a
+division's points out of every total.
 
 == Where the badge goes
 

@@ -11,11 +11,20 @@
 /// in.
 #let _SETUP = regex("^\s*(#(show|set|let|import)\b|//|$)")
 
-/// Split an example's source into its setup lines and the rest.
+/// How many more brackets `line` opens than it closes.
+#let _depth(line) = line.matches(regex("[(\[{]")).len() - line.matches(regex("[)\]}]")).len()
+
+/// Split an example's source into its setup lines and the rest. A setup
+/// line's brackets left open take the lines up to their closing with it, so
+/// that a `#show` rule over several lines stays whole.
 #let _split(src) = {
   let lines = src.split("\n")
   let n = 0
-  while n < lines.len() and lines.at(n).match(_SETUP) != none { n += 1 }
+  let depth = 0
+  while n < lines.len() and (depth > 0 or lines.at(n).match(_SETUP) != none) {
+    depth += _depth(lines.at(n))
+    n += 1
+  }
   (lines.slice(0, n).join("\n", default: ""), lines.slice(n).join("\n", default: ""))
 }
 

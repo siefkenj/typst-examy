@@ -1,4 +1,4 @@
-# examy
+# [examy](https://siefkenj.github.io/typst-examy/)
 
 A [Typst](https://typst.app) package for writing exams, quizzes, and homework
 with automatically numbered questions, answer boxes, points accounting, smart
@@ -11,22 +11,14 @@ follows the spirit of the [exam class for LaTeX](https://ctan.org/pkg/exam?lang=
 </p>
 <p align="center"><em><a href="examples/quiz.typ">examples/quiz.typ</a>, compiled without and with solutions.</em></p>
 
-**Documentation: <https://siefkenj.github.io/typst-examy/>** — a guide with
-every example rendered from its own code (exam and answer key side by side),
-and a reference of every function and option, generated from the package
-itself. See [examples/](examples/) for complete documents.
+Full documentation is available at the [Examy website](https://siefkenj.github.io/typst-examy/) 
+or downloadable as a [PDF](https://siefkenj.github.io/typst-examy/examy-manual.pdf).
+See the
+[examples/](examples/) folder for sample documents.
 
 ## Quick start
 
-To start from a complete exam (a cover page with a points table, followed
-by questions with answer boxes, parts, and multiple choice), run
-
-```bash
-typst init @preview/examy
-```
-
-or choose examy under _Start from template_ in the Typst web app. A minimal
-document looks like this:
+A basic document looks like this:
 
 ```typst
 #import "@preview/examy:1.0.0": *
@@ -54,27 +46,24 @@ document looks like this:
   ],
 )
 ```
+A quick-start template is available by choosing examy under _Start from template_ in the Typst web app or in the command line by running
 
-The two `#show` lines are required: `e.prepare()` enables
-[elembic](https://typst.app/universe/package/elembic) elements and references,
-and `e.set_(config, ...)` sets package options.
+```bash
+typst init @preview/examy
+```
 
 ## Features
 
 - **[Questions, parts, and subparts](https://siefkenj.github.io/typst-examy/questions.html)**,
   numbered automatically.
 - **[Points](https://siefkenj.github.io/typst-examy/points.html)**: points listed on a per-question basis as well as points tables and and points per page displays.
-- **[Answer boxes](https://siefkenj.github.io/typst-examy/answer-boxes.html)** of
-  a set size, or sharing the rest of the page (`height: 1fr`).
-- **[Solutions](https://siefkenj.github.io/typst-examy/solutions.html)** written
-  next to their questions: one source for the exam and its answer key, with
-  the key laid out exactly like the exam.
+- **[Answer boxes](https://siefkenj.github.io/typst-examy/answer-boxes.html)** providing a student with space to write. These can have a fixed size or can use available space via fractional units (e.g. `height: 1fr`).
+- **[Solutions](https://siefkenj.github.io/typst-examy/solutions.html)**: written solutions can be globally toggled as visible/invisible to make a key/blank versions of a test.
 - **[Multiple choice](https://siefkenj.github.io/typst-examy/choices.html)**
-  with round or square bubbles, lettered or not, filled in on the key.
-- **[Cross-references](https://siefkenj.github.io/typst-examy/cross-references.html)**
-  that read "(a)" or "1 (a)" depending on where they are.
-- **[Cover pages](https://siefkenj.github.io/typst-examy/cover-pages.html)**: a
-  title block, name fields, and institution presets.
+  with round or square bubbles, optionally enumerated.
+- **[Smart cross-references](https://siefkenj.github.io/typst-examy/cross-references.html)**:
+  a `@name` reference to a question will show a minimal string that uniquely identifies the question/part/subpart.
+- **[Cover pages](https://siefkenj.github.io/typst-examy/cover-pages.html)**: basic commands for creating name/exam info areas.
 
 <p align="center">
   <img src="examples/images/multiple-choice.png" width="45%" alt="Multiple-choice questions with empty round and square bubbles, one per line, in columns, inline, and in a table">
@@ -105,7 +94,7 @@ All names below are exported by `#import "@preview/examy:1.0.0": *`. See the [fu
 | [`points-table`](https://siefkenj.github.io/typst-examy/reference/points-table.html) | A scoring table with a column per question plus a total. |
 | [`presets`](https://siefkenj.github.io/typst-examy/reference/presets.html) | Institution-specific argument sets. |
 | [`question`](https://siefkenj.github.io/typst-examy/reference/question.html), [`part`](https://siefkenj.github.io/typst-examy/reference/question.html#api-part), [`subpart`](https://siefkenj.github.io/typst-examy/reference/question.html#api-subpart) | Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively. |
-| [`show-solutions`](https://siefkenj.github.io/typst-examy/reference/show-solutions.html) | Returns the effective show-solutions setting: the `--input show-solutions=..` command-line override if given, otherwise `config`'s value. |
+| [`show-solutions`](https://siefkenj.github.io/typst-examy/reference/show-solutions.html) | Whether solutions are shown, `true` or `false`: the `--input show-solutions=..` command-line override if given, otherwise `config`'s `show-solutions`, which shows them unless it is `false`. |
 | [`solution`](https://siefkenj.github.io/typst-examy/reference/solution.html) | Declare a solution to a question, part, or subpart; this is only rendered if the config option to show solutions is enabled. |
 | [`square-bubble`](https://siefkenj.github.io/typst-examy/reference/square-bubble.html) | A square bubble, for "select all that apply". Same as `choice.with(bubble: "square")`. |
 <!-- API-DOCS-END -->
@@ -144,8 +133,13 @@ npm run preview
 ```
 
 The site is published to GitHub Pages by .github/workflows/pages.yml on
-every push to main. `./make_site.sh` builds the pages alone, without the
+every push to main. `docs/site/build.sh` builds the pages alone, without the
 live editor.
+
+```bash
+# the same pages and the reference as one PDF
+typst compile --root . docs/manual.typ examy-manual.pdf
+```
 
 ```bash
 # regenerate the API Reference index of this README (between the

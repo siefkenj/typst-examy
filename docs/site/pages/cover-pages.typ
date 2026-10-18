@@ -1,8 +1,8 @@
 #import "../template.typ": *
 
-A cover page is ordinary content before the #api("exam"): a title block, a
-block of name fields, instructions, and a points table, followed by a page
-break.
+A cover page is ordinary content before #api("exam", body: raw("#exam(...)")):
+a title block, a block of name fields, instructions, and a points table,
+followed by a page break.
 
 #screenshots(
   screenshot("cover.png", "An exam cover page with a title block, name fields, instructions, and a points table", caption: [The cover of #link(REPOSITORY + "/blob/main/examples/final-exam.typ")[`examples/final-exam.typ`].]),
@@ -10,12 +10,13 @@ break.
 
 == Name blocks
 
-#api("name-block") draws fill-in rows, Name and Student ID by default. It is
-ordinary content: put it at the top of a quiz page or on a cover page. Its
-`fields` are the rows: a `(prefix: .., suffix: ..)` dictionary draws the
-prefix, an underline to the end of the line, and the suffix sitting on the
-line at its right end; anything else is shown as a row of its own. An optional
-`title` is shown above the block.
+#api("name-block", body: raw("#name-block()")) renders a fill-in block
+(Name / Student ID by default). It is ordinary content: put it at the top of a
+quiz page or on a cover page. The rows are configurable with `fields:` — an
+entry is either a `(prefix: ..., suffix: ...)` dictionary, rendered as the
+prefix, an underline extending to the end of the line, and the suffix sitting
+on the line at its right end, or any other content, shown as a row of its own.
+An optional `title:` is shown above the block.
 
 #example(
   ```typ
@@ -38,14 +39,16 @@ line at its right end; anything else is shown as a row of its own. An optional
   width: 10cm,
 )
 
-Institution-specific rows ship with the package as #api("presets"); the
+Institution-specific layouts ship with the package as #api("presets"); the
 University of Toronto block is `#name-block(fields: presets.utoronto.name_fields)`.
 
 == The title block
 
-Set the exam's details on #api("config") — `institution`, `exam-name`, `term`,
-and `duration` — and draw them with #api("maketitle"). Each can be overridden
-for one title, e.g. `#maketitle(term: [Summer 2026])`, or left out with `none`.
+Set the exam's details (`institution`, `exam-name`, `term`, `duration`) on the
+#api("config") object and render them with
+#api("maketitle", body: raw("#maketitle()")). Each configured value can be
+overridden by passing arguments to `maketitle()`, e.g.
+`#maketitle(term: [Summer 2026])`.
 
 #example(
   ```typ

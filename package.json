@@ -4,11 +4,11 @@
   "description": "Builds examy's documentation site. The Typst package itself needs none of this.",
   "type": "module",
   "scripts": {
-    "build": "npm run typecheck && ./make_site.sh && vite build",
-    "dev": "vite",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
-    "check:examples": "node docs/check-full-examples.mjs"
+    "build": "npm run typecheck && docs/site/build.sh && vite build --config docs/site/vite.config.ts",
+    "dev": "vite --config docs/site/vite.config.ts",
+    "preview": "vite preview --config docs/site/vite.config.ts",
+    "typecheck": "tsc --noEmit -p docs/site",
+    "check:examples": "node docs/site/check-full-examples.mjs"
   },
   "devDependencies": {
     "@codemirror/autocomplete": "6.20.3",

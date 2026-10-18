@@ -1,7 +1,7 @@
 // The documentation site, built with Typst's bundle and HTML export: every
 // page, the stylesheet, and the screenshots, in one compilation.
 //
-//   ./make_site.sh            # writes _site/
+//   docs/site/build.sh        # writes _site/ (npm run build adds the editor)
 //
 // which runs
 //
@@ -12,7 +12,7 @@
 // shows (see `example` in site/template.typ), so neither can fall out of
 // date with the package.
 
-#import "site/template.typ": PAGES, REFERENCE_PAGES, entry_heading, entry_page, layout
+#import "site/template.typ": PAGES, REFERENCE_PAGES, entry_heading, entry_page, layout, output_css
 
 #for p in PAGES {
   document(p.path, title: p.title, layout(p, include "site/" + p.file))
@@ -23,7 +23,9 @@
   document(p.path, title: p.title, layout(p, entry_page(p.entry), heading: entry_heading(p.entry)))
 }
 
-#asset("style.css", read("site/style.css"))
+// The stylesheet, with the look of the examples' output from the template
+// (`output_css`), which the PDF is drawn with too.
+#asset("style.css", read("site/style.css") + "\n" + output_css())
 #asset("favicon.svg", read("site/favicon.svg"))
 
 // The live editor (site/live.ts, bundled by Vite into live.js; see
@@ -31,7 +33,7 @@
 // browser with typst.ts, from the package's source and the same render.typ
 // the site is built with. Its files are published as one manifest, mapping
 // each file's path in the compiler's virtual file system to its text.
-// make_site.sh passes the list of the package's files, which Typst cannot
+// build.sh passes the list of the package's files, which Typst cannot
 // list itself; without it, the site is built without the editor.
 #let LIVE_FILES = sys.inputs.at("live-files", default: none)
 #if LIVE_FILES != none {

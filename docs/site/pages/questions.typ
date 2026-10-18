@@ -1,10 +1,10 @@
 #import "../template.typ": *
 
-A document is built out of an #api("exam"), whose `questions` hold the
-questions. Inside them, #api("question"), #api("part"), and #api("subpart")
-make a hierarchy, each numbered for you: questions `1.`, `2.`, …, parts
-`(a)`, `(b)`, …, and subparts `i.`, `ii.`, …. Any of them can be given points,
-a solution, and a label to refer to it by.
+A document is built out of an #api("exam", body: raw("#exam(..., questions: [...])")).
+Inside of `questions`, the commands #api("question", body: raw("#question[...]")),
+#api("part", body: raw("#part[...]")), and #api("subpart", body: raw("#subpart[...]"))
+can be used to create a question hierarchy. Questions/parts/subparts can be
+assigned points, heights, etc.
 
 #example(
   ```typ

@@ -28,6 +28,24 @@
   none
 }
 
+/// The labels elembic (1.1.1, pinned in prelude.typ) tags a rule with. A
+/// `#show: e.set_(..)` rule turns the rest of its scope into
+/// `[#context { .. doc .. }#metadata((doc: doc, rule: rule, ..))<tag>]`: the
+/// `context` is opaque, but the metadata keeps the original `doc`, so the
+/// divisions inside it can still be found.
+#let _ELEMBIC_RULE_TAGS = (<__elembic_element_rule_v2>, <__elembic_element_rule>)
+
+/// The `(doc, rule)` an elembic rule (see `_ELEMBIC_RULE_TAGS`) was applied
+/// to, if `c` is the content such a rule left in its place; else `none`.
+#let elembic_rule(c) = {
+  if type(c) != content or c.func() != SEQUENCE_FUNC or c.children.len() < 2 { return none }
+  let tag = c.children.last()
+  if tag.func() != metadata or tag.at("label", default: none) not in _ELEMBIC_RULE_TAGS { return none }
+  let v = tag.value
+  if type(v) != dictionary or "doc" not in v or "rule" not in v { return none }
+  (doc: v.doc, rule: v.rule)
+}
+
 #let EMPTY_SCAN = (has_marker: false, has_break: false, fr: none, marker_names: ())
 
 #let _merge_scans(a, b) = (
@@ -64,6 +82,9 @@
     return EMPTY_SCAN
   }
   if is_break(c) { return EMPTY_SCAN + (has_break: true) }
+  // An elembic rule: what it applies to is in its tag, not in its fields.
+  let rule = elembic_rule(c)
+  if rule != none { return scan(rule.doc) }
 
   // Scan all content-valued fields (children, child, body, caption, ...).
   let inner = EMPTY_SCAN

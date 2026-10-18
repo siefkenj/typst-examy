@@ -10,7 +10,9 @@
   --bg-soft: #f6f8fb;
   --accent: #1d5fb4;
   --accent-soft: #e8f0fb;
-  --code-bg: #f4f6fa;
+  /* The same gray as the panel behind an example's exam (OUTPUT in
+     template.typ, appended to this file by site.typ). */
+  --code-bg: var(--output-exam-shade);
   --radius: 8px;
   --sidebar: 15rem;
   --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -149,47 +151,75 @@ td, th { border: 1px solid var(--line); padding: .35rem .7rem; text-align: left;
 .callout > :last-child { margin-bottom: 0; }
 .callout.warning { border-color: #c27c0e; background: #fdf4e3; }
 
-/* Examples: the code, and what it renders to */
-.example {
-  margin: 0 0 1.6rem;
+/* Examples: the code, and below it, a little apart, what it renders to */
+.example { margin: 0 0 1.6rem; }
+.example-code {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
-  background: var(--bg-soft);
+  background: var(--code-bg);
 }
-.example-code pre { margin: 0; border: 0; border-radius: 0; border-bottom: 1px solid var(--line); background: var(--code-bg); }
+.example-code pre { margin: 0; border: 0; border-radius: 0; background: var(--code-bg); }
+/* What an example renders to: white papers on a panel shaded gray behind
+   the exam and, beside an answer key, light blue behind the key, the shades
+   meeting along a wavy line down the middle, as in the PDF. The colors and
+   the wave come from OUTPUT in template.typ (the --output-* properties,
+   appended to this file by site.typ). */
 .example-output {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 1rem;
-  padding: 1rem;
+  gap: .55rem 2.6rem;
+  align-items: center;
+  margin-top: .8rem;
+  padding: .9rem 1.1rem 1.2rem;
+  /* Outlined as the code above it is. */
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--output-exam-shade);
 }
-.example.with-key .example-output { grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+/* Two columns, the labels in a row of their own above the papers, so they
+   share a baseline; the papers centered on each other vertically. */
+.example.with-key .example-output {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-areas: "exam-label key-label" "exam key";
+  background:
+    var(--output-wave) 50% 0 / var(--output-wave-size) repeat-y,
+    linear-gradient(to right, var(--output-exam-shade) 50%, var(--output-key-shade) 50%);
+}
+.example.with-key .paper-label[data-solutions="false"] { grid-area: exam-label; }
+.example.with-key .paper-label[data-solutions="true"] { grid-area: key-label; }
+.example.with-key .paper[data-solutions="false"] { grid-area: exam; }
+.example.with-key .paper[data-solutions="true"] { grid-area: key; }
+/* Too narrow for two: one above the other, each label over its paper. */
+@media (max-width: 40rem) {
+  .example.with-key .example-output {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "exam-label" "exam" "key-label" "key";
+    background: var(--output-exam-shade);
+  }
+  .example.with-key .paper-label[data-solutions="true"] { margin-top: .6rem; }
+}
 .paper {
-  position: relative;
   /* As wide as what is rendered on it (scaled down when the column is
-     narrower), centered in its column; wide enough for its label. */
+     narrower), centered in its column. */
   justify-self: center;
   width: fit-content;
-  min-width: min(8rem, 100%);
   max-width: 100%;
   background: #fff;
-  border-radius: 4px;
-  box-shadow: 0 1px 3px rgba(20, 30, 50, .14), 0 0 0 1px rgba(20, 30, 50, .05);
-  padding: 1.4rem 1rem 1rem;
+  border: 1px solid var(--output-paper-edge);
+  border-radius: 3px;
+  padding: .7em;
 }
 .paper svg { display: block; margin-inline: auto; max-width: 100%; height: auto !important; }
 .paper-label {
-  position: absolute;
-  top: .35rem;
-  right: .6rem;
-  font-size: .72rem;
-  font-weight: 600;
-  letter-spacing: .05em;
+  align-self: end;
+  justify-self: center;
+  font-family: var(--output-label-font), var(--font);
+  font-size: .62rem;
+  letter-spacing: .08em;
   text-transform: uppercase;
-  color: var(--muted);
+  color: var(--output-label);
 }
-.example:not(.with-key) .paper { padding-top: 1rem; }
 
 /* Screenshots of whole documents */
 .screenshots { display: flex; gap: 1rem; flex-wrap: wrap; margin: 0 0 1.4rem; }
@@ -267,13 +297,11 @@ td, th { border: 1px solid var(--line); padding: .35rem .7rem; text-align: left;
 .live-button:hover { border-color: var(--accent); }
 .live-status { font-size: .78rem; color: var(--muted); }
 /* The code editor (editor.ts styles CodeMirror itself, to match). */
-.live-code { border-bottom: 1px solid var(--line); }
 .example.editing .live-code .cm-editor { box-shadow: inset 3px 0 0 var(--accent); }
 .live-error {
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  border-bottom: 1px solid #f1c9bf;
+  margin: .8rem 0 0;
+  border: 1px solid #f1c9bf;
+  border-radius: var(--radius);
   background: #fdf1ee;
   color: #a3361f;
   white-space: pre-wrap;
@@ -307,3 +335,6 @@ h1 .kind {
   .api-index li { grid-template-columns: 1fr; }
 }
 .live-toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* The Configuration page's tables: an option's name on one line. */
+.config-options td:first-child code { white-space: nowrap; }

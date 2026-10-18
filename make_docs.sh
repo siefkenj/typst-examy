@@ -6,7 +6,7 @@
 # exposes it as `#metadata(..) <api>`. This script extracts it with
 # `typst eval`, JSON-decodes the result, and splices it into README.md
 # between the `API-DOCS-START`/`API-DOCS-END` markers. The full reference is
-# on the documentation site (see make_site.sh).
+# on the documentation site (see docs/site/build.sh).
 set -euo pipefail
 cd "$(dirname "$0")"
 

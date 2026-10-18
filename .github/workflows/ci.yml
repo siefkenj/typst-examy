@@ -25,6 +25,14 @@ jobs:
             typst compile --root . -f pdf examples/quiz.typ quiz.pdf
             typst compile --root . -f pdf --input show-solutions=true examples/quiz.typ quiz-solutions.pdf
 
+      # The documentation as a PDF (docs/manual.typ, built by `npm run
+      # build` beside the site's pages), to download from the run.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: examy-manual
+          path: _site/examy-manual.pdf
+          if-no-files-found: error
+
   dist:
     runs-on: ubuntu-latest
     steps:

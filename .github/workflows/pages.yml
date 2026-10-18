@@ -1,8 +1,8 @@
 name: Deploy documentation site
 
 # Builds the documentation site (`npm run build`: docs/site.typ, compiled with
-# Typst's bundle and HTML export, and the live editor, bundled by Vite) and
-# publishes it to GitHub Pages. In the repository's settings, Pages must be
+# Typst's bundle and HTML export, the same pages as a PDF, docs/manual.typ,
+# and the live editor, bundled by Vite) and publishes it to GitHub Pages. In the repository's settings, Pages must be
 # set to deploy from GitHub Actions.
 
 on:

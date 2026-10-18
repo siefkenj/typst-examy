@@ -1,9 +1,10 @@
 #import "../template.typ": *
 
-#api("choices") takes a list and draws a bubble before each item for students
-to fill in. Write each choice on its own line starting with `-`; start the
-correct ones with `+` instead. They look the same on the exam, and are filled
-in and checked on the answer key.
+#api("choice", body: raw("#choice[]")) draws a bubble (circle or square) to the
+left of text. #api("choices", body: raw("#choices[...]")) takes a list and
+draws a bubble before each item for students to fill in. Write each choice on
+its own line starting with `-`. Starting an item with `+` will mark it as a
+correct choice (it will only render differently if solutions are shown).
 
 #example(
   ```typ
@@ -20,13 +21,24 @@ in and checked on the answer key.
   width: 9cm,
 )
 
-== Layouts
+== `#choices[...]` API
 
-One per line is the default. `columns: n` sets the choices in `n` equal
-columns, filled row by row; `inline: true` runs them side by side in a
-paragraph, wrapping like words, which suits short choices. Square bubbles
-(`bubble: "square"`) are for "select all that apply". Choices can also be
-given as an array, with the correct ones named by their index with `correct`:
+
+- `correct: int | array` — An alternative to using `+` to mark a correct
+  choice. Setting `correct: 0` marks the first choice as correct,
+  `correct: (0, 2)` marks the first and third.
+- `bubble: "circle" | "square"` — Round bubbles (the default) for "select
+  one", square ones for "select all that apply".
+- `columns: int` — Lay the choices out in this many equal columns, filled
+  row by row.
+- `inline: bool` — Run the choices side by side in a paragraph, wrapping like
+  words. Suits short choices. Cannot be combined with `columns`.
+- `gap: length` — The space between choices. One per line, it is the space
+  between rows (by default, the text's line spacing). Side by side, it is the
+  space between them (by default `1.5em`); inline, `1fr` spreads the choices
+  across the line.
+
+The choices can also be given as an array:
 
 #example(
   ```typ
@@ -47,17 +59,15 @@ given as an array, with the correct ones named by their index with `correct`:
   width: 10cm,
 )
 
-`gap` sets the space between choices: one per line, between rows (by default
-the text's line spacing); side by side, between them (by default `1.5em`), and
-there `1fr` spreads the choices across the line.
-
 == Letters in the bubbles
 
-`enumerate: true` letters the bubbles A, B, C, …; it also takes any numbering
-pattern or function `enum` does (`"a"`, `"1"`, `"(i)"`). Set it for the whole
-document with #api("config")'s `choices-enumerate`. On the answer key, a
-correct lettered bubble is filled in with its letter, and a thin ring inside
-its outline.
+`enumerate: bool | str | function` — Labels inside the bubbles: `true` for
+A, B, C, …, or any numbering pattern or function `enum` takes (`"a"`, `"1"`,
+`"(i)"`). Off by default; set it for the whole document with
+`#show: e.set_(config, choices-enumerate: true)`. Labels are set in the
+monospaced font bundled with Typst, changed with #api("config")'s
+`bubble-label-font`; on the answer key, a correct one gets a thin ring
+inside its outline.
 
 #example(
   ```typ
@@ -73,15 +83,12 @@ its outline.
   width: 9cm,
 )
 
-The letters are set in the monospaced font bundled with Typst, changed with
-#api("config")'s `bubble-label-font`.
-
 == Single bubbles
 
-For a layout of your own, #api("choice") draws a single bubble before its
-content; mark an answer with `correct: true`. #api("bubble") and
-#api("square-bubble") are the same with the shape fixed, and draw a bare
-bubble without content:
+For a layout of your own, #api("choice", body: raw("#choice[...]")) draws a
+single bubble before its content; mark an answer with `correct: true`. It
+takes `bubble: "circle" | "square"`. #api("bubble") and #api("square-bubble")
+are the same with the shape fixed, and draw a bare bubble without content:
 
 #example(
   ```typ
@@ -103,7 +110,8 @@ bubble without content:
 
 In every layout, a choice is kept whole. When its text wraps, the bubble stays
 on the first line and the further lines hang under the text, not under the
-bubble. The gap between a bubble and its content is set with `outset` (e.g.
-`outset: .6em`). The outline of every bubble in the document is set with
-`#show: e.set_(config, bubble-stroke: .06em)` (default `.1em`); one thick
-enough to cover a filled-in bubble's check mark is drawn at that limit instead.
+bubble. The gap between a choice bubble and its content can be set with
+`outset` (e.g. `outset: .6em`). The outline thickness of every bubble in the
+document is set with `#show: e.set_(config, bubble-stroke: .06em)` (default
+`.1em`). An outline thick enough to cover a filled-in bubble's check mark,
+about a fifth of the bubble's size, is drawn at that limit instead.

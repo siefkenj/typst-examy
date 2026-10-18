@@ -1,11 +1,9 @@
 #import "../template.typ": *
 
 examy is a #link("https://typst.app")[Typst] package for writing exams,
-quizzes, and homework. Questions, parts, and subparts are numbered for you;
-points are added up into a points table; answer boxes stretch to fill the
-page; references to other questions read naturally; and every solution is
-written next to its question, so that one source gives both the exam and its
-answer key. It follows the spirit of the
+quizzes, and homework with automatically numbered questions, answer boxes,
+points accounting, smart cross-references, and solutions that can be toggled
+on and off. This package follows the spirit of the
 #link("https://ctan.org/pkg/exam")[exam class for LaTeX].
 
 #screenshots(
@@ -29,8 +27,8 @@ examy in a document of your own, import it:
 
 == A first exam
 
-A minimal document. Every example on this site is rendered by examy itself
-from the code shown beside it, here both as the exam and as its answer key:
+A minimal document. Every example in these docs is rendered by examy itself
+from the code shown with it, here both as the exam and as its answer key:
 
 #example(
   ```typ
@@ -66,38 +64,36 @@ from the code shown beside it, here both as the exam and as its answer key:
 The two `#show` lines are required: `e.prepare()` enables
 #link("https://typst.app/universe/package/elembic")[elembic] elements and
 references, which examy is built on, and `e.set_(config, ..)` sets the
-package's options (see #api("config") for all of them).
+package's options (see #page-link("configuration.html")[Configuration]).
 
 == What's in the box
 
-#html.elem("div", attrs: (class: "features"), {
-  let card(path, title, text) = html.elem("a", attrs: (class: "feature", href: path), {
-    html.elem("strong", title)
-    html.elem("span", text)
-  })
-  card("questions.html", [Questions and numbering], [Questions, parts, and subparts, numbered your way, with page breaks inside them.])
-  card("points.html", [Points], [Point badges, totals, bonus points, a points table, and points per page.])
-  card("answer-boxes.html", [Answer boxes], [Boxes of a set size, or ones that share the rest of the page.])
-  card("solutions.html", [Solutions], [One source for the exam and its answer key, with the key laid out like the exam.])
-  card("choices.html", [Multiple choice], [Bubbles for "select one" and "select all that apply", lettered or not.])
-  card("cross-references.html", [Cross-references], [`@labels` that read "(a)" or "1 (a)" depending on where they are.])
-  card("cover-pages.html", [Cover pages], [A title block, name fields, and institution presets.])
-  card("reference.html", [Reference], [Every function and option, generated from the package itself.])
-})
+#features(
+  ("questions.html", [Questions and numbering], [Questions, parts, and subparts, numbered your way, with page breaks inside them.]),
+  ("points.html", [Points], [Point badges, totals, bonus points, a points table, and points per page.]),
+  ("answer-boxes.html", [Answer boxes], [Boxes of a set size, or ones that share the rest of the page.]),
+  ("solutions.html", [Solutions], [One source for the exam and its answer key, with the key laid out like the exam.]),
+  ("choices.html", [Multiple choice], [Bubbles for "select one" and "select all that apply", lettered or not.]),
+  ("cross-references.html", [Cross-references], [`@labels` that read "(a)" or "1 (a)" depending on where they are.]),
+  ("cover-pages.html", [Cover pages], [A title block, name fields, and institution presets.]),
+  ("configuration.html", [Configuration], [Every package option, by topic, and how to set them.]),
+  ("reference.html", [Reference], [Every function and option, generated from the package itself.]),
+)
 
 == How examy works
 
-A straightforward implementation would wrap each question, part, and subpart
-in a box and indent it. Unfortunately, `#pagebreak()` cannot work inside a box
-and, worse still, boxes can only share fractional space (`1fr`) if they are
-peers of each other: a part and a subpart could not both share the space left
-on a page.
+A straightforward implementation of examy would wrap each
+question/part/subpart in a box and apply an appropriate inset. Unfortunately,
+`#pagebreak()` cannot work inside a box and, worse still, boxes can only
+negotiate fractional units if they are peers of each other. So, the box
+approach would make it impossible to have a part and a subpart both share the
+remaining space on the page.
 
-Instead, examy flattens the contents of every question, part, and subpart and
-marks where each starts and ends with `metadata`. The flat stream is then
-parsed, the nesting tracked, and peer blocks produced, so that `#pagebreak()`
-and `fr` units can negotiate space.
+Instead, examy flattens all question/part/subpart contents and tags the start
+and end of each block with `metadata`. The flat stream is then parsed,
+indentation level is tracked, and peer boxes are produced, so that
+`#pagebreak()` and `fr` units can negotiate space.
 
 The downside of this parsing is that "click back" in tools like
 #link("https://github.com/Myriad-Dreamin/tinymist")[tinymist] can be broken.
-(Clicking an item boxed of its own, like an equation, usually works.)
+(Usually it works to click a sub-boxed item, like an equation.)

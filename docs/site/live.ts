@@ -135,7 +135,7 @@ function enhance(figure: HTMLElement): void {
   const shortCode = codeBox?.querySelector<HTMLElement>(".code-short");
   const fullCode = codeBox?.querySelector<HTMLElement>(".code-full");
   const output = figure.querySelector(".example-output");
-  if (!codeBox || !shortCode || !fullCode || !output) return;
+  if (!codeBox || !shortCode || !output) return;
   const original = figure.dataset.source ?? "";
   const originalFull = figure.dataset.full ?? original;
   const papers = [...figure.querySelectorAll<HTMLElement>(".paper")];
@@ -148,7 +148,8 @@ function enhance(figure: HTMLElement): void {
   const status = element("span", { className: "live-status" });
   status.setAttribute("role", "status");
   const bar = element("div", { className: "live-bar" });
-  bar.append(status, reset, whole, edit);
+  // An example that is a whole document already has none to switch to.
+  bar.append(status, reset, ...(fullCode ? [whole] : []), edit);
   codeBox.prepend(bar);
 
   // The code editor, made on the first edit (see editor.ts), in place of the
@@ -236,7 +237,7 @@ function enhance(figure: HTMLElement): void {
     };
     holder.hidden = !on;
     shortCode.hidden = on || full;
-    fullCode.hidden = on || !full;
+    if (fullCode) fullCode.hidden = on || !full;
     then?.();
     steady();
     requestAnimationFrame(steady);

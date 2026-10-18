@@ -1,8 +1,9 @@
 /// Phase B: turn a content stream containing division markers into a flat
 /// array of tokens. Unwrapping is conservative: a child is only descended
 /// into when it actually contains a marker, and only `sequence` and `styled`
-/// containers can be unwrapped (styles are recorded on a stack and re-applied
-/// at render time). Everything else stays an opaque `chunk`.
+/// containers and elembic rules (`#show: e.set_(..)`) can be unwrapped
+/// (their styles and rules are recorded on a stack and re-applied at render
+/// time). Everything else stays an opaque `chunk`.
 ///
 /// Token kinds (plain dictionaries):
 /// - (kind: "begin", fields: (..), styles: (..))
@@ -11,17 +12,25 @@
 /// - (kind: "chunk", body: content, styles: (..), has_inner_break: bool,
 ///    fr: fraction | none)
 
+#import "prelude.typ": e
 #import "markers.typ": marker_value
-#import "scan.typ": SEQUENCE_FUNC, STYLED_FUNC, is_break, scan
+#import "scan.typ": SEQUENCE_FUNC, STYLED_FUNC, elembic_rule, is_break, scan
 
-/// Re-apply a recorded style stack to content.
+/// Re-apply a recorded style stack to content: each entry is the `styles`
+/// of a `styled` element, or a function, the show rule of an elembic rule.
 #let apply_styles(body, styles) = {
   let ret = body
   for s in styles.rev() {
-    ret = STYLED_FUNC(ret, s)
+    ret = if type(s) == function { s(ret) } else { STYLED_FUNC(ret, s) }
   }
   ret
 }
+
+/// The show rule applying an elembic rule again, from the rule's data as
+/// its tag keeps it (see `elembic_rule`). `e.apply` takes rules as functions
+/// and reads each one's data from the tag it leaves; this one leaves just
+/// that.
+#let _elembic_show(rule) = e.apply(_ => [#metadata(none)#metadata((rule: rule))])
 
 #let _chunk(c, styles, info) = (
   kind: "chunk",
@@ -67,8 +76,12 @@
     return (_chunk(c, styles, info),)
   }
 
-  // Contains markers: must unwrap. Only sequences and styled wrappers can be
-  // unwrapped without losing information.
+  // Contains markers: must unwrap. Only sequences, styled wrappers, and
+  // elembic rules can be unwrapped without losing information.
+  let rule = elembic_rule(c)
+  if rule != none {
+    return _tokenize_impl(rule.doc, styles + (_elembic_show(rule.rule),))
+  }
   if c.func() == SEQUENCE_FUNC {
     return c.children.map(x => _tokenize_impl(x, styles)).flatten()
   }
