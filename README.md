@@ -56,7 +56,7 @@ typst init @preview/examy
 
 - **[Questions, parts, and subparts](https://siefkenj.github.io/typst-examy/questions.html)**,
   numbered automatically.
-- **[Points](https://siefkenj.github.io/typst-examy/points.html)**: points listed on a per-question basis as well as points tables and and points per page displays.
+- **[Points](https://siefkenj.github.io/typst-examy/points.html)**: points listed on a per-question basis as well as points tables and points per page displays.
 - **[Answer boxes](https://siefkenj.github.io/typst-examy/answer-boxes.html)** providing a student with space to write. These can have a fixed size or can use available space via fractional units (e.g. `height: 1fr`).
 - **[Solutions](https://siefkenj.github.io/typst-examy/solutions.html)**: written solutions can be globally toggled as visible/invisible to make a key/blank versions of a test.
 - **[Multiple choice](https://siefkenj.github.io/typst-examy/choices.html)**
@@ -79,7 +79,7 @@ All names below are exported by `#import "@preview/examy:1.0.0": *`. See the [fu
 | --- | --- |
 | [`#answer-box[...]`](https://siefkenj.github.io/typst-examy/reference/answer-box.html) | A box for students to write answers in. |
 | [`#choice[...]`](https://siefkenj.github.io/typst-examy/reference/choice.html) | A round or square bubble (used for multiple-choice questions) followed by the choice it labels. |
-| [`#choices[...]`](https://siefkenj.github.io/typst-examy/reference/choices.html) | A enumerate environment for multiple-choice answers. Every list item gets turned into a `#choice`, with a round/square bubble as its list marker. |
+| [`#choices[...]`](https://siefkenj.github.io/typst-examy/reference/choices.html) | An enumerate environment for multiple-choice answers. Every list item gets turned into a `#choice`, with a round/square bubble as its list marker. |
 | [`config`](https://siefkenj.github.io/typst-examy/reference/config.html) | Global configuration of package options. Options set via elembic. For example `#show: e.set_(config, show-solutions: true)` to show solutions globally. |
 | [`e`](https://siefkenj.github.io/typst-examy/reference/e.html) | A re-export of [elembic](https://typst.app/universe/package/elembic), used mainly for `e.set_`. |
 | [`#exam(...)`](https://siefkenj.github.io/typst-examy/reference/exam.html) | Entry point for the questions of an exam. |

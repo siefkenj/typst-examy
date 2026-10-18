@@ -22,7 +22,7 @@
   (("choice",), "A round or square bubble (used for multiple-choice questions) followed by the choice it labels."),
   (
     ("choices",),
-    "A enumerate environment for multiple-choice answers. Every list item gets turned into a `#choice`, with a round/square bubble as its list marker.",
+    "An enumerate environment for multiple-choice answers. Every list item gets turned into a `#choice`, with a round/square bubble as its list marker.",
   ),
   (
     ("config",),

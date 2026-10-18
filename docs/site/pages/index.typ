@@ -72,7 +72,7 @@ package's options (see #page-link("configuration.html")[Configuration]).
   ("questions.html", [Questions and numbering], [Questions, parts, and subparts, numbered automatically.]),
   ("points.html", [Points], [Points listed on a per-question basis as well as points tables and points per page displays.]),
   ("answer-boxes.html", [Answer boxes], [Providing a student with space to write. These can have a fixed size or can use available space via fractional units (e.g. `height: 1fr`).]),
-  ("solutions.html", [Solutions], [Written solutions can be globally toggled as visible/invisible to make key/blank versions of a test.]),
+  ("solutions.html", [Solutions], [Written solutions can be globally toggled as visible/invisible to make a key/blank versions of a test.]),
   ("choices.html", [Multiple choice], [With round or square bubbles, optionally enumerated.]),
   ("cross-references.html", [Smart cross-references], [A `@name` reference to a question will show a minimal string that uniquely identifies the question/part/subpart.]),
   ("cover-pages.html", [Cover pages], [Basic commands for creating name/exam info areas.]),
