@@ -1,7 +1,7 @@
 #import "../prelude.typ": *
-#import "../constants.typ": SHOW_SOLUTIONS_OVERRIDE
+#import "../constants.typ": SHOW_RUBRIC_OVERRIDE, SHOW_SOLUTIONS_OVERRIDE
 #import "../config.typ": config, solution_colors
-#import "../scan.typ": is_multi_par
+#import "../scan.typ": glue_rubrics, is_multi_par, rubric_markers
 #import "../signature.typ": declare_function, define
 
 /// Whether solutions are shown, given the configuration and the command line:
@@ -15,6 +15,14 @@
   } else {
     get(config).show-solutions != false
   }
+}
+
+/// Whether rubrics are shown, given the configuration, the command line, and
+/// (for `auto`) whether solutions are.
+#let show_rubric(get) = {
+  if SHOW_RUBRIC_OVERRIDE != none { return SHOW_RUBRIC_OVERRIDE }
+  let value = get(config).show-rubric
+  if value == auto { show_solutions(get) } else { value }
 }
 
 #let _SHOW_SOLUTIONS = declare_function(
@@ -128,7 +136,14 @@
   doc: "Declare a solution to a question, part, or subpart; this is only rendered if the config option to show solutions is enabled.",
   display: it => {
     e.get(get => {
-      if show_solutions(get) == false { return it.otherwise }
+      // Hidden, a solution still leaves its rubrics where it stands
+      // (invisible), so that they are found for the rubric all the same.
+      if show_solutions(get) == false {
+        return {
+          rubric_markers(it.body).join()
+          it.otherwise
+        }
+      }
       let colors = solution_colors(get)
       // On the key, a solution taking no height that has something in its
       // place on the exam is drawn over that, hidden, so the key lays out
@@ -167,7 +182,9 @@
             text(fill: colors.color, it_)
           }
         }
-        it.body
+        // Rubrics in the solution, when they are drawn, stay with the text
+        // beside them (see `glue_rubrics`).
+        if show_rubric(get) { glue_rubrics(it.body) } else { it.body }
       }
     })
   },

@@ -1,19 +1,21 @@
 #import "../template.typ": *
 
-Giving any question/part/subpart a value with `points: x` will cause an
-"(x points)" annotation to show next to the question/part/subpart.
-Related to points are:
+Giving any question/part/subpart a value with `points: x` will cause an "(x points)" annotation to
+show next to the question/part/subpart. Related to points are:
 
 - #api("points-table", body: raw("#points-table")) renders a scoring table.
-- #api("num-points", body: raw("#num-points")) and
-  #api("num-questions", body: raw("#num-questions")) give the total number of
-  points and questions; #api("num-bonus-points", body: raw("#num-bonus-points"))
-  the total number of bonus points.
-- `intent: "bonus"`: bonus points are tracked separately and excluded from the
-  regular totals.
-- #api("page-points", body: raw("page-points()")) gives the number of points on
-  a page, and #api("page-score-box", body: raw("#page-score-box")) draws a score
-  box for a page footer.
+- #api("num-points", body: raw("#num-points")) and #api("num-questions", body: raw(
+    "#num-questions",
+  )) give the total number of points and questions, and #api(
+    "num-bonus-points",
+    body: raw("#num-bonus-points"),
+  ) the total number of bonus points.
+- `intent: "bonus"` marks bonus points, which are tracked separately and excluded from the regular
+  totals.
+- #api("page-points", body: raw("page-points()")) gives the number of points on a page, and #api(
+    "page-score-box",
+    body: raw("#page-score-box"),
+  ) draws a score box for a page footer.
 
 #example(
   ```typ
@@ -39,24 +41,21 @@ Related to points are:
   ```,
 )
 
-The totals work anywhere in the document, even before the exam, and a
-part's points add up to its question's. `intent: "practice"` leaves a
-division's points out of every total.
+The totals can be used anywhere in the document, even before the exam. A part's points are added to
+its question's total, and points marked `intent: "practice"` are left out of every total.
 
-== Where the badge goes
+== Where the badge goes <points-badge>
 
-#api("config")'s `points-position` sets where the badge goes, for the whole
-document:
+The global #api("config")'s `points-position` option sets where the points badge is placed:
 
-- `"start"` (the default): before the first word of the body.
-- `"margin-left"` or `"margin-right"`: in the page margin, level with the
-  body's first line. The margin must be wide enough to hold it.
-- `"end"`: flush right, after all of the body's own text (answer boxes
-  included) and before its first part, on the same line as the last of it
-  when there is room. After an `fr` answer box, the box gives up a line to it.
+- `"start"` (the default): before the first word of the question.
+- `"margin-left"` or `"margin-right"`: in the page margin, level with the question's first line. The
+  margin must be wide enough to fit it.
+- `"end"`: flush right, at the end of the question's own text (answer boxes included) and before its
+  first part.
 
-`points-format` draws the badge from the number of points, which is also where
-the word "points" is translated:
+The badge itself is drawn by `points-format`, a function of the number of points. Use it to change
+the badge's wording, or to translate it:
 
 #example(
   ```typ
@@ -88,9 +87,9 @@ the word "points" is translated:
 
 == Totals on questions
 
-With `points-show-totals`, a question (or part) whose parts have points shows
-their total, and each part still shows its own. The total is only shown; it is
-not counted again in #api("num-points") or the points table.
+With `points-show-totals: true`, a question whose parts have points shows the total of its parts,
+and each part still shows its own points. The total is for display only; it is not counted again in
+#api("num-points") or the points table.
 
 #example(
   ```typ
@@ -109,17 +108,14 @@ not counted again in #api("num-points") or the points table.
   ```,
 )
 
-A question with points of its own _and_ on its parts, as the second one above,
-shows a warning in red in place of its badge: give the points to one or the
-other. (Bonus and practice parts don't count: a `question(points: 4)` with a
-bonus part shows "(4 points)".) With the points in the margin, a question that
-starts directly with a part shares its first line with that part, and its
-total is then left out, so the line shows the part's points only.
+A question with points of its own _and_ points on its parts, like the second one above, shows a
+warning in red instead of its badge. Give the points to one or the other. Bonus and practice parts
+don't count, so a `question(points: 4)` with a bonus part still shows "(4 points)".
 
 == Points table layouts
 
-#api("points-table") is laid out by #api("config"). To lay out one table
-differently from the rest, set these in a scope around it:
+The layout of #api("points-table") is set with the global #api("config"). To lay out one table
+differently from the rest, set the options in a scope around it:
 
 #example(
   ```typ
@@ -148,17 +144,16 @@ differently from the rest, set these in a scope around it:
   width: 9cm,
 )
 
-`points-table-by: "page"` totals the points per page instead of per question,
-and `points-table-max-columns: 8` splits a long horizontal table into several,
-one below the other.
+`points-table-by: "page"` totals the points per page instead of per question, and
+`points-table-max-columns: 8` splits a long horizontal table into several tables, one below the
+other.
 
 == Points per page
 
-#api("page-points") is the number of points on the current page, counting each
-question, part, and subpart on the page where it starts. It needs `context`
-and returns a number, so a footer can test it. #api("page-score-box") is a
-ready-made "Score: \_\_\_\_ / 7" box for a footer, which draws nothing on pages
-without points:
+#api("page-points") gives the number of points on the current page, where each question/part/subpart
+counts toward the page it starts on. It needs `context` and returns a number, so you can use it in a
+footer. #api("page-score-box") is a ready-made "Score: \_\_\_\_ / 7" box for a footer, and draws
+nothing on pages without points:
 
 ```typ
 #set page(footer: align(right, page-score-box))
@@ -173,3 +168,19 @@ without points:
   ]
 })
 ```
+
+== Localization
+
+Examy includes some fixed strings which can be localized via the `strings` option in the global
+#api("config").
+
+```typ
+#show: e.set_(config, strings: (
+  question: [Aufgabe],
+  points: [Punkte],
+  total: [Summe],
+))
+```
+
+The words in a points badge, "(2 points)", are drawn by `points-format` instead (see
+#link(<points-badge>)[Where the badge goes]).

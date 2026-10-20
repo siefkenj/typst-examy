@@ -1,10 +1,11 @@
 #import "../template.typ": *
 
-A document is built out of an #api("exam", body: raw("#exam(..., questions: [...])")).
-Inside of `questions`, the commands #api("question", body: raw("#question[...]")),
-#api("part", body: raw("#part[...]")), and #api("subpart", body: raw("#subpart[...]"))
-can be used to create a question hierarchy. Questions/parts/subparts can be
-assigned points, heights, etc.
+A document is built out of an #api("exam", body: raw("#exam(..., questions: [...])")). Inside are
+questions created with the commands #api("question", body: raw("#question[...]")), #api(
+  "part",
+  body: raw("#part[...]"),
+), and #api("subpart", body: raw("#subpart[...]")), used to create a question hierarchy.
+Questions/parts/subparts can be assigned points, heights, etc.
 
 #example(
   ```typ
@@ -25,14 +26,16 @@ assigned points, heights, etc.
   height: 9cm,
 )
 
-What a part is numbered depends on how deeply it is nested, not on which of
-the three functions made it: they take identical arguments.
+A part's numbering is determined _only_ by how deeply it is nested, so `#question[#question[...]]`
+and `#question[#part[...]]` are numbered the same. The aliases `question`/`part`/`subpart` are
+provided for convenience.
 
-== Numbering a division
+== Numbering a question
 
-A division's `number` overrides its automatic number: `auto` (the default)
-numbers it in turn, an integer sets the number (later divisions continue from
-it), any other content is shown as it is, and `none` leaves it unnumbered.
+By default, questions automatically increment their number. Providing a `number: ...` argument to a
+`question`/`part`/`subpart` overrides this behaviour. A numerical value will cause numbering to skip
+to that value; a non-numerical value or general content will pause the counter and show that
+content. To omit a number completely, you can set `number: none`.
 
 #example(
   ```typ
@@ -48,10 +51,8 @@ it), any other content is shown as it is, and `none` leaves it unnumbered.
 
 == Numbering styles
 
-The numbering style of each level is set for the whole document with
-#api("config")'s `division-numbering`: one pattern (or function) per level,
-as Typst's `numbering` takes. References follow it, dropping a pattern's
-trailing `.` (a function's result is used as it is).
+The numbering style of each level is set for the document via the global #api("config")'s
+`division-numbering` option.
 
 #example(
   ```typ
@@ -63,43 +64,22 @@ trailing `.` (a function's result is used as it is).
   #question[
     The first problem.
     #part[A part.]
-    #part[From another problem, @later reads in full.]
+    #part[Translate the question statement of @later to German.]
   ]
   #question[
-    #part(label: <later>)[A part with a label.]
-    #part[From a sibling, @later reads as the part alone.]
+    #part(label: <later>)[Where is the nearest grocery store?]
+    #part[Relative to your answer in part @later, where is the nearest train station?]
   ]
   ```,
   inset: 5em,
 )
 
-A label wider than the gutter runs out into the margin to its left rather than
-wrapping; widen the gutter with a division's `indent` if needed.
-
-== The words examy prints
-
-The words examy prints itself — in the points table, the score box, and the
-references — are set with `strings`, for another language or another wording.
-Only the keys given are replaced; they are `question`, `page`, `points`,
-`bonus`, `score`, and `total`.
-
-```typ
-#show: e.set_(config, strings: (
-  question: [Aufgabe],
-  points: [Punkte],
-  total: [Summe],
-))
-```
-
-The words in a points badge, "(2 points)", are drawn by `points-format`
-instead (see #page-link("points.html")[Points]).
-
 == A question of a set height
 
-A question, part, or subpart given a `height` is laid out as one block of
-that height, its parts included: a length such as `4.5cm`, or a fraction such
-as `1fr`, a share of what is left of the page (as an answer box's is). `fr`
-answer boxes inside it share what its own text leaves of it.
+Giving a question/part/subpart a `height` reserves exactly that much space for it, parts included.
+The height can be a length like `4.5cm`, or a fraction like `1fr`, which takes a share of the space
+left on the page, just as an answer box does. Any `fr` answer boxes inside share the space that the
+text leaves over.
 
 #example(
   ```typ
@@ -118,16 +98,16 @@ answer boxes inside it share what its own text leaves of it.
   ```,
 )
 
-Being one block, it cannot break across pages: a `#pagebreak()` inside a
-division with a `height` is an error. What it holds is not shrunk to fit:
-content taller than the `height` runs out of the block, over what comes after
-it.
+A question/part/subpart with a `height` is laid out as a single block, so it cannot break across
+pages, and a `#pagebreak()` inside it is an error. Its content is not shrunk to fit either: content
+taller than the `height` overflows onto whatever comes next.
 
 #note[
-  The preferred way to give a question room to write in is an answer box:
-  #api("answer-box", body: raw("#answer-box(width: 100%, height: 3cm)[]")).
-  If you do not want a border, give it `stroke: none`, and it is blank space
-  of that size, which on the answer key holds the solution.
+  _Note._ The preferred way to give a question room to write in is an answer box, #api(
+    "answer-box",
+    body: raw("#answer-box(width: 100%, height: 3cm)[]"),
+  ). If you don't want a border, set `stroke: none` to get blank space of that size. On the answer
+  key, that space holds the solution.
 ]
 
 #example(
@@ -146,8 +126,7 @@ it.
 
 == Page breaks inside questions
 
-`#pagebreak()` works inside questions, parts, and subparts: the division
-continues on the next page at the same indentation, without repeating its
-number. `fr` answer boxes on each page share what is left of that page. The
-exception is a division given a `height`, which is one block (see above): a
-`#pagebreak()` inside it is an error.
+`#pagebreak()` works inside questions, parts, and subparts. The question/part/subpart continues on
+the next page at the same indentation, without repeating its number, and the `fr` answer boxes on
+each page share the space left on that page. The only exception is a question/part/subpart with a
+`height` (see above), where a `#pagebreak()` is an error.

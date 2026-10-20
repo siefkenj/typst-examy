@@ -59,6 +59,7 @@ typst init @preview/examy
 - **[Points](https://siefkenj.github.io/typst-examy/points.html)**: points listed on a per-question basis as well as points tables and points per page displays.
 - **[Answer boxes](https://siefkenj.github.io/typst-examy/answer-boxes.html)** providing a student with space to write. These can have a fixed size or can use available space via fractional units (e.g. `height: 1fr`).
 - **[Solutions](https://siefkenj.github.io/typst-examy/solutions.html)**: written solutions can be globally toggled as visible/invisible to make a key/blank versions of a test.
+- **[Rubrics](https://siefkenj.github.io/typst-examy/rubrics.html)**: annotate questions and solutions with grading rubrics (positive or negative points), exportable as JSON.
 - **[Multiple choice](https://siefkenj.github.io/typst-examy/choices.html)**
   with round or square bubbles, optionally enumerated.
 - **[Smart cross-references](https://siefkenj.github.io/typst-examy/cross-references.html)**:

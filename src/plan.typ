@@ -12,22 +12,27 @@
 /// - (kind: "verbatim", item: idx)            — top-level chunk, rendered as-is
 /// - (kind: "break", target, weak)            — real page/column break
 /// - (kind: "nested", root: idx)              — render subtree as nested blocks
-/// - (kind: "frame", division: idx, labels: (idx, ..))
+/// - (kind: "frame", division: idx, labels: (idx, ..), rubrics: (idx, ..))
 ///                                            — a division given a `height`:
 ///   one block of that height, its subtree planned and rendered inside it
 ///   (see `frame_plan`). `labels` are ancestors whose number shares its
-///   first line, as `label_divisions` below.
+///   first line, and `rubrics` chunks it takes in, as `label_divisions` and
+///   `rubrics` below.
 /// - (kind: "segment", division: idx, first: bool, indent: length,
 ///    label_divisions: (idx, ..), items: (idx, ..), fr: fraction | none,
-///    has_inner_break: bool, sticky: bool, hoisted: bool)
+///    has_inner_break: bool, sticky: bool, hoisted: bool, rubrics: (idx, ..))
 ///   `label_divisions` are the divisions whose number should be shown in the
 ///   gutter of this segment (a division whose body starts with a child
-///   division shares its first line with that child).
+///   division shares its first line with that child). `rubrics` are chunks
+///   of other segments that held nothing but rubrics, and were dropped:
+///   their rubrics are placed in this one, still their division's.
+/// - (kind: "rubrics", items: (idx, ..))      — such chunks with no segment
+///   after them to take them in: their rubrics alone, in the flow.
 ///   `hoisted` marks a segment that wraps a single fr-height chunk pulled out
 ///   of its division's prose (see `plan_split`); `sticky` marks the segment
 ///   right before such a wrapper, which must not be separated from it.
 
-#import "scan.typ": is_whitespace_content
+#import "scan.typ": has_rubric, is_whitespace_content
 
 /// Sum of `indent`s of the division `idx` and all its ancestors.
 #let cumulative_indent(items, idx) = {
@@ -77,31 +82,45 @@
   }
 }
 
-/// Whether a pending segment contains only whitespace chunks.
-#let _segment_is_whitespace(items, seg) = {
-  seg.items.all(i => is_whitespace_content(items.at(i).body))
+/// Whether a pending segment contains only whitespace chunks: if so, those
+/// of them that hold rubrics, else `none`. A rubric is invisible, and a
+/// segment of nothing else is dropped all the same, as it would take room,
+/// but its rubrics must still be placed, to be found: the next segment takes
+/// them in (see `rubrics` above).
+#let _segment_blank(items, seg) = {
+  let rubrics = ()
+  for i in seg.items {
+    let body = items.at(i).body
+    if not is_whitespace_content(body) { return none }
+    if has_rubric(body) { rubrics.push(i) }
+  }
+  rubrics
 }
 
 /// Split the subtree rooted at `root` into peer-segment instructions.
 #let plan_split(items, root) = {
   let instructions = ()
   let stack = () // open division indices
-  let pending_labels = () // divisions whose label still needs a home
+  // Divisions whose label still needs a home, and chunks of rubrics that do.
+  let pending_labels = ()
+  let pending_rubrics = ()
   let current = none
 
   // Emit `current` as a segment instruction (or defer/drop it).
-  let flush(instructions, pending_labels, current, force: false, sticky: false) = {
-    if current == none { return (instructions, pending_labels) }
-    let whitespace = _segment_is_whitespace(items, current)
+  let flush(instructions, pending_labels, pending_rubrics, current, force: false, sticky: false) = {
+    if current == none { return (instructions, pending_labels, pending_rubrics) }
+    let blank = _segment_blank(items, current)
+    let whitespace = blank != none
     let keep_for_content = not whitespace or current.fr != none
+    let dropped = if whitespace { blank } else { () }
     if current.first and whitespace and not keep_for_content and not force {
       // A first segment with nothing in it: let its label ride on the next
       // segment so e.g. "1." and "(a)" share a line.
-      return (instructions, pending_labels + (current.division,))
+      return (instructions, pending_labels + (current.division,), pending_rubrics + dropped)
     }
     if not current.first and not keep_for_content {
       // Whitespace-only continuation: drop entirely.
-      return (instructions, pending_labels)
+      return (instructions, pending_labels, pending_rubrics + dropped)
     }
     let label_divisions = pending_labels + (if current.first { (current.division,) } else { () })
     instructions.push((
@@ -115,8 +134,9 @@
       has_inner_break: current.has_inner_break,
       sticky: sticky,
       hoisted: current.hoisted,
+      rubrics: pending_rubrics,
     ))
-    (instructions, ())
+    (instructions, (), ())
   }
 
   let new_segment(division, first, hoisted: false) = (
@@ -135,14 +155,14 @@
       // that (no) text needs a line of its own there, as it gets when drawn
       // in one piece.
       let force = current != none and current.first and items.at(current.division).badge_at_end
-      (instructions, pending_labels) = flush(instructions, pending_labels, current, force: force)
+      (instructions, pending_labels, pending_rubrics) = flush(instructions, pending_labels, pending_rubrics, current, force: force)
       stack.push(ev.item)
       current = new_segment(ev.item, true)
     } else if ev.kind == "close" {
       // Force: if this division's first segment is empty and nothing follows
       // inside it, it must still become a block so its label shows.
       let force = current.first and current.division == ev.item and pending_labels.len() == 0
-      (instructions, pending_labels) = flush(instructions, pending_labels, current, force: force)
+      (instructions, pending_labels, pending_rubrics) = flush(instructions, pending_labels, pending_rubrics, current, force: force)
       let _ = stack.pop()
       current = if stack.len() > 0 { new_segment(stack.at(-1), false) } else { none }
     } else if ev.kind == "chunk" {
@@ -165,9 +185,10 @@
         let badged = (pending_labels + (current.division,)).any(d => (
           items.at(d).badge_takes_line
         ))
-        (instructions, pending_labels) = flush(
+        (instructions, pending_labels, pending_rubrics) = flush(
           instructions,
           pending_labels,
+          pending_rubrics,
           current,
           force: badged,
           sticky: true,
@@ -180,7 +201,7 @@
       }
       if chunk.has_inner_break { current.has_inner_break = true }
       if hoist {
-        (instructions, pending_labels) = flush(instructions, pending_labels, current)
+        (instructions, pending_labels, pending_rubrics) = flush(instructions, pending_labels, pending_rubrics, current)
         current = new_segment(stack.at(-1), false)
       }
     } else if ev.kind == "frame" {
@@ -188,13 +209,14 @@
       // parent's text before it ends here; a parent with no text before it
       // has its number on the frame's first line, as with any part.
       let force = current.first and items.at(current.division).badge_at_end
-      (instructions, pending_labels) = flush(instructions, pending_labels, current, force: force)
-      instructions.push((kind: "frame", division: ev.item, labels: pending_labels))
+      (instructions, pending_labels, pending_rubrics) = flush(instructions, pending_labels, pending_rubrics, current, force: force)
+      instructions.push((kind: "frame", division: ev.item, labels: pending_labels, rubrics: pending_rubrics))
       pending_labels = ()
+      pending_rubrics = ()
       current = new_segment(stack.at(-1), false)
     } else {
       // break
-      (instructions, pending_labels) = flush(instructions, pending_labels, current, force: true)
+      (instructions, pending_labels, pending_rubrics) = flush(instructions, pending_labels, pending_rubrics, current, force: true)
       let b = items.at(ev.item)
       instructions.push((kind: "break", target: b.target, weak: b.weak))
       current = new_segment(stack.at(-1), false)
@@ -213,7 +235,10 @@
       has_inner_break: false,
       sticky: false,
       hoisted: false,
+      rubrics: pending_rubrics,
     ))
+  } else if pending_rubrics.len() > 0 {
+    instructions.push((kind: "rubrics", items: pending_rubrics))
   }
   instructions
 }
@@ -229,7 +254,7 @@
     } else if it.kind == "break" {
       instructions.push((kind: "break", target: it.target, weak: it.weak))
     } else if has_height(it) {
-      instructions.push((kind: "frame", division: i, labels: ()))
+      instructions.push((kind: "frame", division: i, labels: (), rubrics: ()))
     } else if needs_split(items, i) {
       instructions += plan_split(items, i)
     } else {
@@ -246,19 +271,24 @@
 /// answer boxes inside it share the block's height. `labels`, ancestors
 /// whose number shares the frame's first line, go with what it starts with:
 /// its first segment, or a frame it starts with (passed on down), or, if it
-/// holds nothing, a segment of their own.
-#let frame_plan(items, idx, labels: ()) = {
+/// holds nothing, a segment of their own. `rubrics` (see the `frame`
+/// instruction) go with them.
+#let frame_plan(items, idx, labels: (), rubrics: ()) = {
   let it = items.at(idx)
   if it.parent == none and not it.children.any(c => needs_split(items, c)) {
     return ((kind: "nested", root: idx),)
   }
   let inner = plan_split(items, idx)
-  if labels.len() == 0 { return inner }
+  if labels.len() == 0 and rubrics.len() == 0 { return inner }
   let first = inner.at(0, default: none)
   if first != none and first.kind == "segment" {
     inner.at(0).label_divisions = labels + first.label_divisions
+    inner.at(0).rubrics = rubrics + first.rubrics
   } else if first != none and first.kind == "frame" {
     inner.at(0).labels = labels + first.labels
+    inner.at(0).rubrics = rubrics + first.rubrics
+  } else if labels.len() == 0 {
+    inner.insert(0, (kind: "rubrics", items: rubrics))
   } else {
     inner.insert(0, (
       kind: "segment",
@@ -271,6 +301,7 @@
       has_inner_break: false,
       sticky: false,
       hoisted: false,
+      rubrics: rubrics,
     ))
   }
   inner

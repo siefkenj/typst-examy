@@ -82,8 +82,27 @@
     ),
     e.field(
       "show-rubric",
-      e.types.option(bool),
-      doc: "Whether to show a rubric",
+      e.types.union(auto, bool),
+      doc: "Whether to show the rubrics of questions, parts, and subparts (see `rubric`). `auto` shows them where solutions are shown, on the answer key; the `--input show-rubric=..` command-line option overrides it. A rubric that is not shown takes no room, so the exam lays out the same either way",
+      default: false,
+    ),
+    e.field(
+      "rubric-position",
+      e.types.union("margin-right", "margin-left", "end"),
+      doc: "Where a division's rubric is drawn.\n\n`\"margin-right\"` or `\"margin-left\"`: in the page margin, level with the division's first line, below the rubric before it when they would overlap. Widen the margin to make room for it (see `rubric-width`).\n\n`\"end\"`: after the division, its parts included, in the flow, taking room of its own",
+      default: "margin-right",
+    ),
+    e.field(
+      "rubric-trace",
+      e.types.union(auto, bool),
+      doc: "Whether a rubric written in a division's body is traced by a dotted line from where it is written to its item in the rubric. `auto` traces them in the margins and not at the `\"end\"`",
+      default: auto,
+    ),
+    e.field(
+      "rubric-width",
+      e.types.union(auto, length),
+      doc: "The width of a rubric in the margin. `auto` fills the page margin it is in, less a gap on either side",
+      default: auto,
     ),
     e.field(
       "solution-color",
@@ -258,6 +277,19 @@
     points-format: if cfg.points-format == auto { default_points_format } else { cfg.points-format },
     points-position: cfg.points-position,
     points-show-totals: cfg.points-show-totals,
+    // `shown` is resolved by the exam, which knows whether solutions are shown
+    // (see `show_rubric`), and `present`, whether it has rubrics at all, and
+    // so `drawn`, whether they are drawn, and `traced`, whether their leaders
+    // are too (see `process_questions`).
+    rubric: (
+      shown: cfg.show-rubric,
+      present: false,
+      drawn: false,
+      traced: false,
+      position: cfg.rubric-position,
+      trace: if cfg.rubric-trace == auto { cfg.rubric-position != "end" } else { cfg.rubric-trace },
+      width: cfg.rubric-width,
+    ),
   )
 }
 
@@ -269,4 +301,5 @@
   points-format: default_points_format,
   points-position: "start",
   points-show-totals: false,
+  rubric: (shown: false, present: false, drawn: false, traced: false, position: "margin-right", trace: true, width: auto),
 )

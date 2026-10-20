@@ -129,7 +129,7 @@
     })
 }
 
-#import "scan.typ": is_whitespace_content, trim_leading_space
+#import "scan.typ": has_rubric, is_whitespace_content, trim_leading_space
 
 /// Normalize division bodies: drop leading whitespace-only chunks and strip
 /// leading space/parbreak elements from the first real chunk. This makes the
@@ -147,6 +147,7 @@
       if (
         c.kind == "chunk"
           and is_whitespace_content(c.body)
+          and not has_rubric(c.body)
           and c.fr == none
           and not c.has_inner_break
       ) {

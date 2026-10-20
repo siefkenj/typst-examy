@@ -30,12 +30,15 @@
   (path: "index.html", title: "Getting started", file: "pages/index.typ", heading: [examy]),
   (path: "questions.html", title: "Questions and numbering", file: "pages/questions.typ"),
   (path: "points.html", title: "Points", file: "pages/points.typ"),
-  (path: "answer-boxes.html", title: "Answer boxes", file: "pages/answer-boxes.typ"),
-  (path: "solutions.html", title: "Solutions", file: "pages/solutions.typ"),
-  (path: "choices.html", title: "Multiple choice", file: "pages/choices.typ"),
   (path: "cross-references.html", title: "Cross-references", file: "pages/cross-references.typ"),
+  (path: "answer-boxes.html", title: "Answer boxes", file: "pages/answer-boxes.typ"),
+  (path: "choices.html", title: "Multiple choice", file: "pages/choices.typ"),
+  (path: "solutions.html", title: "Solutions", file: "pages/solutions.typ"),
+  (path: "rubrics.html", title: "Rubrics", file: "pages/rubrics.typ"),
   (path: "cover-pages.html", title: "Cover pages and name blocks", file: "pages/cover-pages.typ"),
   (path: "configuration.html", title: "Configuration", file: "pages/configuration.typ"),
+  (path: "technical-details.html", title: "Technical details", file: "pages/technical-details.typ"),
+  (path: "changelog.html", title: "Changelog", file: "pages/changelog.typ"),
   (path: "reference.html", title: "Reference", file: "pages/reference.typ"),
 )
 
@@ -83,6 +86,9 @@
   () => html.elem("aside", attrs: (class: "callout " + kind), body),
   () => {
     let color = if kind == "warning" { rgb("#c27c0e") } else { rgb("#1d5fb4") }
+    // Its emphasis and bold text in its own color, as on the site.
+    show emph: set text(fill: color)
+    show strong: set text(fill: color)
     block(width: 100%, inset: (x: 1em, y: .8em), fill: color.lighten(92%), stroke: (left: 2pt + color), body)
   },
 )
@@ -115,9 +121,7 @@
       html.elem("span", text)
     })
   }),
-  () => list(..cards.pos().map(((path, title, text)) => [
-    #link(page_label(path), strong(title)) --- #text
-  ])),
+  () => terms(..cards.pos().map(((path, title, text)) => terms.item(link(page_label(path), strong(title)), text))),
 )
 
 // ---------------------------------------------------------------------------
@@ -214,7 +218,8 @@
 
 /// `OUTPUT` as CSS custom properties, for the site's stylesheet (see
 /// site.typ): its colors, and the wave as a tile of SVG to repeat down the
-/// middle of an output panel, the two shades meeting along it.
+/// middle of an output panel, the two shades meeting along it, and another
+/// to repeat across it, for when the papers are one above the other.
 #let output_css() = {
   let pt(x) = str(calc.round(x / 1pt, digits: 3))
   let (amp, step) = (OUTPUT.amp, OUTPUT.step)
@@ -229,6 +234,19 @@
       + "<path fill='none' stroke='" + OUTPUT.line.to-hex() + "' stroke-width='" + pt(OUTPUT.line-width) + "' d='M" + pt(x) + " 0" + wave + "'/>"
       + "</svg>"
   )
+  // The same wave across, for papers one above the other: the exam's shade
+  // above it and the key's below.
+  let (xw, xh) = (2 * step, 16pt)
+  let y = xh / 2
+  let across = "Q" + pt(step / 2) + " " + pt(y + amp) + " " + pt(step) + " " + pt(y) + "Q" + pt(1.5 * step) + " " + pt(y - amp) + " " + pt(xw) + " " + pt(y)
+  let svg-x = (
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + pt(xw) + " " + pt(xh) + "'>"
+      + "<path fill='" + OUTPUT.exam-shade.to-hex() + "' d='M0 0H" + pt(xw) + "V" + pt(xh) + "H0Z'/>"
+      + "<path fill='" + OUTPUT.key-shade.to-hex() + "' d='M0 " + pt(y) + across + "V" + pt(xh) + "H0Z'/>"
+      + "<path fill='none' stroke='" + OUTPUT.line.to-hex() + "' stroke-width='" + pt(OUTPUT.line-width) + "' d='M0 " + pt(y) + across + "'/>"
+      + "</svg>"
+  )
+  let url(svg) = "url(\"data:image/svg+xml," + svg.replace("#", "%23").replace("<", "%3C").replace(">", "%3E") + "\")"
   (
     "/* Generated from OUTPUT in docs/site/template.typ. */\n:root {\n"
       + "  --output-exam-shade: " + OUTPUT.exam-shade.to-hex() + ";\n"
@@ -236,10 +254,39 @@
       + "  --output-paper-edge: " + OUTPUT.paper-edge.to-hex() + ";\n"
       + "  --output-label: " + OUTPUT.label.to-hex() + ";\n"
       + "  --output-label-font: \"" + OUTPUT.label-font + "\";\n"
-      + "  --output-wave: url(\"data:image/svg+xml," + svg.replace("#", "%23").replace("<", "%3C").replace(">", "%3E") + "\");\n"
+      + "  --output-wave: " + url(svg) + ";\n"
       + "  --output-wave-size: " + pt(w) + "pt " + pt(h) + "pt;\n"
+      + "  --output-wave-x: " + url(svg-x) + ";\n"
+      + "  --output-wave-x-size: " + pt(xw) + "pt " + pt(xh) + "pt;\n"
+      + "  --output-wave-x-size-h: " + pt(xh) + "pt;\n"
       + "}\n"
   )
+}
+
+/// Where the image of a view of an example shown `paged-name` is published.
+#let _paged_path(name, solutions) = "examples/" + name + if solutions { "-key" } else { "-exam" } + ".svg"
+
+/// The documents an example shown `paged-name` is drawn from on the site (see
+/// `example`): an SVG of each of its views, laid out as a page of its own.
+/// `ex` holds `example`'s arguments, `code` and `paged-name` among them.
+/// Called by site.typ, at its top level, where documents are made.
+#let paged_documents(ex) = {
+  let src = ex.code.text.replace(regex("@preview/examy:\d+\.\d+\.\d+"), "@preview/examy:" + VERSION)
+  let key = ex.at("key", default: auto)
+  let key = if key == auto { has_key(src) } else { key }
+  for solutions in if key { (false, true) } else { (false,) } {
+    document(_paged_path(ex.paged-name, solutions), {
+      set page(width: auto, height: auto, margin: 0pt)
+      render(
+        src,
+        solutions: solutions,
+        wrap: ex.at("wrap", default: auto),
+        width: ex.at("width", default: 12cm),
+        height: ex.at("height", default: none),
+        inset: ex.at("inset", default: 0pt),
+      )
+    })
+  }
 }
 
 /// A code example, shown with what it renders to, rendered by the package
@@ -258,6 +305,11 @@
 ///   `height` gives `fr` answer boxes a page to fill.
 /// - `inset`: room around the page, for what is drawn outside it, as
 ///   `render` takes it.
+/// - `paged-name`: on the site, show what it renders to as images of a paged
+///   rendering, named after this (see `paged_documents`), rather than in an
+///   HTML frame: for output that needs to know where things are on the page,
+///   which Typst's HTML export does not keep inside a frame (a rubric's
+///   dotted lines). site.typ makes the images, from a list the page exports.
 ///
 /// On the site, the example is also shown as a whole document, which compiles
 /// as it is in a document of its own (see `full_source`), in a second code
@@ -266,7 +318,7 @@
 /// the page as `data-` attributes too, for the live editor (live.ts) to pick
 /// up. In the PDF, the code is followed by what it renders to, scaled down to
 /// fit the page if it must be.
-#let example(code, key: auto, wrap: auto, width: 12cm, height: none, inset: 0pt) = {
+#let example(code, key: auto, wrap: auto, width: 12cm, height: none, inset: 0pt, paged-name: none) = {
   // An import line shows the version this site documents, whatever the page
   // says, so that a new version needs no change to the pages.
   let src = code.text.replace(regex("@preview/examy:\d+\.\d+\.\d+"), "@preview/examy:" + VERSION)
@@ -274,7 +326,8 @@
   let full = full_source(src, VERSION, wrap: wrap)
   let views = if key { ((false, "Exam"), (true, "Answer key")) } else { ((false, none),) }
   let paged() = {
-    block(sticky: true, raw(src, lang: "typ", block: true))
+    // Not kept with what it renders to: a page may break between the two.
+    raw(src, lang: "typ", block: true)
     // Laid out as on the site, not as the manual's text is, nor centered
     // as the panel is: both ways, since an alignment set one way only keeps
     // the other from around it, and the panel centers its papers vertically.
@@ -315,7 +368,11 @@
             html.elem(
               "div",
               attrs: (class: "paper", data-solutions: repr(solutions)),
-              html.frame(render(src, solutions: solutions, wrap: wrap, width: width, height: height, inset: inset)),
+              if paged-name == none {
+                html.frame(render(src, solutions: solutions, wrap: wrap, width: width, height: height, inset: inset))
+              } else {
+                html.elem("img", attrs: (src: _paged_path(paged-name, solutions), alt: if solutions { "Answer key" } else { "Exam" }))
+              },
             )
           }
         })
@@ -490,13 +547,20 @@
 /// A link from the current page to another, by its path from the root.
 #let _href(current, path) = _root(current) + path
 
-/// The sidebar: the guide's pages, and every export.
-#let _sidebar(current) = html.elem("nav", attrs: (class: "sidebar", aria-label: "Site"), {
+/// The guide's pages, headed "Guide": in the sidebar, and in the menu on a
+/// small screen.
+#let _guide_list(current) = {
   let here(path) = if path == current.path { (aria-current: "page") } else { (:) }
   html.elem("p", attrs: (class: "sidebar-title"), [Guide])
   html.elem("ul", for p in PAGES.filter(p => p.path != "reference.html") {
     html.elem("li", html.elem("a", attrs: (href: _href(current, p.path), ..here(p.path)), p.title))
   })
+}
+
+/// The sidebar: the guide's pages, and every export.
+#let _sidebar(current) = html.elem("nav", attrs: (class: "sidebar", aria-label: "Site"), {
+  let here(path) = if path == current.path { (aria-current: "page") } else { (:) }
+  _guide_list(current)
   html.elem("p", attrs: (class: "sidebar-title"), html.elem(
     "a",
     attrs: (href: _href(current, "reference.html"), ..here("reference.html")),
@@ -552,12 +616,29 @@
     html.elem("header", attrs: (class: "topbar"), {
       html.elem("a", attrs: (class: "brand", href: to("index.html")), [examy])
       html.elem("span", attrs: (class: "version"), [v#VERSION])
-      html.elem("nav", attrs: (class: "toplinks", aria-label: "Links"), {
-        html.elem("a", attrs: (href: to("index.html")), [Guide])
-        html.elem("a", attrs: (href: to("reference.html")), [Reference])
-        html.elem("a", attrs: (href: to(MANUAL_PDF), download: ""), [PDF])
-        html.elem("a", attrs: (href: "https://typst.app/universe/package/examy"), [Typst Universe])
-        html.elem("a", attrs: (href: REPOSITORY), [GitHub])
+      // On a small screen, the links and the guide's pages are in a menu
+      // the button opens (see style.css); the sidebar is hidden there.
+      html.elem(
+        "button",
+        attrs: (
+          class: "menu-button",
+          type: "button",
+          aria-label: "Menu",
+          aria-controls: "site-menu",
+          aria-expanded: "false",
+          onclick: "const open = this.parentElement.classList.toggle('menu-open'); this.setAttribute('aria-expanded', open)",
+        ),
+        html.elem("span") + html.elem("span") + html.elem("span"),
+      )
+      html.elem("div", attrs: (class: "menu", id: "site-menu"), {
+        html.elem("nav", attrs: (class: "toplinks", aria-label: "Links"), {
+          html.elem("a", attrs: (href: to("index.html")), [Guide])
+          html.elem("a", attrs: (href: to("reference.html")), [Reference])
+          html.elem("a", attrs: (href: to(MANUAL_PDF), download: ""), [PDF])
+          html.elem("a", attrs: (href: "https://typst.app/universe/package/examy"), [Typst Universe])
+          html.elem("a", attrs: (href: REPOSITORY), [GitHub])
+        })
+        html.elem("nav", attrs: (class: "menu-guide", aria-label: "Guide"), _guide_list(current))
       })
     })
     html.elem("div", attrs: (class: "layout"), {

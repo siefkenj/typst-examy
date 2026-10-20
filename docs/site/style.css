@@ -57,18 +57,35 @@ a:hover { text-decoration: underline; }
 .brand { font-weight: 700; font-size: 1.2rem; color: var(--text); letter-spacing: .01em; }
 .brand:hover { text-decoration: none; }
 .version { color: var(--muted); font-size: .85rem; }
-.toplinks { margin-left: auto; display: flex; gap: 1.1rem; font-size: .95rem; flex-wrap: wrap; }
+.menu { margin-left: auto; }
+.toplinks { display: flex; gap: 1.1rem; font-size: .95rem; flex-wrap: wrap; }
 .toplinks a { color: var(--muted); }
 .toplinks a:hover { color: var(--accent); }
+/* The menu's button, and the guide's pages in it: for a small screen only. */
+.menu-button, .menu-guide { display: none; }
+.menu-button {
+  align-self: center;
+  margin-left: auto;
+  width: 2.4rem;
+  height: 2.2rem;
+  padding: .55rem .5rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: none;
+  cursor: pointer;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.menu-button span { display: block; height: 2px; border-radius: 1px; background: var(--text); }
 
 /* Layout */
+/* The sidebar at the window's left edge, however wide the window; the page
+   centered in the room to its right. */
 .layout {
   display: grid;
   grid-template-columns: var(--sidebar) minmax(0, 1fr);
-  max-width: 82rem;
-  margin: 0 auto;
 }
-main { padding: 1.5rem 2.5rem 3rem; min-width: 0; max-width: 60rem; }
+main { padding: 1.5rem 2.5rem 3rem; min-width: 0; width: 100%; max-width: 60rem; margin: 0 auto; }
 
 .sidebar {
   position: sticky;
@@ -113,16 +130,41 @@ main { padding: 1.5rem 2.5rem 3rem; min-width: 0; max-width: 60rem; }
   .sidebar ul { display: flex; flex-wrap: wrap; gap: .2rem; }
   .sidebar-api { display: none !important; }
   main { padding: 1rem 1rem 2.5rem; }
-  .toplinks { gap: .7rem; font-size: .88rem; }
-  /* The sidebar does not stick here, and the links may wrap. */
-  .topbar { height: auto; }
+  /* The links and the guide's pages are in the menu instead: a panel under
+     the top bar, open while the button says so. */
+  .sidebar { display: none; }
+  .menu-button { display: flex; }
+  .menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: calc(100vh - var(--topbar-height));
+    overflow-y: auto;
+    padding: .9rem 1.25rem 1.2rem;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, .08);
+    font-size: .95rem;
+  }
+  .topbar.menu-open .menu { display: block; }
+  .toplinks { gap: .3rem 1.1rem; padding-bottom: .8rem; border-bottom: 1px solid var(--line); }
+  .menu-guide { display: block; margin-top: .9rem; }
+  .menu-guide ul { list-style: none; margin: 0; padding: 0; }
+  .menu-guide li { margin: 0; }
+  .menu-guide li a { display: block; padding: .3rem .6rem; border-radius: 6px; color: var(--text); }
+  .menu-guide a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 }
 
 /* Text */
 h1 { font-size: 2.1rem; line-height: 1.2; margin: .4rem 0 1.2rem; letter-spacing: -.01em; }
 h2 { font-size: 1.45rem; line-height: 1.3; margin: 2.4rem 0 .8rem; padding-top: .4rem; }
 h3 { font-size: 1.12rem; margin: 1.8rem 0 .6rem; }
-p, ul, ol { margin: 0 0 1rem; }
+p, ul, ol, dl { margin: 0 0 1rem; }
+/* A term list: each term bold, its text under it. */
+dt { font-weight: 600; }
+dd { margin: 0 0 .9rem 1.5rem; }
 li { margin: .2rem 0; }
 
 code {
@@ -147,15 +189,18 @@ pre code { background: none; padding: 0; font-size: inherit; }
 table { border-collapse: collapse; margin: 0 0 1.2rem; font-size: .94rem; }
 td, th { border: 1px solid var(--line); padding: .35rem .7rem; text-align: left; vertical-align: top; }
 
+/* A note, or a warning: its emphasis and bold text in its own color. */
 .callout {
+  --callout-color: var(--accent);
   margin: 0 0 1.2rem;
   padding: .8rem 1rem;
-  border-left: 4px solid var(--accent);
+  border-left: 4px solid var(--callout-color);
   background: var(--accent-soft);
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 .callout > :last-child { margin-bottom: 0; }
-.callout.warning { border-color: #c27c0e; background: #fdf4e3; }
+.callout.warning { --callout-color: #c27c0e; background: #fdf4e3; }
+.callout em, .callout strong { color: var(--callout-color); }
 
 /* Examples: the code, and below it, a little apart, what it renders to */
 .example { margin: 0 0 1.6rem; }
@@ -197,13 +242,35 @@ td, th { border: 1px solid var(--line); padding: .35rem .7rem; text-align: left;
 .example.with-key .paper[data-solutions="false"] { grid-area: exam; }
 .example.with-key .paper[data-solutions="true"] { grid-area: key; }
 /* Too narrow for two: one above the other, each label over its paper. */
+/* The shades meet along a wavy line across, halfway between the exam and
+   the key's label: drawn behind the papers by the label, out to the panel's
+   edges and down past its bottom, which the panel clips. */
 @media (max-width: 40rem) {
   .example.with-key .example-output {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas: "exam-label" "exam" "key-label" "key";
     background: var(--output-exam-shade);
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
   }
-  .example.with-key .paper-label[data-solutions="true"] { margin-top: .6rem; }
+  .example.with-key .paper-label[data-solutions="true"] { margin-top: .6rem; position: relative; }
+  .example.with-key .paper-label[data-solutions="true"]::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    /* The label is centered: out to the panel's edges from its middle. */
+    left: 50%;
+    width: 200vw;
+    margin-left: -100vw;
+    /* The middle of the gap above the label (the gap .55rem, the margin
+       .6rem), less half the tile, whose middle the line runs along. */
+    top: calc(-.575rem - var(--output-wave-x-size-h) / 2);
+    height: 200vh;
+    background:
+      var(--output-wave-x) 0 0 / var(--output-wave-x-size) repeat-x,
+      linear-gradient(var(--output-key-shade), var(--output-key-shade)) 0 var(--output-wave-x-size-h) / 100% 100% no-repeat;
+  }
 }
 .paper {
   /* As wide as what is rendered on it (scaled down when the column is
@@ -216,7 +283,7 @@ td, th { border: 1px solid var(--line); padding: .35rem .7rem; text-align: left;
   border-radius: 3px;
   padding: .7em;
 }
-.paper svg { display: block; margin-inline: auto; max-width: 100%; height: auto !important; }
+.paper svg, .paper img { display: block; margin-inline: auto; max-width: 100%; height: auto !important; }
 .paper-label {
   align-self: end;
   justify-self: center;

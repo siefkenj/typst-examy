@@ -15,10 +15,9 @@ solutions that can be toggled on and off. This package follows the spirit of the
 
 == Installation
 
-To use examy in a document of your own, import it:
+To use examy, import it and run the mandatory show rule:
 
-#raw(IMPORT, lang: "typ", block: true)
-
+#raw(IMPORT + "\n\n#show: e.prepare()", lang: "typ", block: true)
 
 A quick-start template is available by choosing examy under _Start from template_ in the Typst web
 app or in the command line by running
@@ -30,8 +29,8 @@ typst init @preview/examy
 == A first exam
 
 A basic document document starts with an `#exam()` and contains `#question[...]`s and
-`#solution[...]`s. Content of each `#solution[...]` will only be shown if the `show-solutions: true`
-#page-link("configuration.html")[option] is set.
+`#solution[...]`s. Content of each `#solution[...]` is shown based on the 
+`show-solutions: true/false` #page-link("configuration.html")[config option].
 
 #example(
   ```typ
@@ -66,7 +65,7 @@ A basic document document starts with an `#exam()` and contains `#question[...]`
 )
 
 #note[
-  The `#show: e.prepare()` is required to set up the #link(
+  _Note._ The `#show: e.prepare()` is required to set up the #link(
     "https://typst.app/universe/package/elembic",
   )[elembic] environment for enabling cross-references. Forgetting it can cause confusing errors.
 ]
@@ -85,10 +84,20 @@ A basic document document starts with an `#exam()` and contains `#question[...]`
     [Points associated with each question/part/subpart, as well as points tables.],
   ),
   (
+    "cross-references.html",
+    [Cross-references],
+    [Use `@name` syntax reference to a question/part/subpart.],
+  ),
+  (
     "answer-boxes.html",
     [Answer boxes],
     [Providing a student with space to write. These can have a fixed size or can use available space
       via fractional units (e.g. `height: 1fr`).],
+  ),
+  (
+    "choices.html",
+    [Multiple choice],
+    [Add bubbles for students to answer multiple-choice questions.],
   ),
   (
     "solutions.html",
@@ -97,14 +106,10 @@ A basic document document starts with an `#exam()` and contains `#question[...]`
       exam.],
   ),
   (
-    "choices.html",
-    [Multiple choice],
-    [Add bubbles for students to answer multiple-choice questions.],
-  ),
-  (
-    "cross-references.html",
-    [Cross-references],
-    [Use `@name` syntax reference to a question/part/subpart.],
+    "rubrics.html",
+    [Rubrics],
+    [Annotate questions and solutions with grading rubrics (positive or negative points), exportable
+      as JSON.],
   ),
   ("cover-pages.html", [Cover pages], [Basic commands for creating name/exam info areas.]),
   (
@@ -114,18 +119,3 @@ A basic document document starts with an `#exam()` and contains `#question[...]`
   ),
   ("reference.html", [API Reference], [Complete documentation for functions provided by examy.]),
 )
-
-== How examy works
-
-A straightforward implementation of examy would wrap each question/part/subpart in a box and apply
-an appropriate inset. Unfortunately, `#pagebreak()` cannot work inside a box and, worse still, boxes
-can only negotiate fractional units if they are peers of each other. So, the box approach would make
-it impossible to have a part and a subpart both share the remaining space on the page.
-
-Instead, examy flattens all question/part/subpart contents and tags the start and end of each block
-with `metadata`. The flat stream is then parsed, indentation level is tracked, and peer boxes are
-produced, so that `#pagebreak()` and `fr` units can negotiate space.
-
-The downside of this parsing is that "click back" in tools like #link(
-  "https://github.com/Myriad-Dreamin/tinymist",
-)[tinymist] can be broken. (Usually it works to click a sub-boxed item, like an equation.)

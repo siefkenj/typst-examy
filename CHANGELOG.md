@@ -2,6 +2,15 @@
 
 ## 1.0.0 (unreleased)
 
+- Rubrics: `#rubric(points: ..)[..]` items, in a division's `rubric:` field
+  or in its body (a solution, say) where the criterion is met, with groups
+  (`pick: "one"` for alternatives) that can nest. `show-rubric` draws each
+  division's rubric in the margin (`rubric-position`), with a dotted line
+  from each item written in the body to its place; a rubric takes no room,
+  so the exam lays out the same with or without it. `rubric-list` lays out
+  every rubric on its own, and every exam with rubrics leaves them in the
+  document as data, `<examy-rubric>`, for `typst eval` to read out as JSON.
+  The `rubric:` argument, accepted but ignored until now, is drawn.
 - `show-solutions(get)` is now always `true` or `false`: unset, solutions
   are shown, as `#solution` and the bubbles already took it, and it is
   `true`, not `none`. `exam`'s `solutions-only` now agrees with them too: it

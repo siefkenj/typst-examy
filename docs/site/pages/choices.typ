@@ -23,7 +23,6 @@ correct choice (it will only render differently if solutions are shown).
 
 == `#choices[...]` API
 
-
 - `correct: int | array` — An alternative to using `+` to mark a correct
   choice. Setting `correct: 0` marks the first choice as correct,
   `correct: (0, 2)` marks the first and third.
@@ -62,12 +61,11 @@ The choices can also be given as an array:
 
 == Letters in the bubbles
 
-`enumerate: bool | str | function` — Labels inside the bubbles: `true` for
-A, B, C, …, or any numbering pattern or function `enum` takes (`"a"`, `"1"`,
-`"(i)"`). Off by default; set it for the whole document with
-`#show: e.set_(config, choices-enumerate: true)`. Labels are set in the
-monospaced font bundled with Typst, changed with #api("config")'s
-`bubble-label-font`; on the answer key, a correct one gets a thin ring
+`enumerate: bool | str | function` — Put labels inside the bubbles. `true` gives A, B, C, …, and any
+numbering pattern or function that `enum` takes also works (`"a"`, `"1"`, `"(i)"`). It is off by
+default; turn it on for the whole document with `#show: e.set_(config, choices-enumerate: true)`.
+Labels use the monospaced font bundled with Typst, which can be changed with the global
+#api("config")'s `bubble-label-font` option. On the answer key, a correct bubble gets a thin ring
 inside its outline.
 
 #example(
@@ -86,10 +84,10 @@ inside its outline.
 
 == Single bubbles
 
-For a layout of your own, #api("choice", body: raw("#choice[...]")) draws a
-single bubble before its content; mark an answer with `correct: true`. It
-takes `bubble: "circle" | "square"`. #api("bubble") and #api("square-bubble")
-are the same with the shape fixed, and draw a bare bubble without content:
+For a layout of your own, #api("choice", body: raw("#choice[...]")) draws a single bubble before its
+content. Mark it as correct with `correct: true`, and pick its shape with
+`bubble: "circle" | "square"`. #api("bubble") and #api("square-bubble") draw a bare bubble with no
+content:
 
 #example(
   ```typ
@@ -111,10 +109,9 @@ are the same with the shape fixed, and draw a bare bubble without content:
   width: 10cm,
 )
 
-In every layout, a choice is kept whole. When its text wraps, the bubble stays
-on the first line and the further lines hang under the text, not under the
-bubble. The gap between a choice bubble and its content can be set with
-`outset` (e.g. `outset: .6em`). The outline thickness of every bubble in the
-document is set with `#show: e.set_(config, bubble-stroke: .06em)` (default
-`.1em`). An outline thick enough to cover a filled-in bubble's check mark,
-about a fifth of the bubble's size, is drawn at that limit instead.
+In every layout, a choice is kept whole. When its text wraps, the bubble stays on the first line and
+the further lines hang under the text, not under the bubble. The gap between a choice's bubble and
+its content can be set with `outset` (e.g. `outset: .6em`). The outline thickness of every bubble in
+the document is set with `#show: e.set_(config, bubble-stroke: .06em)` (default `.1em`). It is
+capped at about a fifth of the bubble's size, so that it never covers the mark in a filled-in
+bubble.

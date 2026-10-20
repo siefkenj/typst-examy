@@ -1,9 +1,8 @@
 #import "../template.typ": *
 
-Label a question, part, or subpart with `label: <name>` and refer to it with
-`@name`. A `@name` reference to a question will show a minimal string that
-uniquely identifies the question/part/subpart: question 1's part (a) reads
-"1 (a)" from question 2, but just "(a)" from elsewhere in question 1.
+Label a question, part, or subpart with `label: <name>` and refer to it with `@name`. A reference
+shows the shortest number that uniquely identifies the question/part/subpart: question 1's part (a)
+reads "1 (a)" from question 2, but just "(a)" from elsewhere in question 1.
 
 #example(
   ```typ
@@ -13,23 +12,22 @@ uniquely identifies the question/part/subpart: question 1's part (a) reads
       Show that $f$ is continuous at $0$.
     ]
     #part[
-      From a sibling part, @continuity shows as its short name.
+      Using your proof in @continuity, show that $f$ is
+      continuous at every point.
     ]
   ]
   #question[
-    From another question, @continuity shows with its question
-    number.
+    Redo @continuity for $g(x) = x^3$.
   ]
   ```,
 )
 
-A label can be attached to a question as well, `#question(label: <q-limits>)[..]`,
-and a reference to it reads as its number: "Question 2". References follow the
-numbering style set with `division-numbering` (see
+Questions can be labelled too, as in `#question(label: <q-limits>)[..]`, and a reference to one
+shows its number. References follow the numbering style set with `division-numbering` (see
 #page-link("questions.html")[Questions and numbering]).
 
 #note[
-  Labels are given as an argument, `label: <name>`, rather than written after
-  the division as `#question[..] <name>`, since examy takes divisions apart to
-  lay them out (see #page-link("index.html")[How examy works]).
+  _Note._ Labels are given as an argument, `label: <name>`, rather than written after the question
+  as `#question[..] <name>`, because examy takes questions apart to lay them out (see
+  #page-link("technical-details.html")[Technical details]).
 ]

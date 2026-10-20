@@ -33,7 +33,7 @@
   e.field(
     "rubric",
     e.types.option(content),
-    doc: "A grading rubric (accepted, but not yet rendered).",
+    doc: "The division's rubric, or the part of it not tied to a place in its body: `rubric`s, and text between them as notes for the grader. Rubrics written in the body come first, then these. See `rubric`.",
     default: none,
   ),
   e.field(

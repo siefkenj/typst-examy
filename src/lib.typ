@@ -7,6 +7,7 @@
 #import "elements/solution.typ": solution, show_solutions_checked as show-solutions
 #import "elements/exam.typ": exam, maketitle, name_block as name-block
 #import "config.typ": config
+#import "rubric.typ": rubric, rubric_list as rubric-list
 #import "presets.typ": presets
 #import "points.typ": (
   num_points as num-points, num_bonus_points as num-bonus-points, num_questions as num-questions,

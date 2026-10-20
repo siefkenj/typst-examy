@@ -2,7 +2,7 @@
 /// whether a piece of content must be unwrapped (it contains division
 /// markers) and by the planner to detect page-breaking/fr-height elements.
 
-#import "markers.typ": marker_value
+#import "markers.typ": is_rubric_hint, marker_value, rubric_value
 
 /// The internal `sequence` and `styled` element functions.
 #let SEQUENCE_FUNC = [#none#none].func()
@@ -293,3 +293,98 @@
   if f == SEQUENCE_FUNC { return c.children.any(is_multi_par) }
   false
 }
+
+/// Whether `c` holds a rubric marker anywhere inside it. A rubric marker is
+/// invisible, as `is_whitespace_content` says, but it must not be dropped
+/// with the whitespace around it.
+#let has_rubric(c) = {
+  if type(c) == array { return c.any(has_rubric) }
+  if type(c) != content { return false }
+  if rubric_value(c) != none { return true }
+  c.fields().values().any(v => type(v) in (content, array) and has_rubric(v))
+}
+
+/// Whether `c` holds a rubric marker anywhere at all: also in the fields of
+/// elements kept in metadata (a `solution`'s body, a division's `rubric:`),
+/// which `has_rubric` does not look into, or a rubric hint, left where they
+/// cannot be seen (see markers.typ). For the exam to know whether it has
+/// rubrics to draw, before drawing anything.
+#let has_any_rubric(c) = {
+  if type(c) == array { return c.any(has_any_rubric) }
+  if type(c) == dictionary { return c.values().any(has_any_rubric) }
+  if type(c) != content { return false }
+  if rubric_value(c) != none or is_rubric_hint(c) { return true }
+  if c.func() == metadata { return has_any_rubric(c.value) }
+  c.fields().values().any(has_any_rubric)
+}
+
+/// Every rubric marker inside `c`, in order: what a hidden `solution`
+/// leaves in its place, so that its rubrics are still found.
+#let rubric_markers(c) = {
+  if type(c) == array { return c.map(rubric_markers).flatten() }
+  if type(c) != content { return () }
+  if rubric_value(c) != none { return (c,) }
+  c.fields().values().filter(v => type(v) in (content, array)).map(rubric_markers).flatten()
+}
+
+/// Whether `c` ends with inline content, in a paragraph's line. Unsure
+/// means no (see `glue_rubrics`).
+#let _ends_inline(c) = {
+  if type(c) == str { return c.trim() != "" }
+  if type(c) != content { return false }
+  let f = c.func()
+  if f == SEQUENCE_FUNC {
+    let kids = c.children.filter(k => not is_whitespace_content(k) or rubric_value(k) != none)
+    return kids.len() > 0 and (rubric_value(kids.last()) != none or _ends_inline(kids.last()))
+  }
+  if f == STYLED_FUNC { return _ends_inline(c.child) }
+  if (math.equation, raw).contains(f) { return not c.at("block", default: false) }
+  _INLINE_FUNCS.contains(f) or f == smartquote or f == [#sym.dot].func()
+}
+
+/// Glue each rubric marker to the text beside it in its paragraph, with a
+/// word joiner: after it when text comes before it, before it when it starts
+/// the paragraph and text follows. Unglued, a marker that ends a paragraph
+/// is placed after the paragraph (at its left edge, below it), and one that
+/// starts it at the paragraph's top, not on its first line: where a rubric's
+/// leader is drawn from. A marker with no text on either side is left as it
+/// is, as a joiner would make a line of its own. Only the siblings in a
+/// sequence are looked at (through `styled`), so a case unsure of is left
+/// as it is: placed less well, but never moving the layout. Also says
+/// whether it changed anything.
+#let _glue(c) = {
+  if type(c) != content { return (c, false) }
+  let f = c.func()
+  if f == STYLED_FUNC {
+    let (child, changed) = _glue(c.child)
+    return (if changed { STYLED_FUNC(child, c.styles) } else { c }, changed)
+  }
+  if f != SEQUENCE_FUNC { return (c, false) }
+  // One pass: each child glued, and whether it, or any of them, changed.
+  let glued = c.children.map(_glue)
+  let kids = glued.map(g => g.first())
+  if not glued.any(g => g.last()) and not kids.any(k => rubric_value(k) != none) { return (c, false) }
+  let space = [ ].func()
+  let wj = text("\u{2060}")
+  let out = ()
+  for (i, k) in kids.enumerate() {
+    if rubric_value(k) == none {
+      out.push(k)
+      continue
+    }
+    // What comes before it as glued so far: a marker glued after the text
+    // before it is followed by its joiner, which the next one is glued to.
+    let prev = out.rev().find(x => not (type(x) == content and x.func() == space))
+    let next = kids.slice(i + 1).find(x => not (type(x) == content and x.func() == space))
+    if prev != none and _ends_inline(prev) {
+      out += (k, wj)
+    } else if next != none and rubric_value(next) == none and starts_inline(next) == true {
+      out += (wj, k)
+    } else {
+      out.push(k)
+    }
+  }
+  (out.join(), true)
+}
+
+#let glue_rubrics(c) = _glue(c).first()

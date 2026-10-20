@@ -1,28 +1,32 @@
 #import "../template.typ": *
 
-#api("answer-box") draws a box for students to write in. A fixed height
-(`2cm`, `1in`, …) gives a box of that size; a _fraction_ (`1fr`, `2fr`, …)
-makes the box grow to fill the space left on the page, and several `fr`
-boxes on one page share it in proportion.
+#api("answer-box") draws a box for students to write in. A fixed height (`2cm`, `1in`, …) gives a
+box of that size. A _fractional_ height (`1fr`, `2fr`, …) makes the box grow to fill the space left
+on the page, and several `fr` boxes on one page share that space in proportion.
 
 #example(
   ```typ
   #question[
-    A box of a set height.
+    State the Mean Value Theorem.
     #answer-box(width: 100%, height: 1.5cm)[]
   ]
   #question[
-    Two boxes sharing what is left of the page, one twice the
-    other.
-    #part[#answer-box(width: 100%, height: 1fr)[]]
-    #part[#answer-box(width: 100%, height: 2fr)[]]
+    Let $f(x) = x^3 - 3x$.
+    #part[
+      Find $f'(x)$.
+      #answer-box(width: 100%, height: 1fr)[]
+    ]
+    #part[
+      Find and classify the critical points of $f$.
+      #answer-box(width: 100%, height: 2fr)[]
+    ]
   ]
   ```,
   height: 11cm,
 )
 
-A box without a `width` is `default_width` (`2cm`) wide and sits in the line
-like a word, which suits a short answer in a sentence:
+Without a `width`, a box is `default_width` (`2cm`) wide and sits in the line like a word. This
+suits a short answer in a sentence:
 
 #example(
   ```typ
@@ -35,30 +39,27 @@ like a word, which suits a short answer in a sentence:
 
 == Boxes without a height
 
-With no height, the box sizes itself by what it holds. A blank box — empty, or
-holding only a #api("solution") — is `default_height` (`2cm`) tall, leaving
-room to write. A box with content, such as a prompt or a list of
-#api("choices"), grows to fit it.
+Without a `height`, a box sizes itself to its content. A blank box (empty, or holding only a
+#api("solution")) is `default_height` (`2cm`) tall, leaving room to write. A box with content, such
+as a prompt or a list of #api("choices"), grows to fit it.
 
 #example(
   ```typ
   #question[
-    A blank box is `default_height` tall.
+    What is $6 times 7$?
     #answer-box(width: 100%)[#solution[42]]
   ]
   #question[
-    A box with content fits it.
+    Is $sqrt(2)$ rational?
     #answer-box(width: 100%)[Explain your reasoning:]
   ]
   ```,
 )
 
-In a box with no height, solutions take no height either, so the answer key
-lays out exactly like the exam: every box is the same size on both, and
-nothing after a box moves. A solution is drawn where it would be: over what
-follows it in the box, or, when it comes last, hanging out of the box over
-whatever comes next. To have a box hold its solutions instead, give it a
-height, which can be `auto`:
+In a box without a `height`, solutions take up no space, so the answer key is laid out exactly like
+the exam. Every box is the same size on both, and nothing after a box moves. A solution is drawn
+where it would be, on top of whatever follows it, even past the bottom of the box. To make a box
+grow to hold its solutions, give it a height, which can be `auto`:
 
 #example(
   ```typ
@@ -78,36 +79,33 @@ height, which can be `auto`:
   ```,
 )
 
-A solution counts as blank only when written directly in the box: wrapped in
-another element, as in `#align(center)[#solution[...]]`, it is content, and
-the box fits it.
+A solution only counts as blank when it is written directly in the box. Wrapped in another element,
+as in `#align(center)[#solution[...]]`, it counts as content, and the box grows to fit it.
 
 #note(kind: "warning")[
-  *Changed in 1.0.0:* in examy 0.4.0 and earlier, a box with no height (or
-  with `height: auto`) was always `default_height` tall, whatever it held. Now
-  a box holding a prompt, such as `#answer-box(width: 100%)[Explain your
-  reasoning:]`, shrinks to the prompt and leaves no room to write. To keep the
-  old size, give the height explicitly: `height: 2cm`.
+  *Changed in 1.0.0.* In examy 0.4.0 and earlier, a box with no height (or with `height: auto`) was
+  always `default_height` tall, whatever it held. Now a box holding a prompt, such as
+  `#answer-box(width: 100%)[Explain your reasoning:]`, shrinks to fit the prompt and leaves no room
+  to write. To keep the old size, set the height explicitly, e.g. `height: 2cm`.
 ]
 
-A fraction height gets only the space left over once everything else on the
-page is placed, which can be less than the box's content needs. For a box
-whose content must fit, leave the height out, or give a length.
+A fractional height only gets the space left over once everything else on the page is placed, which
+may be less than the box's content needs. If the content must fit, leave the height out, or use a
+fixed length.
 
 == Outlines
 
-The box's outline is set with `stroke`, which takes anything `box`'s `stroke`
-does. A dictionary outlines only the sides it names, and `none` leaves blank
-space with no outline:
+A box's outline is set with `stroke`, which accepts anything `box`'s `stroke` does. A dictionary
+outlines only the sides it names, and `none` removes the outline, leaving blank space:
 
 #example(
   ```typ
   #question[
-    Blank space with no outline:
+    Sketch the graph of $y = sin x$.
     #answer-box(width: 100%, height: 1.5cm, stroke: none)[]
   ]
   #question[
-    A rule to write on: #answer-box(
+    The capital of France is #answer-box(
       width: 4cm,
       height: 1em,
       stroke: (bottom: .5pt),
@@ -116,8 +114,8 @@ space with no outline:
   ```,
 )
 
-To change the outline of every box in a document, redefine `answer-box` after
-the import; a box can still set its own:
+To change the outline of every box in a document, redefine `answer-box` after the import.
+Individual boxes can still set their own:
 
 #example(
   ```typ
@@ -125,12 +123,11 @@ the import; a box can still set its own:
   #let answer-box = answer-box.with(stroke: (bottom: .5pt))
 
   #question[
-    Every box is a rule, #answer-box(height: 1em)[]
-    unless it says otherwise:
-    #answer-box(height: 1em, stroke: .5pt)[]
+    $2 + 2 =$ #answer-box(height: 1em)[] and
+    $3 + 3 =$ #answer-box(height: 1em, stroke: .5pt)[]
   ]
   ```,
 )
 
-The redefinition only affects code that uses the redefined name, so set it
-again in each file that imports examy itself.
+The redefinition only applies where the new name is in scope, so repeat it in each file that imports
+examy.

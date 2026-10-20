@@ -12,3 +12,4 @@
 }
 
 #let SHOW_SOLUTIONS_OVERRIDE = _bool_input("show-solutions")
+#let SHOW_RUBRIC_OVERRIDE = _bool_input("show-rubric")

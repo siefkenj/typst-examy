@@ -20,13 +20,13 @@ when enabled, so the same source produces both the exam and the answer key:
   ```,
 )
 
-Solutions are turned on in the document, with #api("config"):
+Solutions are turned on with the global #api("config")'s `show-solutions` option:
 
 ```typ
 #show: e.set_(config, show-solutions: true)
 ```
 
-== Exam and answer key from the command line
+== Command line options
 
 When given on the command line, the `show-solutions` input overrides the
 document setting `#show: e.set_(config, show-solutions: ...)`. This can be
@@ -69,11 +69,9 @@ typst compile --features bundle -f bundle bundle.typ out/
 
 == Something in the solution's place
 
-A solution can have something shown in its place on the exam, with
-`otherwise`: a blank to fill in, or lines to write on. Inside an answer box
-with no height, the key draws the solution over it, in the space it took on
-the exam, so the two still lay out the same. Elsewhere, the solution replaces
-it.
+Use `otherwise` to show something in a solution's place on the exam, such as a blank to fill in or
+lines to write on. Inside an answer box without a height, the key draws the solution on top of it,
+so the exam and the key still have the same layout. Elsewhere, the solution replaces it.
 
 #example(
   ```typ
@@ -135,13 +133,12 @@ from the set color.
 
 == An answer key that differs from the exam
 
-A `#solution` only changes what is drawn in its own place. When the key
-should differ from the exam in what it holds — a part of its own, an answer
-box of another size — give #api("exam") its questions as a function. It is
-called with a function of its own, `solutions-only` here: `solutions-only(x)`
-is `x` on the key and nothing on the exam, and `solutions-only(x, otherwise:
-y)` is `y` on the exam. What it is given is drawn as it is, not as a
-solution.
+A `#solution` only changes what is drawn in its own place. When the key needs to differ from the
+exam in other ways, such as an extra part or an answer box of a different size, give #api("exam")
+its `questions` as a function. examy calls it with a helper, named `solutions-only` here.
+`solutions-only(x)` gives `x` on the key and nothing on the exam, and
+`solutions-only(x, otherwise: y)` gives `y` on the exam instead. Its content is drawn as it is, not
+styled as a solution.
 
 #example(
   ```typ
@@ -165,8 +162,8 @@ solution.
   ```,
 )
 
-A question only on the key would renumber the questions after it, so give one
-`number: none`, or put what the key adds in a part, as above.
+A question that only appears on the key would renumber the questions after it. To avoid this, give
+it `number: none`, or put what the key adds in a part, as above.
 
 == Solutions `#solution` cannot wrap
 

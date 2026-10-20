@@ -1,7 +1,9 @@
 #import "../prelude.typ": *
 #import "../config.typ": config, solution_colors
 #import "../widen.typ": exam_content, par_events, widen_par_solutions
-#import "solution.typ": show_solutions, solution as solution_element
+#import "solution.typ": show_rubric, show_solutions, solution as solution_element
+#import "../markers.typ": rubric_hint
+#import "../scan.typ": glue_rubrics, has_any_rubric, rubric_markers
 #import "../signature.typ": declare_function, define
 
 /// The spacing between a box's body and the solution given as its `solution`
@@ -197,9 +199,13 @@
   // The `solution:` argument, after the body. `in_run` draws it in the flow
   // after the solutions that end the body, which draw it themselves (see
   // below); otherwise it is drawn here.
-  let solution_arg(in_run) = e.get(get => {
-    // Like `#solution[..]`, shown only on the answer key.
-    if show_solutions(get) == false { return }
+  // Its rubrics are inside a `context`, out of sight: a hint says they are
+  // there (see `has_any_rubric`).
+  let hint = if it.solution != none and has_any_rubric(it.solution) { rubric_hint }
+  let solution_arg(in_run) = hint + e.get(get => {
+    // Like `#solution[..]`, shown only on the answer key, and hidden, leaving
+    // its rubrics where it stands.
+    if show_solutions(get) == false { return rubric_markers(it.solution).join() }
     let colors = solution_colors(get)
     set block(spacing: _SPACING)
     show: it_ => {
@@ -226,7 +232,9 @@
         it_,
       )
     }
-    it.solution
+    // Its rubrics, when they are drawn, stay with the text beside them (see
+    // `glue_rubrics`).
+    if show_rubric(get) { glue_rubrics(it.solution) } else { it.solution }
   })
 
   // A solution standing alone in a paragraph fills the box, so the highlight

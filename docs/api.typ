@@ -30,6 +30,7 @@
 #import "/src/config.typ" as m-config
 #import "/src/points.typ" as m-points
 #import "/src/presets.typ" as m-presets
+#import "/src/rubric.typ" as m-rubric
 
 /// The package version, for import lines.
 #let VERSION = toml("/typst.toml").package.version
@@ -49,6 +50,7 @@
     + m-config.DOCS
     + m-points.DOCS
     + m-presets.DOCS
+    + m-rubric.DOCS
     + (
       e: (
         desc: "A re-export of [elembic](https://typst.app/universe/package/elembic), used mainly for `e.set_`. Every document needs `#show: e.prepare()`; options are set with `#show: e.set_(config, ..)`; element state is read with `e.get(get => ..)`.",

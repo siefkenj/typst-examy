@@ -2,10 +2,13 @@
 #import "../tokenize.typ": tokenize
 #import "../parse.typ": parse
 #import "../plan.typ": plan
-#import "../render.typ": render
+#import "../render.typ": mark_rubrics, render, rubric_info
 #import "../points.typ": EXAMS_ENDED, EXAMS_STARTED, assign_badges, compute_points_data, points_data_state
 #import "../config.typ": config, exam_options
-#import "./solution.typ": show_solutions
+#import "./solution.typ": show_rubric, show_solutions
+#import "../scan.typ": rubric_markers
+#import "../rubric.typ": exam_end, exam_start
+#import "../export.typ": rubric_export
 #import "../signature.typ": declare_function, define
 
 /// The exam title block (in the spirit of LaTeX's `\maketitle`): the
@@ -178,12 +181,28 @@
     show-totals: opts.points-show-totals,
     position: opts.points-position,
   )
+  // Where its rubrics are, if it has any: an exam with none emits nothing
+  // for them (see `mark_rubrics`).
+  let (items, present) = mark_rubrics(items)
+  let opts = opts
+  opts.rubric.present = present
+  opts.rubric.drawn = present and opts.rubric.shown
+  opts.rubric.traced = opts.rubric.drawn and opts.rubric.trace
   let data = compute_points_data(items, numberings: opts.numbering)
   // Each exam keeps its own data, and marks where it starts and ends, so
   // that a reader can tell which exam it is about (see `exam_points_data`).
   EXAMS_STARTED.step()
   points_data_state.update(all => all + (data,))
+  if present { exam_start }
   render(items, plan(items), opts: opts)
+  // Its rubrics recorded, and as data for the command line (see export.typ).
+  if present {
+    let divisions = range(items.len())
+      .filter(i => items.at(i).kind == "division" and items.at(i).at("rubric", default: false))
+      .map(i => (address: items.at(i).address, field: items.at(i).fields.rubric, info: rubric_info(items.at(i), opts)))
+    rubric_export(divisions)
+    exam_end
+  }
   EXAMS_ENDED.step()
 }
 
@@ -197,10 +216,15 @@
     // that shows its argument only when solutions are enabled.
     e.get(get => {
       let opts = exam_options(get)
+      opts.rubric.shown = show_rubric(get)
       if type(it.questions) == function {
         let solutions_only(content, otherwise: none) = {
           if show_solutions(get) == true {
             content
+          } else if type(content) == content and (otherwise == none or type(otherwise) == content) {
+            // Like a hidden `solution`, it leaves the rubrics in what it
+            // hides where it stands.
+            rubric_markers(content).join() + otherwise
           } else {
             otherwise
           }

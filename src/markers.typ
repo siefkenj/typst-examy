@@ -50,3 +50,36 @@
     none
   }
 }
+
+/// The key of the data a `rubric` carries in its marker, and the label the
+/// marker is placed with (see rubric.typ). A rubric is not a division
+/// marker: it travels through the pipeline as part of a chunk, and is
+/// invisible wherever it is placed.
+#let RUBRIC_KEY = "_examy_rubric"
+#let RUBRIC_LABEL = label("_examy_rubric")
+
+/// A rubric marker: `metadata` holding the rubric's data, so that the same
+/// call can be read where it is written (a division's `rubric:` field) and
+/// found where it is placed (in the body, by a query).
+#let rubric_marker(data) = [#metadata(((RUBRIC_KEY): MARKER_V, ..data))#RUBRIC_LABEL]
+
+/// The data of a rubric marker, if `c` is one, else `none`.
+#let rubric_value(c) = {
+  if type(c) != content or c.func() != metadata { return none }
+  let v = c.at("value", default: none)
+  if type(v) == dictionary and v.at(RUBRIC_KEY, default: none) == MARKER_V { v } else { none }
+}
+
+/// The key of a rubric hint: an invisible mark that content holding rubrics
+/// where they cannot be seen (an `answer-box`'s `solution:`, inside a
+/// `context`) leaves beside them, for `has_any_rubric` to find. It is not a
+/// rubric, and is placed with no label.
+#let RUBRIC_HINT_KEY = "_examy_rubric_hint"
+#let rubric_hint = metadata(((RUBRIC_HINT_KEY): MARKER_V))
+
+/// Whether `c` is a rubric hint.
+#let is_rubric_hint(c) = {
+  if type(c) != content or c.func() != metadata { return false }
+  let v = c.at("value", default: none)
+  type(v) == dictionary and v.at(RUBRIC_HINT_KEY, default: none) == MARKER_V
+}

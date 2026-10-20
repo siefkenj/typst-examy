@@ -197,7 +197,9 @@ function enhance(figure: HTMLElement): void {
       }
       if (mine !== generation) return; // a newer edit is on its way
       papers.forEach((paper, i) => {
-        const old = paper.querySelector("svg");
+        // The build's rendering: an inline SVG, or the image of a paged one
+        // (an example shown `paged-name`; see template.typ).
+        const old = paper.querySelector<HTMLElement>("svg, img");
         const holder = element("div", { innerHTML: svgs[i] });
         const svg = holder.querySelector("svg");
         if (!svg) return;

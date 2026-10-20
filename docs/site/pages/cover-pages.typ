@@ -10,13 +10,11 @@ followed by a page break.
 
 == Name blocks
 
-#api("name-block", body: raw("#name-block()")) renders a fill-in block
-(Name / Student ID by default). It is ordinary content: put it at the top of a
-quiz page or on a cover page. The rows are configurable with `fields:` — an
-entry is either a `(prefix: ..., suffix: ...)` dictionary, rendered as the
-prefix, an underline extending to the end of the line, and the suffix sitting
-on the line at its right end, or any other content, shown as a row of its own.
-An optional `title:` is shown above the block.
+#api("name-block", body: raw("#name-block()")) renders a fill-in block (Name / Student ID by
+default). It is ordinary content, so put it at the top of a quiz page or on a cover page. The rows
+are set with `fields:`. Each entry is either a `(prefix: ..., suffix: ...)` dictionary, drawn as the
+prefix followed by a line to write on with the suffix at its right end, or any other content, shown
+as a row of its own. An optional `title:` is shown above the block.
 
 #example(
   ```typ
@@ -39,16 +37,14 @@ An optional `title:` is shown above the block.
   width: 10cm,
 )
 
-Institution-specific layouts ship with the package as #api("presets"); the
-University of Toronto block is `#name-block(fields: presets.utoronto.name_fields)`.
+Institution-specific layouts ship with the package as #api("presets"). For example, the University
+of Toronto block is `#name-block(fields: presets.utoronto.name_fields)`.
 
 == The title block
 
-Set the exam's details (`institution`, `exam-name`, `term`, `duration`) on the
-#api("config") object and render them with
-#api("maketitle", body: raw("#maketitle()")). Each configured value can be
-overridden by passing arguments to `maketitle()`, e.g.
-`#maketitle(term: [Summer 2026])`.
+Set the exam's details (`institution`, `exam-name`, `term`, `duration`) on the global #api("config")
+and render them with #api("maketitle", body: raw("#maketitle()")). Each configured value can be
+overridden by passing arguments to `maketitle()`, e.g. `#maketitle(term: [Summer 2026])`.
 
 #example(
   ```typ

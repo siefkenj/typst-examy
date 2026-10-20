@@ -12,7 +12,8 @@
 // shows (see `example` in site/template.typ), so neither can fall out of
 // date with the package.
 
-#import "site/template.typ": PAGES, REFERENCE_PAGES, entry_heading, entry_page, layout, output_css
+#import "site/template.typ": PAGES, REFERENCE_PAGES, entry_heading, entry_page, layout, output_css, paged_documents
+#import "site/pages/rubrics.typ": PAGED_EXAMPLES as RUBRIC_EXAMPLES
 
 #for p in PAGES {
   document(p.path, title: p.title, layout(p, include "site/" + p.file, heading: p.at("heading", default: auto)))
@@ -21,6 +22,12 @@
 // The reference: a page per export, generated from its declaration.
 #for p in REFERENCE_PAGES {
   document(p.path, title: p.title, layout(p, entry_page(p.entry), heading: entry_heading(p.entry)))
+}
+
+// The examples shown as images of a paged rendering, rather than in HTML
+// frames, which do not keep where things are (see `example`'s `paged-name`).
+#for ex in RUBRIC_EXAMPLES.values() {
+  paged_documents(ex)
 }
 
 // The stylesheet, with the look of the examples' output from the template
