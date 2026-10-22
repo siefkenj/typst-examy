@@ -86,25 +86,26 @@
 
 // --- division numbering ---
 #{
+  let at(level, number) = range(level - 1).map(_ => 0) + (number,)
   let numberings = ("Problem 1.", "(A)", "I.", "α.")
-  assert(display_number(1, 0, numberings: numberings) == "Problem 1.")
-  assert(display_number(2, 1, numberings: numberings) == "(B)")
-  assert(display_number(4, 2, numberings: numberings) == "γ.")
+  assert(display_number(at(1, 0), numbering: numberings) == "Problem 1.")
+  assert(display_number(at(2, 1), numbering: numberings) == "(B)")
+  assert(display_number(at(4, 2), numbering: numberings) == "γ.")
   // Past the end of the array, levels are numbered "1.".
-  assert(display_number(4, 2, numberings: ("1.", "(a)")) == "3.")
+  assert(display_number(at(4, 2), numbering: ("1.", "(a)")) == "3.")
   // A reference drops the trailing ".".
-  assert(format_component(0, 1, numberings: numberings) == [Problem 2])
-  assert(reference_body((1, 0), (), numberings: numberings) == [Problem 2] + sym.space.thin + [(A)])
+  assert(format_component(0, 1, numbering: numberings) == [Problem 2])
+  assert(reference_body((1, 0), (), numbering: numberings) == [Problem 2] + sym.space.thin + [(A)])
   // A numbering function is called with the number.
   let roman = n => numbering("i)", n)
-  assert(display_number(1, 3, numberings: (roman,)) == "iv)")
+  assert(display_number(at(1, 3), numbering: (roman,)) == "iv)")
 }
 
 // --- the points table labels a question by its number as a reference
 // shows it ---
 #{
   let items = parse(tokenize([#question(points: 1)[a] #question(points: 2, number: none)[b]]))
-  let data = compute_points_data(items, numberings: ("Q1.",))
+  let data = compute_points_data(items, numbering: ("Q1.",))
   assert(data.map(q => q.label) == ([Q1], sym.dash.en), message: repr(data))
   assert(data.map(q => q.total_points) == (1, 2))
 }
@@ -140,20 +141,20 @@
 #case([A bonus part beside own points: no conflict, 4.], points-show-totals: true)[
   #question(points: 4)[#part(points: 2, intent: "bonus")[b, bonus]]
 ]
-#case([`division-numbering: ("Problem 1.", "(A)", "I.", "α.")`, and a reference.],
-  division-numbering: ("Problem 1.", "(A)", "I.", "α."),
+#case([`numbering: ("Problem 1.", "(A)", "I.", "α.")`, and a reference.],
+  numbering: ("Problem 1.", "(A)", "I.", "α."),
 )[
   #question(indent: 6em)[
     #part(label: <deep>, indent: 2.5em)[#subpart[#part[fourth level]]]
   ]
   #question(indent: 6em)[See @deep.]
 ]
-#case([A numbering function: `n => numbering("i)", n)`.], division-numbering: (n => numbering("i)", n),))[
+#case([A numbering function: `n => numbering("i)", n)`.], numbering: (n => numbering("i)", n),))[
   #question[one]
   #question[two]
 ]
-#case([The points table labels questions as references do: Q1, then a dash.], division-numbering: ("Q1.",))[
+#case([The points table labels questions as references do: Q1, then a dash.], numbering: ("Q1.",))[
   #question(points: 1)[a]
   #question(points: 2, number: none)[b]
 ]
-#align(center, points-table)
+#align(center, points-table())

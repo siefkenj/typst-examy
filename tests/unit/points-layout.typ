@@ -45,13 +45,13 @@
 // --- a long gutter label runs out to the left instead of wrapping ---
 #rule[A label wider than the gutter runs out to the left, on one line.]
 #{
-  show: e.set_(config, division-numbering: ("Problem 1.",))
+  show: e.set_(config, numbering: ("Problem 1.",))
   exam(questions: [#question[A question.]])
 }
 #context {
   // The question is one line tall: the label did not wrap.
   let height = measure(block(width: 3in, {
-    show: e.set_(config, division-numbering: ("Problem 1.",))
+    show: e.set_(config, numbering: ("Problem 1.",))
     exam(questions: [#question[A question.]])
   })).height
   let one_line = measure(block(width: 3in, exam(questions: [#question[A question.]]))).height
@@ -73,13 +73,42 @@
         strings: (total: [Sum]),
       )
       rule[#direction, by #by#if score [, with a score row and a bonus row#if direction == "horizontal" [, at most 2 columns wide]]. ]
-      points-table
+      points-table()
     }
   }
 }
 #context {
   let tables = query(table)
   assert(tables.len() >= 8, message: "expected the points tables, found " + str(tables.len()))
+}
+
+// --- an argument wins over `config`'s option; `auto` takes the option ---
+#rule[Arguments over `config`: vertical by `config`, then `direction: "horizontal"`; at most 2 columns by `config`, then `max-columns: none`.]
+#[
+  #show: e.set_(config, points-table-direction: "vertical", points-table-max-columns: 2)
+  #let marked(name, t) = [#metadata(name)<table-case> #t]
+  #marked("config", points-table())
+  #marked("direction", points-table(direction: "horizontal"))
+  #marked("max-columns", points-table(direction: "horizontal", max-columns: none))
+  #marked("max-columns auto", points-table(direction: "horizontal"))
+  // The exam they are about: the next one.
+  #exam(questions: range(4).map(i => question(points: 1)[Q.]).join())
+]
+#context {
+  // The tables after each mark, up to the next: their column counts.
+  let marks = query(<table-case>)
+  let columns = marks.enumerate().map(((i, m)) => {
+    let sel = selector(table).after(m.location())
+    if i + 1 < marks.len() { sel = sel.before(marks.at(i + 1).location()) }
+    query(sel).map(t => if type(t.columns) == int { t.columns } else { t.columns.len() })
+  })
+  // The exam after them has 4 questions: vertical, 2 columns (question,
+  // points); horizontal, a column per question and the total, one more for
+  // the headings, or at most 2 of them per table.
+  assert.eq(columns.at(0), (2,), message: repr(columns))
+  assert.eq(columns.at(1), (3, 3, 2), message: repr(columns))
+  assert.eq(columns.at(2), (6,), message: repr(columns))
+  assert.eq(columns.at(3), (3, 3, 2), message: repr(columns))
 }
 
 // --- in the margin, a question starting with a part shares its line, where

@@ -13,7 +13,7 @@
 #let near(a, b) = calc.abs((a - b).pt()) < 0.01
 #let height(b) = measure(b, width: COLUMN).height
 
-// Shown only on the key: blank on the exam, so `default_height` tall.
+// Shown only on the key: blank on the exam, so `default-height` tall.
 #let key_only = answer-box(width: 100%)[#e.get(get => if show-solutions(get) [The answer.])]
 // Shown on both: a short prompt, so as tall as the prompt.
 #let prompt = answer-box(width: 100%)[#context [A short prompt.]]

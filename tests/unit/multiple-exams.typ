@@ -23,7 +23,7 @@
 
 #rule[Before the first exam: about the first (3 points).]
 #probe("before first")
-#align(center, points-table)
+#align(center, points-table())
 
 #exam(questions: [
   #question(points: 1)[One point. #probe("inside first")]
@@ -32,7 +32,7 @@
 
 #rule[Between the exams: about the second, the next (10 points).]
 #probe("between")
-#align(center, points-table)
+#align(center, points-table())
 
 #exam(questions: [
   #question(points: 4)[Four points. #probe("inside second")]

@@ -8,7 +8,7 @@
   config: (
     kind: "element",
     show-signature: false,
-    desc: "Global configuration of package options. Options set via elembic. For example `#show: e.set_(config, show-solutions: true)` to show solutions globally.",
+    desc: "Global configuration of package options. Give options to the exam, e.g. `#show: exam.with(show-solutions: true)`, or set them with `#show: e.set_(config, show-solutions: true)`.",
   ),
 )
 
@@ -28,10 +28,14 @@
 /// beside them.
 #let DEFAULT_BUBBLE_LABEL_FONT = "DejaVu Sans Mono"
 
-/// How questions, parts, and subparts are numbered when
-/// `division-numbering` is not configured: one numbering pattern per
-/// nesting level. Deeper levels fall back to `"1."`.
-#let DEFAULT_DIVISION_NUMBERING = ("1.", "(a)", "i.")
+/// A relative length, checked but kept as given: a plain length stays a
+/// length (see signature.typ), as `answer-box` expects.
+#let _RELATIVE = (length, ratio, e.types.exact(relative))
+
+/// How questions, parts, and subparts are numbered when `numbering` is not
+/// configured: one numbering pattern per nesting level. Deeper levels fall
+/// back to `"1."`.
+#let DEFAULT_NUMBERING = ("1.", "(a)", "i.")
 
 /// The words examy prints itself, when `strings` does not replace them.
 #let DEFAULT_STRINGS = (
@@ -57,8 +61,9 @@
   fields: (
     e.field(
       "show-solutions",
-      e.types.option(bool),
-      doc: "Whether to show solutions. Unset, they are shown; the `--input show-solutions=..` command-line option overrides it",
+      bool,
+      doc: "Whether to show solutions, as on the answer key; the `--input show-solutions=..` command-line option overrides it",
+      default: true,
     ),
     e.field(
       "institution",
@@ -77,13 +82,13 @@
     ),
     e.field(
       "duration",
-      e.types.option(duration),
-      doc: "The length of the exam, shown by `maketitle`",
+      e.types.option(e.types.union(duration, content)),
+      doc: "The length of the exam, shown by `maketitle`: a `duration`, shown in minutes (`duration(minutes: 110)` as \"110 Minutes\"), or content, shown as it is (`[1 h 50 min]`)",
     ),
     e.field(
-      "show-rubric",
+      "show-rubrics",
       e.types.union(auto, bool),
-      doc: "Whether to show the rubrics of questions, parts, and subparts (see `rubric`). `auto` shows them where solutions are shown, on the answer key; the `--input show-rubric=..` command-line option overrides it. A rubric that is not shown takes no room, so the exam lays out the same either way",
+      doc: "Whether to show the rubrics of questions, parts, and subparts (see `rubric`). `auto` shows them where solutions are shown, on the answer key; the `--input show-rubrics=..` command-line option overrides it. A rubric that is not shown takes no room, so the exam lays out the same either way",
       default: false,
     ),
     e.field(
@@ -135,12 +140,42 @@
       default: false,
     ),
     e.field(
-      "division-numbering",
-      e.types.array(e.types.union(str, function)),
-      doc: "How questions, parts, and subparts are numbered: one numbering pattern or function per nesting level, as `numbering` takes, e.g. `(\"Problem 1.\", \"(a)\", \"i.\")`. Levels past the end of the array are numbered `\"1.\"`. A reference drops a pattern's trailing `.`, so `@label` reads \"Problem 1 (a)\"; a function's result is used as it is",
-      default: DEFAULT_DIVISION_NUMBERING,
+      "answer-box-height",
+      e.types.union(auto, .._RELATIVE, fraction, none),
+      doc: "The `height` of an `answer-box` that is not given one, by its call or a set rule on `answer-box`. `none` sizes a box by what the exam shows in it, and a blank one takes `answer-box-default-height`; see `answer-box`'s `height` for the others",
+      default: none,
+    ),
+    e.field(
+      "answer-box-width",
+      e.types.union(auto, .._RELATIVE),
+      doc: "The `width` of an `answer-box` that is not given one, by its call or a set rule on `answer-box`. `auto` is the full width for a box with a fractional height (`1fr`), and `answer-box-default-width` otherwise",
+      default: auto,
+    ),
+    e.field(
+      "answer-box-default-height",
+      length,
+      doc: "The height of an `answer-box` that is blank on the exam and has a `height` of `none`, unless it is given `default-height`",
+      default: 2cm,
+    ),
+    e.field(
+      "answer-box-default-width",
+      length,
+      doc: "The width of an `answer-box` with a `width` of `auto` and a height that is not a fraction, unless it is given `default-width`",
+      default: 2cm,
+    ),
+    e.field(
+      "numbering",
+      e.types.union(str, function, e.types.array(e.types.union(str, function))),
+      doc: "How questions, parts, and subparts are numbered, as `enum`'s `numbering` takes it: a pattern such as `\"1.a.i.\"`, whose counting symbols number the levels in turn (the last one any deeper levels), or a function of the number. Or an array of them, one per level, e.g. `(\"Problem 1.\", \"(a)\", \"i.\")`, levels past its end numbered `\"1.\"`.\n\nA reference drops a pattern's trailing `.`, so `@label` reads \"Problem 1 (a)\"; a function's result is used as it is",
+      default: DEFAULT_NUMBERING,
       // Set as a whole: the default folding of arrays would append to it.
       folds: false,
+    ),
+    e.field(
+      "numbering-full",
+      bool,
+      doc: "Whether a part or subpart is numbered with the numbers of the divisions it is in, as `enum`'s `full` does: `\"1.a.\"` numbers part (a) of question 1 \"1.a.\", and a function is given every level's number, `(1, 1)`. A reference then reads as the full number too, \"1.a\", and a question whose body starts with a part shows only the part's number on their shared line, which holds its own. A level whose numbers are not all counted (a division given `number: [..]` or `none`, or one inside it) is numbered on its own",
+      default: false,
     ),
     e.field(
       "strings",
@@ -169,31 +204,31 @@
     e.field(
       "points-table-direction",
       e.types.union("horizontal", "vertical"),
-      doc: "The layout of `points-table`: `\"horizontal\"` with a column per question, or `\"vertical\"` with a row per question",
+      doc: "The layout of `points-table`, unless it is given `direction`: `\"horizontal\"` with a column per question, or `\"vertical\"` with a row per question",
       default: "horizontal",
     ),
     e.field(
       "points-table-by",
       e.types.union("question", "page"),
-      doc: "Whether `points-table` totals the points by question or by page; by page, a page without points is left out",
+      doc: "Whether `points-table` totals the points by question or by page, unless it is given `by`; by page, a page without points is left out",
       default: "question",
     ),
     e.field(
       "points-table-score",
       bool,
-      doc: "Whether `points-table` has an empty Score row (a column, when vertical) for the grader to fill in",
+      doc: "Whether `points-table` has an empty Score row (a column, when vertical) for the grader to fill in, unless it is given `score`",
       default: false,
     ),
     e.field(
       "points-table-bonus",
       bool,
-      doc: "Whether `points-table` has a Bonus row (a column, when vertical) with the bonus points, when the exam has any",
+      doc: "Whether `points-table` has a Bonus row (a column, when vertical) with the bonus points, when the exam has any, unless it is given `bonus`",
       default: false,
     ),
     e.field(
       "points-table-max-columns",
       e.types.option(int),
-      doc: "The most questions (or pages) a horizontal `points-table` shows side by side; more are split into several tables, one below the other, with the total in the last. `none` keeps them all in one table",
+      doc: "The most questions (or pages) a horizontal `points-table` shows side by side, unless it is given `max-columns`; more are split into several tables, one below the other, with the total in the last. `none` keeps them all in one table",
       default: none,
     ),
     // The name `solution-color` had in 0.3 and earlier, when it colored only the
@@ -271,18 +306,19 @@
 #let exam_options(get) = {
   let cfg = get(config)
   (
-    numbering: cfg.division-numbering,
+    numbering: cfg.numbering,
+    numbering-full: cfg.numbering-full,
     // Folded onto its default by elembic: a partial `strings` keeps the rest.
     strings: cfg.strings,
     points-format: if cfg.points-format == auto { default_points_format } else { cfg.points-format },
     points-position: cfg.points-position,
     points-show-totals: cfg.points-show-totals,
     // `shown` is resolved by the exam, which knows whether solutions are shown
-    // (see `show_rubric`), and `present`, whether it has rubrics at all, and
+    // (see `show_rubrics`), and `present`, whether it has rubrics at all, and
     // so `drawn`, whether they are drawn, and `traced`, whether their leaders
     // are too (see `process_questions`).
     rubric: (
-      shown: cfg.show-rubric,
+      shown: cfg.show-rubrics,
       present: false,
       drawn: false,
       traced: false,
@@ -293,10 +329,64 @@
   )
 }
 
+/// The options an exam reads once, where it starts (see `exam_options`,
+/// and `show_rubrics`), for all its questions: set inside it, around some of
+/// them, they would change nothing (see `exam_wide_options_set`). Keep in
+/// step with `exam_options`.
+#let EXAM_WIDE_OPTIONS = (
+  "numbering",
+  "numbering-full",
+  "strings",
+  "points-format",
+  "points-position",
+  "points-show-totals",
+  "show-rubrics",
+  "rubric-position",
+  "rubric-trace",
+  "rubric-width",
+)
+
+/// Which of `EXAM_WIDE_OPTIONS` an elembic rule (its data, see
+/// `elembic_rule` in scan.typ) sets on `config`, in order: a `set_` or
+/// `cond-set` rule's, or those of the rules an `apply` combines.
+#let exam_wide_options_set(rule) = {
+  let found = ()
+  let stack = (rule,)
+  while stack.len() > 0 {
+    let r = stack.pop()
+    if type(r) != dictionary { continue }
+    let kind = r.at("kind", default: none)
+    if kind == "apply" {
+      stack += r.at("rules", default: ()).rev()
+    } else if kind in ("set", "cond-set") and r.at("element", default: (:)).at("eid", default: none) == e.eid(config) {
+      found += r.at("args", default: (:)).keys().filter(k => k in EXAM_WIDE_OPTIONS)
+    }
+  }
+  found.dedup()
+}
+
+/// The names of the rules before an exam that set any of
+/// `EXAM_WIDE_OPTIONS`, from elembic's record of the rules in force where it
+/// starts (`data`, as `e.internal.debug-get` passes it; see `exam`): a
+/// `revoke` of one inside the exam would undo what it read there, and so
+/// change nothing (see `exam_wide_rule_error`).
+#let exam_wide_names(data) = {
+  let d = data.elements.at(e.data(config).eid, default: none)
+  if d == none { return () }
+  let names = ()
+  for (args, info) in d.chain.zip(d.data-chain) {
+    if type(args) == dictionary and args.keys().any(k => k in EXAM_WIDE_OPTIONS) {
+      names += info.at("names", default: ())
+    }
+  }
+  names.dedup()
+}
+
 /// `exam_options` with nothing configured, for rendering without a document
 /// (the unit tests).
 #let DEFAULT_EXAM_OPTIONS = (
-  numbering: DEFAULT_DIVISION_NUMBERING,
+  numbering: DEFAULT_NUMBERING,
+  numbering-full: false,
   strings: DEFAULT_STRINGS,
   points-format: default_points_format,
   points-position: "start",

@@ -2,7 +2,7 @@
 /// whether a piece of content must be unwrapped (it contains division
 /// markers) and by the planner to detect page-breaking/fr-height elements.
 
-#import "markers.typ": is_rubric_hint, marker_value, rubric_value
+#import "markers.typ": marker_value, rubric_value
 
 /// The internal `sequence` and `styled` element functions.
 #let SEQUENCE_FUNC = [#none#none].func()
@@ -55,18 +55,56 @@
   marker_names: a.marker_names + b.marker_names,
 )
 
-/// Recursively scan `c` (content, array, or anything else) and report:
-/// - `has_marker`: a division begin/end marker occurs somewhere inside
-/// - `has_break`: a pagebreak/colbreak occurs somewhere inside
-/// - `fr`: the summed `fraction` heights of children (heights inside
-///   explicitly-sized containers do not propagate past their container)
-/// - `marker_names`: constructor names of found markers (for diagnostics)
-#let scan(c) = {
-  if type(c) == array {
-    return c.fold(EMPTY_SCAN, (acc, x) => _merge_scans(acc, scan(x)))
-  }
-  if type(c) != content { return EMPTY_SCAN }
+/// What a sequence, styled content, or elembic rule (see `elembic_rule`)
+/// is made of, in order; `none` for anything else. These are what a
+/// document made the exam by `#show: exam` nests a level deeper with every
+/// set or show rule in it, and what the walks over content look through.
+#let unwrap(c) = {
+  if type(c) != content { return none }
+  let rule = elembic_rule(c)
+  if rule != none { return (rule.doc,) }
+  let f = c.func()
+  if f == SEQUENCE_FUNC { return c.children }
+  if f == STYLED_FUNC { return (c.child,) }
+  none
+}
 
+/// What `_find` looks inside by default: what `unwrap` gives, or else an
+/// element's content fields (body, caption, ...).
+#let _inside(c) = {
+  if type(c) != content { return () }
+  let kids = unwrap(c)
+  if kids != none { kids } else { c.fields().values().filter(v => type(v) in (content, array)) }
+}
+
+/// Every item in `c` that `match` accepts, in order, without looking inside
+/// them; inside the others, the items `inside` gives, of an array its
+/// items. With `first: true`, only the first one found. Walked with a stack
+/// of its own, not by recursing, for content nested deeper than Typst lets
+/// functions recurse (see `unwrap`).
+#let _find(c, match, inside: _inside, first: false) = {
+  let out = ()
+  let stack = (c,)
+  while stack.len() > 0 {
+    let c = stack.pop()
+    if type(c) == array {
+      stack += c.rev()
+    } else if match(c) {
+      out.push(c)
+      if first { break }
+    } else {
+      stack += inside(c).rev()
+    }
+  }
+  out
+}
+
+/// The scan (see `scan`) of one element: not a sequence, styled content, or
+/// an elembic rule, which `scan` looks through itself. A function of its
+/// own, so that Typst memoizes it, and an element scanned once, as a field
+/// of another, say, is not scanned again by `tokenize`. `scan` is passed
+/// in, for the element's fields.
+#let _scan_element(c, scan) = {
   let m = marker_value(c)
   if m != none {
     if m.kind == "begin" {
@@ -82,11 +120,21 @@
     return EMPTY_SCAN
   }
   if is_break(c) { return EMPTY_SCAN + (has_break: true) }
-  // An elembic rule: what it applies to is in its tag, not in its fields.
-  let rule = elembic_rule(c)
-  if rule != none { return scan(rule.doc) }
+  // An `answer-box` the exam did not draw itself (see `resolve_boxes`), inside
+  // an element it does not look into: what its call gives of its height,
+  // and what its body holds. Recognized by the tag that ends an elembic
+  // instance, which carries the call's fields.
+  if c.func() == metadata and c.at("label", default: none) == <__elembic_element_tag> {
+    let v = c.value
+    if type(v) == dictionary and v.at("name", default: none) == "answer-box" {
+      let h = v.fields.at("height", default: none)
+      let inner = scan(v.fields.at("body", default: none))
+      inner.fr = if type(h) == fraction { h } else { none }
+      return inner
+    }
+  }
 
-  // Scan all content-valued fields (children, child, body, caption, ...).
+  // Scan all content-valued fields (body, caption, ...).
   let inner = EMPTY_SCAN
   for (name, value) in c.fields() {
     if type(value) == content or type(value) == array {
@@ -98,14 +146,30 @@
   if h != none and h != auto {
     // Explicitly sized: inner fr heights resolve inside this container and
     // must not propagate; markers/breaks inside are still reported.
-    return (
-      has_marker: inner.has_marker,
-      has_break: inner.has_break,
-      fr: if type(h) == fraction { h } else { none },
-      marker_names: inner.marker_names,
-    )
+    inner.fr = if type(h) == fraction { h } else { none }
   }
   inner
+}
+
+/// Scan `c` (content, array, or anything else) and report:
+/// - `has_marker`: a division begin/end marker occurs somewhere inside
+/// - `has_break`: a pagebreak/colbreak occurs somewhere inside
+/// - `fr`: the summed `fraction` heights of children (heights inside
+///   explicitly-sized containers do not propagate past their container)
+/// - `marker_names`: constructor names of found markers (for diagnostics)
+///
+/// Sequences, styled content, and elembic rules are looked through with
+/// `_find`, which does not recurse (see `unwrap`). Other elements nest only
+/// as deep as they are written, and are scanned recursively (see
+/// `_scan_element`).
+#let scan(c) = {
+  // Not content, or a sequence, styled content, or an elembic rule.
+  let through(x) = {
+    let kids = unwrap(x)
+    if kids == none { () } else { kids }
+  }
+  let leaves = _find(c, x => type(x) == content and unwrap(x) == none, inside: through)
+  leaves.fold(EMPTY_SCAN, (acc, x) => _merge_scans(acc, _scan_element(x, scan)))
 }
 
 /// Element functions whose content participates in inline (paragraph)
@@ -297,73 +361,70 @@
 /// Whether `c` holds a rubric marker anywhere inside it. A rubric marker is
 /// invisible, as `is_whitespace_content` says, but it must not be dropped
 /// with the whitespace around it.
-#let has_rubric(c) = {
-  if type(c) == array { return c.any(has_rubric) }
-  if type(c) != content { return false }
-  if rubric_value(c) != none { return true }
-  c.fields().values().any(v => type(v) in (content, array) and has_rubric(v))
-}
+#let has_rubric(c) = _find(c, x => rubric_value(x) != none, first: true).len() > 0
+
+/// Whether `c` holds `metadata` anywhere: content that takes no room, so
+/// counts as blank (see `is_whitespace_content`), but is there to be found
+/// (with a label, by `query`, a link, ...), so must not be left out of the
+/// document where blank content is. A rubric is one.
+#let has_metadata(c) = _find(c, x => type(x) == content and x.func() == metadata, first: true).len() > 0
 
 /// Whether `c` holds a rubric marker anywhere at all: also in the fields of
 /// elements kept in metadata (a `solution`'s body, a division's `rubric:`),
-/// which `has_rubric` does not look into, or a rubric hint, left where they
-/// cannot be seen (see markers.typ). For the exam to know whether it has
-/// rubrics to draw, before drawing anything.
+/// which `has_rubric` does not look into. For the exam to know whether it
+/// has rubrics to draw, before drawing anything.
 #let has_any_rubric(c) = {
-  if type(c) == array { return c.any(has_any_rubric) }
-  if type(c) == dictionary { return c.values().any(has_any_rubric) }
-  if type(c) != content { return false }
-  if rubric_value(c) != none or is_rubric_hint(c) { return true }
-  if c.func() == metadata { return has_any_rubric(c.value) }
-  c.fields().values().any(has_any_rubric)
+  // Of elembic's own data, only what can hold a rubric: the content a rule
+  // is applied to, and an element's fields, not the rest of what elembic
+  // keeps with them (the element's whole description, for one), which
+  // would take long to walk, for every answer box (which holds a rule on
+  // its solutions) and every solution.
+  let inside(x) = if type(x) == dictionary {
+    x.values()
+  } else if type(x) != content {
+    ()
+  } else if x.func() == metadata {
+    let label = x.at("label", default: none)
+    if label == <__elembic_element_tag> and type(x.value) == dictionary and "fields" in x.value {
+      x.value.fields.values()
+    } else if label in _ELEMBIC_RULE_TAGS and type(x.value) == dictionary and "doc" in x.value {
+      (x.value.doc,)
+    } else { (x.value,) }
+  } else {
+    x.fields().values()
+  }
+  _find(c, x => rubric_value(x) != none, inside: inside, first: true).len() > 0
 }
 
 /// Every rubric marker inside `c`, in order: what a hidden `solution`
 /// leaves in its place, so that its rubrics are still found.
-#let rubric_markers(c) = {
-  if type(c) == array { return c.map(rubric_markers).flatten() }
-  if type(c) != content { return () }
-  if rubric_value(c) != none { return (c,) }
-  c.fields().values().filter(v => type(v) in (content, array)).map(rubric_markers).flatten()
-}
+#let rubric_markers(c) = _find(c, x => rubric_value(x) != none)
 
 /// Whether `c` ends with inline content, in a paragraph's line. Unsure
 /// means no (see `glue_rubrics`).
 #let _ends_inline(c) = {
-  if type(c) == str { return c.trim() != "" }
-  if type(c) != content { return false }
-  let f = c.func()
-  if f == SEQUENCE_FUNC {
-    let kids = c.children.filter(k => not is_whitespace_content(k) or rubric_value(k) != none)
-    return kids.len() > 0 and (rubric_value(kids.last()) != none or _ends_inline(kids.last()))
+  // Down its last child, with a loop of its own (see `_find`).
+  while true {
+    if type(c) == str { return c.trim() != "" }
+    if type(c) != content { return false }
+    let f = c.func()
+    if f == SEQUENCE_FUNC {
+      let kids = c.children.filter(k => not is_whitespace_content(k) or rubric_value(k) != none)
+      if kids.len() == 0 { return false }
+      if rubric_value(kids.last()) != none { return true }
+      c = kids.last()
+    } else if f == STYLED_FUNC {
+      c = c.child
+    } else {
+      if (math.equation, raw).contains(f) { return not c.at("block", default: false) }
+      return _INLINE_FUNCS.contains(f) or f == smartquote or f == [#sym.dot].func()
+    }
   }
-  if f == STYLED_FUNC { return _ends_inline(c.child) }
-  if (math.equation, raw).contains(f) { return not c.at("block", default: false) }
-  _INLINE_FUNCS.contains(f) or f == smartquote or f == [#sym.dot].func()
 }
 
-/// Glue each rubric marker to the text beside it in its paragraph, with a
-/// word joiner: after it when text comes before it, before it when it starts
-/// the paragraph and text follows. Unglued, a marker that ends a paragraph
-/// is placed after the paragraph (at its left edge, below it), and one that
-/// starts it at the paragraph's top, not on its first line: where a rubric's
-/// leader is drawn from. A marker with no text on either side is left as it
-/// is, as a joiner would make a line of its own. Only the siblings in a
-/// sequence are looked at (through `styled`), so a case unsure of is left
-/// as it is: placed less well, but never moving the layout. Also says
-/// whether it changed anything.
-#let _glue(c) = {
-  if type(c) != content { return (c, false) }
-  let f = c.func()
-  if f == STYLED_FUNC {
-    let (child, changed) = _glue(c.child)
-    return (if changed { STYLED_FUNC(child, c.styles) } else { c }, changed)
-  }
-  if f != SEQUENCE_FUNC { return (c, false) }
-  // One pass: each child glued, and whether it, or any of them, changed.
-  let glued = c.children.map(_glue)
-  let kids = glued.map(g => g.first())
-  if not glued.any(g => g.last()) and not kids.any(k => rubric_value(k) != none) { return (c, false) }
+/// A sequence's children `kids`, already glued (see `glue_rubrics`), with
+/// each rubric marker among them glued to the text beside it.
+#let _glue_kids(kids) = {
   let space = [ ].func()
   let wj = text("\u{2060}")
   let out = ()
@@ -384,7 +445,52 @@
       out.push(k)
     }
   }
-  (out.join(), true)
+  out.join()
 }
 
-#let glue_rubrics(c) = _glue(c).first()
+/// Glue each rubric marker to the text beside it in its paragraph, with a
+/// word joiner: after it when text comes before it, before it when it starts
+/// the paragraph and text follows. Unglued, a marker that ends a paragraph
+/// is placed after the paragraph (at its left edge, below it), and one that
+/// starts it at the paragraph's top, not on its first line: where a rubric's
+/// leader is drawn from. A marker with no text on either side is left as it
+/// is, as a joiner would make a line of its own. Only the siblings in a
+/// sequence are looked at (through `styled`), so a case unsure of is left
+/// as it is: placed less well, but never moving the layout.
+///
+/// Rebuilt from the inside out, with a stack of its own rather than by
+/// recursing (see `_find`): each sequence and `styled` is visited, then
+/// its children are, then it is rebuilt from them, if any changed.
+#let glue_rubrics(c) = {
+  // To visit: `(c, n: none)`, or `(c, n)` to rebuild `c` from the last `n`
+  // results. Each result: `(content, whether it changed)`.
+  let todo = ((c: c, n: none),)
+  let results = ()
+  while todo.len() > 0 {
+    let t = todo.pop()
+    let c = t.c
+    let f = if type(c) == content { c.func() }
+    if t.n == none {
+      if f == SEQUENCE_FUNC or f == STYLED_FUNC {
+        let kids = if f == SEQUENCE_FUNC { c.children } else { (c.child,) }
+        todo.push((c: c, n: kids.len()))
+        for k in kids.rev() { todo.push((c: k, n: none)) }
+      } else {
+        results.push((c, false))
+      }
+      continue
+    }
+    let glued = results.slice(results.len() - t.n)
+    results = results.slice(0, results.len() - t.n)
+    let kids = glued.map(g => g.first())
+    if f == STYLED_FUNC {
+      let (child, changed) = glued.first()
+      results.push((if changed { STYLED_FUNC(child, c.styles) } else { c }, changed))
+    } else if glued.any(g => g.last()) or kids.any(k => rubric_value(k) != none) {
+      results.push((_glue_kids(kids), true))
+    } else {
+      results.push((c, false))
+    }
+  }
+  results.first().first()
+}

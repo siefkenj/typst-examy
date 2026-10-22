@@ -6,7 +6,8 @@
 #import "../src/lib.typ": *
 
 #set page(width: 11cm, height: auto, margin: 6mm)
-#show: e.prepare()
+// The blocks in the monospaced font bundled with Typst.
+#set text(font: "DejaVu Sans Mono")
 
 // The default block: a Name row and a Student ID row.
 #name-block()

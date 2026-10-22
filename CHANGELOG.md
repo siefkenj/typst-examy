@@ -2,19 +2,100 @@
 
 ## 1.0.0 (unreleased)
 
+- Fixed: content that takes no room, such as a labelled `#metadata(..)`, was
+  left out of the exam when it stood alone at the start of a question's
+  body, or next to an `fr` answer box, with nothing visible beside it: a
+  `query` found nothing, and a link to its label failed. It is kept, and
+  still takes no room.
+- `answer-box` is an elembic element: set rules give it any of its fields,
+  e.g. `#show: e.set_(answer-box, stroke: none)` for the whole document, or
+  in a scope of their own. Redefining it with `.with(..)` still works. In an
+  exam, which draws its boxes itself, only `e.set_` and `e.apply` rules apply
+  to them, their `stroke`, `radius` and `outset` folded as elembic folds
+  them; elembic's other rules on answer boxes (`e.show_`, `e.cond-set`,
+  `e.filtered`, `e.select`, `e.reset`, and an `e.revoke` of a rule that set
+  them) are an error, inside the exam or before it. Typst's own show rules
+  on `e.selector(answer-box)` apply to the exam's boxes too.
+- New options `answer-box-height`, `answer-box-width`,
+  `answer-box-default-height` and `answer-box-default-width` give the
+  `height`, `width`, `default-height` and `default-width` of every answer box
+  that doesn't give its own, e.g.
+  `#show: exam.with(answer-box-height: 1fr, answer-box-width: 100%)`. A box's
+  own arguments win over a set rule on `answer-box`, which wins over the
+  options; a box given `height: none` or `width: auto` keeps it.
+- Fixed: an answer box inside another element, such as `align`, whose `fr`
+  height came from a set rule on `answer-box` rather than its call, took the
+  whole page, as the exam did not know it was `fr`.
+- `answer-box`'s `default_height` and `default_width` are now
+  `default-height` and `default-width`, kebab-case like the rest of examy.
+  The old names still work, on a call or in a set rule, but are deprecated;
+  given both, the new name wins.
+- `choice`'s `bubble:` also takes `bubble` and `square-bubble`, as
+  `choices`' does, so both take the same spellings of a shape. Only
+  `"circle"` and `"square"` are documented; the others keep working.
+- `presets.utoronto.name_fields` is now `presets.utoronto.name-fields`,
+  kebab-case like the rest of examy. The old name still works, but is
+  deprecated.
+- A `question`, `part`, or `subpart` that no exam lays out shows a warning in
+  red where it is: one outside any exam, or inside one but built where the
+  exam cannot see it (inside a `context`, or by a show rule). Until now it
+  was drawn as plain text, unnumbered, with no sign of the problem. The
+  warning is also left as `metadata` labelled `<examy-warning>`, for a
+  script to find. `--input _debug_panic=panic` makes it an error that stops
+  the compile, and `--input _debug_panic=none` leaves the check out.
+- `exam` can be a show rule: `#show: exam` makes the rest of the document the
+  exam, and is now the recommended way to start one. `exam` also takes any
+  `config` option, applied to everything in the exam (a cover page before the
+  first question included) and nothing after it:
+  `#show: exam.with(show-solutions: true, points-position: "end")`. The
+  questions can be given positionally, `#exam[..]`, as well as with
+  `questions:`. `exam` applies `#show: e.prepare()` to its own content, so a
+  document only needs it for references from outside the exam. A set rule
+  after `#show: exam` applies once to what follows it, as anywhere else (a
+  `#set page(..)` starts one run of pages, not one per question). A `config`
+  rule inside the exam that sets an option the exam reads once for all its
+  questions (`numbering`, `points-position`, `show-rubrics`, ..) is an error,
+  as it would change nothing.
+- `answer-box`'s `solution:` argument is drawn exactly as a `#solution[..]`
+  written at the end of the box's body, in a paragraph of its own. It no
+  longer stretches to fill the rest of a box of set height.
+- **Breaking:** `points-table` is a function, called as `#points-table()`,
+  and takes its layout as arguments: `direction`, `by`, `score`, `bonus`,
+  and `max-columns`. Each left out is `config`'s `points-table-..` option,
+  as before. An old `#points-table` no longer draws the table: it shows the
+  word "points-table". `page-score-box()` and `rubric-list()` are called the
+  same way.
+- **Breaking:** `maketitle` and `name-block` no longer force the DejaVu Sans
+  Mono font: they are set in the document's font, like everything else. To
+  keep the old look, set the font in a code block around them:
+  ```typst
+  #{
+    set text(font: "DejaVu Sans Mono")
+    maketitle()
+    name-block()
+  }
+  ```
+- **Breaking:** `exam` is a function, no longer an elembic element, so
+  `e.set_(exam, ..)` and `e.show_(exam, ..)` no longer apply to it. (It had
+  nothing to set but its questions.)
 - Rubrics: `#rubric(points: ..)[..]` items, in a division's `rubric:` field
   or in its body (a solution, say) where the criterion is met, with groups
-  (`pick: "one"` for alternatives) that can nest. `show-rubric` draws each
+  (`pick: "one"` for alternatives) that can nest. `show-rubrics` draws each
   division's rubric in the margin (`rubric-position`), with a dotted line
   from each item written in the body to its place; a rubric takes no room,
   so the exam lays out the same with or without it. `rubric-list` lays out
   every rubric on its own, and every exam with rubrics leaves them in the
   document as data, `<examy-rubric>`, for `typst eval` to read out as JSON.
   The `rubric:` argument, accepted but ignored until now, is drawn.
-- `show-solutions(get)` is now always `true` or `false`: unset, solutions
-  are shown, as `#solution` and the bubbles already took it, and it is
-  `true`, not `none`. `exam`'s `solutions-only` now agrees with them too: it
-  hid its content when `show-solutions` was unset.
+- **Breaking:** `config`'s `show-rubric`, accepted but ignored until now, is
+  `show-rubrics`, and so is its command-line option,
+  `--input show-rubrics=..`. Both command-line options are also accepted in
+  the singular, `--input show-rubric=..` and `--input show-solution=..`.
+- **Breaking:** `config`'s `show-solutions` is `true` or `false`, `true` by
+  default, as solutions were shown when it was unset; `none` is no longer
+  accepted. `show-solutions(get)` is always `true` or `false` too, not
+  `none`. `exam`'s `solutions-only` now agrees with `#solution` and the
+  bubbles: it hid its content when `show-solutions` was unset.
 - **Breaking:** `question`, `part`, and `subpart` no longer take a
   `solution:` argument. Write the solution in the body, as `#solution[..]`,
   where it should be drawn. (The argument drew the solution after the
@@ -47,6 +128,13 @@
   out exactly like the exam. `height: auto` makes the box grow to hold them.
 - `choices(enumerate: ...)` puts labels (A, B, C, … or any numbering pattern)
   inside the bubbles. Set it for the whole document with `choices-enumerate`.
+- `duration`, in `config` or given to `maketitle`, can also be content, shown
+  as it is written: `duration: [1 h 50 min]`. A Typst `duration` is still
+  shown in minutes.
+- `choices(correct: ...)` also names a choice by the label drawn in its
+  bubble, for choices labelled with `enumerate`: `correct: "C"`, or
+  `correct: ("A", "C")` for several. Case and punctuation do not matter, so
+  `"c"` and `"(c)"` work too. Indices still work, and the two can be mixed.
 - New `config` options: `bubble-stroke` and `bubble-label-font`.
 - A `choice`, and each choice of `choices(inline: true)`, is kept whole: when
   its text wraps, the further lines hang under the text instead of flowing
@@ -60,12 +148,21 @@
 - Points table layouts, set on `config`: `points-table-direction` (vertical),
   `points-table-by` (page), `points-table-score` (an empty Score row),
   `points-table-bonus` (a Bonus row), and `points-table-max-columns`.
-- Points per page: `page-points()`, and `page-score-box` for a page footer.
-  Also `num-bonus-points`.
-- `config`'s `division-numbering` sets how questions, parts, and subparts are
-  numbered (e.g. `("Problem 1.", "(a)", "i.")`), and `strings` the words
-  examy prints (Question, Points, Total, ...).
-- `answer-box(stroke: ..)` sets the box's outline, or removes it (`none`).
+- Points per page: `num-points-page`, and `page-score-box` for a page
+  footer. Also `num-bonus-points`.
+- Every count is also a number, to compute or test with, in context:
+  `get-num-points()`, `get-num-questions()`, `get-num-bonus-points()`, and
+  `get-num-points-page(page: .., bonus: ..)`, e.g. a pass mark,
+  `#context calc.ceil(get-num-points() * .6)`. `num-points` and the others
+  show them, with no context to write.
+- `config`'s `numbering` sets how questions, parts, and subparts are
+  numbered, as `enum`'s `numbering` does: a pattern (`"1.a.i."`), a function
+  of the number, or one of those per level (`("Problem 1.", "(a)", "i.")`).
+  `numbering-full: true` numbers a part with its question's number too
+  ("1.a."), as `enum`'s `full` does, in references as well. `strings` sets
+  the words examy prints (Question, Points, Total, ...).
+- `answer-box(stroke: ..)` sets the box's outline, or removes it (`none`);
+  `fill`, `radius`, `outset`, and `clip` work as `box`'s do.
 - `solution(otherwise: ..)` shows content in the solution's place when
   solutions are hidden, such as lines to write on. In an answer box with no
   height, the key draws the solution over it, so the layout does not change.

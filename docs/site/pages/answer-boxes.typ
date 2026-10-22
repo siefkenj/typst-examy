@@ -2,7 +2,8 @@
 
 #api("answer-box") draws a box for students to write in. A fixed height (`2cm`, `1in`, …) gives a
 box of that size. A _fractional_ height (`1fr`, `2fr`, …) makes the box grow to fill the space left
-on the page, and several `fr` boxes on one page share that space in proportion.
+on the page, and several `fr` boxes on one page share that space in proportion. A box with a
+fractional height is as wide as the text unless it is given a `width`.
 
 #example(
   ```typ
@@ -14,19 +15,19 @@ on the page, and several `fr` boxes on one page share that space in proportion.
     Let $f(x) = x^3 - 3x$.
     #part[
       Find $f'(x)$.
-      #answer-box(width: 100%, height: 1fr)[]
+      #answer-box(height: 1fr)[]
     ]
     #part[
       Find and classify the critical points of $f$.
-      #answer-box(width: 100%, height: 2fr)[]
+      #answer-box(height: 2fr)[]
     ]
   ]
   ```,
   height: 11cm,
 )
 
-Without a `width`, a box is `default_width` (`2cm`) wide and sits in the line like a word. This
-suits a short answer in a sentence:
+Any other box without a `width` is `default-width` (`2cm`) wide and sits in the line like a word.
+This suits a short answer in a sentence:
 
 #example(
   ```typ
@@ -40,7 +41,7 @@ suits a short answer in a sentence:
 == Boxes without a height
 
 Without a `height`, a box sizes itself to its content. A blank box (empty, or holding only a
-#api("solution")) is `default_height` (`2cm`) tall, leaving room to write. A box with content, such
+#api("solution")) is `default-height` (`2cm`) tall, leaving room to write. A box with content, such
 as a prompt or a list of #api("choices"), grows to fit it.
 
 #example(
@@ -114,13 +115,42 @@ outlines only the sides it names, and `none` removes the outline, leaving blank 
   ```,
 )
 
-To change the outline of every box in a document, redefine `answer-box` after the import.
-Individual boxes can still set their own:
+== Settings for every box
+
+The exam's options `answer-box-height` and `answer-box-width` give the size of every box that doesn't
+give its own `height` or `width`. Like the exam's other options, they can be given to the exam, or
+set with `#show: e.set_(config, ..)` for part of it. Here every box fills the space left on its page,
+except one that gives its own height:
 
 #example(
   ```typ
-  #import "@preview/examy:1.0.0": *
-  #let answer-box = answer-box.with(stroke: (bottom: .5pt))
+  #show: exam.with(answer-box-height: 1fr, answer-box-width: 100%)
+
+  #question[
+    Find the derivative of $x^3 + 2x$.
+    #answer-box[]
+  ]
+  #question[
+    Is $x^3 + 2x$ increasing? Explain.
+    #answer-box(height: 1.5cm)[]
+  ]
+  #question[
+    Find the critical points of $x^3 - 3x$.
+    #answer-box[]
+  ]
+  ```,
+  height: 11cm,
+)
+
+In the same way, `answer-box-default-height` is the height of a blank box with no `height` (`2cm`
+unless it is set), and `answer-box-default-width` the width of a box in a line with no `width`.
+
+Any of a box's fields, such as its `stroke`, can also be set with a set rule on `answer-box`. Like a
+`set` rule, it applies from where it is made to the end of the document (or of the block it is in):
+
+#example(
+  ```typ
+  #show: e.set_(answer-box, stroke: (bottom: .5pt))
 
   #question[
     $2 + 2 =$ #answer-box(height: 1em)[] and
@@ -129,5 +159,14 @@ Individual boxes can still set their own:
   ```,
 )
 
-The redefinition only applies where the new name is in scope, so repeat it in each file that imports
-examy.
+A box's own arguments win over a set rule on `answer-box`, and a set rule wins over the exam's
+options. A box given `height: none` keeps it, even when `answer-box-height` is set.
+
+#note(kind: "warning")[
+  _Warning._ Inside an exam, the exam draws its answer boxes itself. It applies only the `e.set_` and
+  `e.apply` rules on answer boxes and on the `answer-box-` options. Elembic's other rules on them
+  (`e.show_`, `e.cond-set`, `e.filtered`, `e.select`, `e.reset`, and an `e.revoke` of a rule that
+  set them) are an error, whether they are written inside the exam or before it. Typst's own show
+  rules on `e.selector(answer-box)`, such as `#show e.selector(answer-box): set text(blue)`, apply
+  to the exam's boxes as to any other.
+]

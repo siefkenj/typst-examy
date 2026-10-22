@@ -1,33 +1,32 @@
 #import "../prelude.typ": *
-#import "../constants.typ": SHOW_RUBRIC_OVERRIDE, SHOW_SOLUTIONS_OVERRIDE
+#import "../constants.typ": SHOW_RUBRICS_OVERRIDE, SHOW_SOLUTIONS_OVERRIDE
 #import "../config.typ": config, solution_colors
 #import "../scan.typ": glue_rubrics, is_multi_par, rubric_markers
 #import "../signature.typ": declare_function, define
 
 /// Whether solutions are shown, given the configuration and the command line:
-/// `true` or `false`. Unset, they are shown, as everything that draws a
-/// solution has always taken it: only `show-solutions: false` hides them.
+/// `true` or `false`.
 #let show_solutions(get) = {
   // `answer-box` measuring what the exam shows; see `config`'s `_exam-view`.
   if get(config)._exam-view { return false }
   if SHOW_SOLUTIONS_OVERRIDE != none {
     SHOW_SOLUTIONS_OVERRIDE
   } else {
-    get(config).show-solutions != false
+    get(config).show-solutions
   }
 }
 
 /// Whether rubrics are shown, given the configuration, the command line, and
 /// (for `auto`) whether solutions are.
-#let show_rubric(get) = {
-  if SHOW_RUBRIC_OVERRIDE != none { return SHOW_RUBRIC_OVERRIDE }
-  let value = get(config).show-rubric
+#let show_rubrics(get) = {
+  if SHOW_RUBRICS_OVERRIDE != none { return SHOW_RUBRICS_OVERRIDE }
+  let value = get(config).show-rubrics
   if value == auto { show_solutions(get) } else { value }
 }
 
 #let _SHOW_SOLUTIONS = declare_function(
   "show-solutions",
-  doc: "Whether solutions are shown, `true` or `false`: the `--input show-solutions=..` command-line override if given, otherwise `config`'s `show-solutions`, which shows them unless it is `false`. Use it to conditionally render content that `#solution[..]` cannot wrap (e.g. one curve of a plot).",
+  doc: "Whether solutions are shown, `true` or `false`: the `--input show-solutions=..` command-line override if given, otherwise `config`'s `show-solutions`. Use it to conditionally render content that `#solution[..]` cannot wrap (e.g. one curve of a plot).",
   fields: (
     e.field(
       "get",
@@ -184,7 +183,7 @@
         }
         // Rubrics in the solution, when they are drawn, stay with the text
         // beside them (see `glue_rubrics`).
-        if show_rubric(get) { glue_rubrics(it.body) } else { it.body }
+        if show_rubrics(get) { glue_rubrics(it.body) } else { it.body }
       }
     })
   },

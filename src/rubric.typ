@@ -21,7 +21,7 @@
 
 #let _RUBRIC = declare_function(
   "rubric",
-  doc: "A rubric item, or a group of them, for grading the question, part, or subpart it belongs to: written in its `rubric:` field, or in its body (a solution, say) where the criterion is met, which a dotted line traces it back to. Drawn only when `config`'s `show-rubric` says so, and invisible otherwise: it takes no room either way.\n\nA rubric whose body holds other rubrics is a group: the text before its first item is the group's title (its first paragraph; any more is a note under it), and the rubrics are its items. Groups can hold groups.",
+  doc: "A rubric item, or a group of them, for grading the question, part, or subpart it belongs to: written in its `rubric:` field, or in its body (a solution, say) where the criterion is met, which a dotted line traces it back to. Drawn only when `config`'s `show-rubrics` says so, and invisible otherwise: it takes no room either way.\n\nA rubric whose body holds other rubrics is a group: the text before its first item is the group's title (its first paragraph; any more is a note under it), and the rubrics are its items. Groups can hold groups.",
   fields: (
     e.field(
       "body",
@@ -632,8 +632,14 @@
   query(RECORD).map(m => m.value).filter(r => r.exam == exam)
 }
 
-/// Every rubric of the exam, each in its card, one after another.
-#let rubric_list = context {
+#let _RUBRIC_LIST = declare_function(
+  "rubric-list",
+  doc: "Every rubric of the exam, each in its card, one after another: a grading guide of its own, e.g. on pages after the exam, or in a document that includes it. Works anywhere in the document, whatever `show-rubrics` says.",
+)
+
+/// Every rubric of the exam, each in its card, one after another (see
+/// DOCS).
+#let rubric_list = define(_RUBRIC_LIST, it => context {
   let records = exam_records()
   if records.len() == 0 {
     return text(fill: red, "WARNING: No rubrics found! Can't make a rubric list.")
@@ -641,13 +647,11 @@
   for r in records {
     block(width: 100%, breakable: false, below: 1em, draw_card(r.heading, r.nodes, size: .9em))
   }
-}
+})
 
 /// API documentation for this module's exports, consumed by docs/api.typ
 /// (keyed by export name).
 #let DOCS = (
   rubric: _RUBRIC,
-  "rubric-list": (
-    desc: "Every rubric of the exam, each in its card, one after another: a grading guide of its own, e.g. on pages after the exam, or in a document that includes it. Works anywhere in the document, whatever `show-rubric` says.",
-  ),
+  "rubric-list": _RUBRIC_LIST,
 )

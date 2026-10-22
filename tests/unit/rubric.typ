@@ -188,19 +188,19 @@
 // Shown, with solutions: exam 1.
 #pagebreak(weak: true)
 #[
-  #show: e.set_(config, show-solutions: true, show-rubric: true)
+  #show: e.set_(config, show-solutions: true, show-rubrics: true)
   #exam(questions: EXAM)
 ]
 // Not shown: exam 2.
 #pagebreak()
 #[
-  #show: e.set_(config, show-solutions: true, show-rubric: false)
+  #show: e.set_(config, show-solutions: true, show-rubrics: false)
   #exam(questions: EXAM)
 ]
 // Shown, solutions hidden: exam 3. A hidden solution keeps its rubrics.
 #pagebreak()
 #[
-  #show: e.set_(config, show-solutions: false, show-rubric: true)
+  #show: e.set_(config, show-solutions: false, show-rubrics: true)
   #exam(questions: EXAM)
 ]
 
@@ -225,7 +225,7 @@
 // Stacking: three parts whose cards are taller than the room between them.
 #pagebreak()
 #[
-  #show: e.set_(config, show-solutions: true, show-rubric: true)
+  #show: e.set_(config, show-solutions: true, show-rubrics: true)
   #let tall = [#rubric(points: 1)[One] #rubric(points: 1)[Two] #rubric(points: 1)[Three] #rubric(points: 1)[Four]]
   #exam(questions: [
     #question[
@@ -250,14 +250,14 @@
 #pagebreak()
 #[
   #set page(margin: (left: 2.2in, right: .5in, y: .4in))
-  #show: e.set_(config, show-solutions: true, show-rubric: true, rubric-position: "margin-left")
+  #show: e.set_(config, show-solutions: true, show-rubrics: true, rubric-position: "margin-left")
   #exam(questions: [
     #question(points: 2, rubric: [#rubric(points: 0)[Blank]])[In the left margin. #solution[Yes.#rubric(points: 2)[Right]]]
   ])
 ]
 #context assert(query(AREA).map(m => m.value).any(a => a.side == "margin-left"))
 #[
-  #show: e.set_(config, show-solutions: true, show-rubric: true, rubric-position: "end")
+  #show: e.set_(config, show-solutions: true, show-rubrics: true, rubric-position: "end")
   #exam(questions: [
     #question(points: 2)[At the end, after the part. #part(points: 2)[Part. #solution[Yes.#rubric(points: 2)[Right]]]]
   ])
@@ -274,7 +274,7 @@
 #for (shown, r) in ((false, none), (false, rubric(points: 1)[In the question]), (true, rubric(points: 1)[In the question])) {
   pagebreak(weak: true)
   rule[A rubric before a split part: "1." and "(a)" share a line (#if r == none [no rubric] else if shown [shown] else [hidden])]
-  [#show: e.set_(config, show-rubric: shown)
+  [#show: e.set_(config, show-rubrics: shown)
     #exam(questions: SPLIT(r))]
 }
 #context {
@@ -290,7 +290,7 @@
 #pagebreak()
 #rule[At the `"end"`: a question's rubric after a part with a `height` it starts with]
 #[
-  #show: e.set_(config, show-solutions: true, show-rubric: true, rubric-position: "end")
+  #show: e.set_(config, show-solutions: true, show-rubrics: true, rubric-position: "end")
   #exam(questions: [
     #question(rubric: [#rubric(points: 2)[The question's]])[#part(height: 2cm, rubric: [#rubric(points: 1)[The part's]])[A part.]]
   ])
@@ -305,7 +305,7 @@
 // shown and hidden: the question's either way.
 #for shown in (true, false) {
   rule[A rubric in an answer box's `solution:`, solutions #if shown [shown] else [hidden]]
-  [#show: e.set_(config, show-solutions: shown, show-rubric: true)
+  [#show: e.set_(config, show-solutions: shown, show-rubrics: true)
     #exam(questions: [#question[Find $x$. #answer-box(width: 100%, height: 1cm, solution: [$x = 2$#rubric(points: 1)[Correct $x$]])[]]])]
 }
 #context for n in (11, 12) {
@@ -317,7 +317,7 @@
 // where it would squeeze the `1fr` box out and run over the next question.
 #rule[At the `"end"`: the rubric of a question with a `height` after its block]
 #[
-  #show: e.set_(config, show-solutions: true, show-rubric: true, rubric-position: "end")
+  #show: e.set_(config, show-solutions: true, show-rubrics: true, rubric-position: "end")
   #let five = range(5).map(i => rubric(points: 1)[Item #(i + 1)]).join()
   #exam(questions: [
     #question(height: 3cm, rubric: five)[Fixed#metadata("fixed")<fixed>. #answer-box(width: 100%, height: 1fr)[#place(bottom, [#metadata("box")<fixed>])]]
@@ -347,7 +347,7 @@
 #for pos in ("margin-right", "start", "margin-left") {
   pagebreak(weak: true)
   rule[Points badges #if pos == "start" [at the start] else [in the #pos], rubrics in the margin-right]
-  [#show: e.set_(config, show-rubric: true, points-position: pos)
+  [#show: e.set_(config, show-rubrics: true, points-position: pos)
     #exam(questions: BADGED)]
 }
 #context {
@@ -378,7 +378,7 @@
 // The rubrics on their own, and as data.
 #pagebreak()
 #rule[`rubric-list`: every rubric of the last exam]
-#rubric-list
+#rubric-list()
 #context {
   let exports = query(<examy-rubric>).map(m => m.value)
   // One per exam with rubrics, whether they are shown or not (exam 7 has
@@ -417,7 +417,7 @@
 
 // An exam with rubrics in the margin of a page of `auto` width.
 #page(width: auto, height: auto, margin: (right: 2in, rest: .3in))[
-  #show: e.set_(config, show-rubric: true)
+  #show: e.set_(config, show-rubrics: true)
   #rule[A rubric in the margin of a page of `auto` width]
   #exam(questions: [#question(rubric: [#rubric(points: 1)[Given]])[A question on a page of `auto` width.]])
 ]

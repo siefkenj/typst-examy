@@ -39,7 +39,7 @@
     let (exam, key) = (false, true).map(k => got.find(v => v.key == k and v.name == name).height)
     assert(near(exam, key), message: name + ": the exam's box is " + repr(exam) + ", the key's " + repr(key))
   }
-  // The lines take their own height: the box is not `default_height`.
+  // The lines take their own height: the box is not `default-height`.
   let lines = got.find(v => v.name == "lines").height
   assert(lines > 4.5em.to-absolute(), message: repr(lines))
 }

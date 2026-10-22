@@ -15,7 +15,7 @@
 
 There are #num-questions questions worth #num-points points.
 
-#points-table
+#points-table()
 
 #maketitle()
 #name-block()

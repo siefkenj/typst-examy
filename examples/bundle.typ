@@ -9,15 +9,17 @@
 /// The quiz itself, parameterized over whether solutions are shown.
 #let quiz(solutions) = {
   set page(paper: "us-letter", margin: 1in)
-  show: e.prepare()
-  show: e.set_(config, show-solutions: solutions)
+  show: exam.with(show-solutions: solutions)
 
-  name-block()
+  {
+    set text(font: "DejaVu Sans Mono")
+    name-block()
+  }
 
-  exam(questions: [
+  [
     #question(points: 2)[
       Compute $integral_0^1 3 x^2 dif x$.
-      #answer-box(width: 100%, height: 1fr)[
+      #answer-box(height: 1fr)[
         #solution[$integral_0^1 3 x^2 dif x = lr([x^3])_0^1 = 1$.]
       ]
     ]
@@ -25,7 +27,7 @@
       True or false: every continuous function is differentiable.
       #solution[False: $|x|$ is continuous but not differentiable at $0$.]
     ]
-  ])
+  ]
 }
 
 #document("quiz-nosolutions.pdf", quiz(false))

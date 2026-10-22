@@ -23,13 +23,13 @@ when enabled, so the same source produces both the exam and the answer key:
 Solutions are turned on with the global #api("config")'s `show-solutions` option:
 
 ```typ
-#show: e.set_(config, show-solutions: true)
+#show: exam.with(show-solutions: true)
 ```
 
 == Command line options
 
 When given on the command line, the `show-solutions` input overrides the
-document setting `#show: e.set_(config, show-solutions: ...)`. This can be
+document setting `show-solutions: ...`. This can be
 used in build scripts that must produce a specific variant regardless of what
 the source file currently configures.
 
@@ -49,13 +49,15 @@ make one `document` of each version.
 ```typ
 #let quiz(solutions) = {
   set page(paper: "us-letter", margin: 1in)
-  show: e.prepare()
-  show: e.set_(config, show-solutions: solutions)
+  show: exam.with(show-solutions: solutions)
 
-  name-block()
-  exam(questions: [
+  {
+    set text(font: "DejaVu Sans Mono")
+    name-block()
+  }
+  [
     ...
-  ])
+  ]
 }
 
 #document("quiz-nosolutions.pdf", quiz(false))
@@ -105,7 +107,7 @@ from the set color.
 
 #example(
   ```typ
-  #show: e.set_(config, solution-color: maroon)
+  #show: exam.with(solution-color: maroon)
 
   #question[What is $6 times 7$? #answer-box[#solution[42]]]
   #question[
@@ -117,15 +119,11 @@ from the set color.
 
 ```typ
 // The highlight follows the text color:
-#show: e.set_(config, solution-color: maroon)
+#show: exam.with(solution-color: maroon)
 // The text color follows the highlight:
-#show: e.set_(
-  config,
-  solution-background-color: olive.lighten(90%),
-)
+#show: exam.with(solution-background-color: olive.lighten(90%))
 // Both set:
-#show: e.set_(
-  config,
+#show: exam.with(
   solution-color: maroon,
   solution-background-color: luma(93%),
 )

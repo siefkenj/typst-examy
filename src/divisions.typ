@@ -7,7 +7,8 @@
 /// and documents them.
 
 #import "prelude.typ": e
-#import "markers.typ": begin_marker, end_marker
+#import "markers.typ": begin_marker, end_marker, outside_check
+#import "constants.typ": DEBUG_PANIC
 #import "signature.typ": declare_function, define
 
 /// The arguments of a question, part, or subpart, which take identical ones.
@@ -93,6 +94,9 @@
     label: it.label,
     name: spec.name,
   ))
+  // A warning, drawn if no exam lays the division out (see `outside_check`);
+  // left out with `--input _debug_panic=none`.
+  if DEBUG_PANIC != "none" { outside_check(spec.name, it.body) }
   [#it.body]
   end_marker()
 })

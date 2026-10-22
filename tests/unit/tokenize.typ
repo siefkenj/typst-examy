@@ -5,7 +5,7 @@
 //
 // Each case is written as markup source, evaluated for the check, so that
 // the visual record beside it can show it as written, with its tokens.
-#import "/src/tokenize.typ": apply_styles, tokenize
+#import "/src/tokenize.typ": apply_styles, stack_of, tokenize
 #import "/src/divisions.typ": part, question, subpart
 #import "/src/markers.typ": height_hint
 #import "/src/lib.typ": e
@@ -42,7 +42,7 @@
     if t.fr != none { ("fr: " + repr(t.fr),) }
     if t.has_inner_break { ("has_inner_break",) }
   } else { () }
-  let styles = t.at("styles", default: ())
+  let styles = stack_of(t.at("styles", default: ()))
   if styles.len() > 0 { parts.push(str(styles.len()) + " style(s)") }
   raw(parts.join(", ", default: ""))
 }
@@ -136,8 +136,8 @@
   "#set text(fill: red)\n#question[hello]",
   toks => {
     assert(kinds(toks) == ("begin", "chunk", "end"), message: repr(kinds(toks)))
-    assert(toks.at(0).styles.len() == 1)
-    assert(toks.at(1).styles.len() == 1)
+    assert(stack_of(toks.at(0).styles).len() == 1)
+    assert(stack_of(toks.at(1).styles).len() == 1)
     // Re-applying the styles gives content back.
     assert(type(apply_styles(toks.at(1).body, toks.at(1).styles)) == content)
   },

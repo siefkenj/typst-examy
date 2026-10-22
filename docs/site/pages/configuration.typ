@@ -1,26 +1,34 @@
 #import "../template.typ": *
 
-All of examy's options are set on the global #api("config") with a show rule near the top of the
-document, after `#show: e.prepare()`:
+All of examy's options are set on the global #api("config"). The easiest way to set them is to give
+them to the exam's show rule at the top of the document:
 
 ```typ
-#show: e.prepare()
-#show: e.set_(
-  config,
+#show: exam.with(
   show-solutions: false,
   points-position: "margin-right",
 )
 ```
 
-Like a `set` rule, a setting applies from where it is made to the end of the document. A later
-`#show: e.set_(config, ..)` only changes the options it names, and the rest keep their values. Set
-options before #api("exam", body: raw("#exam(...)")) so that they apply to the whole exam.
+These settings apply to everything in the exam, which with `#show: exam` is the rest of the
+document, including a cover page before the first question.
+
+Options can also be set with a show rule of their own, `#show: e.set_(config, ..)`. Like a `set`
+rule, it applies from where it is made to the end of the document (or of the block it is in), and
+only changes the options it names. Use it to set options outside an exam, for example when the exam
+is written as `#exam[...]` after its cover page, or to change an option for part of the document
+only.
+
+The options that decide how questions are numbered and laid out are read once, where the exam
+starts, and hold for all of its questions: `numbering`, `numbering-full`, `strings`,
+`points-format`, `points-position`, `points-show-totals`, `show-rubrics`, and the `rubric-`
+options. Give them to the exam, or set them in a rule above `#show: exam`. A rule inside the exam
+that sets one of them around some of its questions is an error, since it would change nothing.
 
 #example(
   ```typ
-  #show: e.set_(
-    config,
-    division-numbering: ("Problem 1.", "(a)"),
+  #show: exam.with(
+    numbering: ("Problem 1.", "(a)"),
     points-position: "end",
     points-format: p => [[#p pts]],
     solution-color: maroon,
@@ -45,8 +53,7 @@ example, you can use it to put the exam's name and term in your own title or pag
 
 #example(
   ```typ
-  #show: e.set_(
-    config,
+  #show: exam.with(
     exam-name: [MAT 101 Quiz 3],
     term: [Fall 2026],
   )
@@ -75,7 +82,7 @@ To check whether solutions are shown, use #api("show-solutions") instead (see
   (
     title: [Numbering],
     page: "questions.html",
-    options: ("division-numbering",),
+    options: ("numbering", "numbering-full"),
   ),
   (
     title: [Points],
@@ -93,6 +100,11 @@ To check whether solutions are shown, use #api("show-solutions") instead (see
     ),
   ),
   (
+    title: [Answer boxes],
+    page: "answer-boxes.html",
+    options: ("answer-box-height", "answer-box-width", "answer-box-default-height", "answer-box-default-width"),
+  ),
+  (
     title: [Multiple choice],
     page: "choices.html",
     options: ("bubble-stroke", "bubble-label-font", "choices-enumerate"),
@@ -100,7 +112,7 @@ To check whether solutions are shown, use #api("show-solutions") instead (see
   (
     title: [Rubrics],
     page: "rubrics.html",
-    options: ("show-rubric", "rubric-position", "rubric-trace", "rubric-width"),
+    options: ("show-rubrics", "rubric-position", "rubric-trace", "rubric-width"),
   ),
 )
 #{

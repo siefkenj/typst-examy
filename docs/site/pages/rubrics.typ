@@ -8,7 +8,7 @@
   margin: (
     paged-name: "rubrics-margin",
     code: ```typ
-  #show: e.set_(config, show-rubric: auto, rubric-width: 4.4cm)
+  #show: exam.with(show-rubrics: auto, rubric-width: 4.4cm)
 
   #question(points: 3, rubric: [
     #rubric(points: 0)[Blank, or no derivative]
@@ -27,7 +27,7 @@
   groups: (
     paged-name: "rubrics-groups",
     code: ```typ
-  #show: e.set_(config, show-rubric: auto, rubric-width: 4.4cm)
+  #show: exam.with(show-rubrics: auto, rubric-width: 4.4cm)
 
   #question(points: 4, rubric: [
     #rubric[*Deductions*
@@ -84,13 +84,13 @@ Groups can be nested.
 
 == Showing rubrics
 
-Rubrics are turned on with the global #api("config")'s `show-rubric` option: `true`, `false` (the
+Rubrics are turned on with the global #api("config")'s `show-rubrics` option: `true`, `false` (the
 default), or `auto`, which shows them whenever solutions are shown. As with solutions, the command
 line overrides the document:
 
 ```bash
 # the answer key, with its rubric, for the graders
-typst compile --input show-solutions=true --input show-rubric=true exam.typ
+typst compile --input show-solutions=true --input show-rubrics=true exam.typ
 ```
 
 == Where they go
@@ -106,7 +106,7 @@ To make room without changing the exam's layout, widen the page rather than the 
 the same width, and add the rubric's space to the page and its margin, for the graders' copy only.
 
 ```typ
-#let graders = sys.inputs.at("show-rubric", default: "false") == "true"
+#let graders = sys.inputs.at("show-rubrics", default: "false") == "true"
 #set page(
   width: 8.5in + if graders { 2in } else { 0in },
   margin: (left: .75in, right: .75in + if graders { 2in } else { 0in }, y: .75in),
@@ -119,7 +119,7 @@ off in the margins too.
 
 #example(
   ```typ
-  #show: e.set_(config, show-rubric: auto, rubric-position: "end")
+  #show: exam.with(show-rubrics: auto, rubric-position: "end")
 
   #question(points: 2, rubric: [
     #rubric(points: 1)[States the hypotheses]
@@ -139,14 +139,14 @@ off in the margins too.
 
 == The rubrics on their own
 
-#api("rubric-list", body: raw("#rubric-list")) lays out every rubric in the exam, one after another,
+#api("rubric-list", body: raw("#rubric-list()")) lays out every rubric in the exam, one after another,
 as a grading guide of its own. Put it after the exam, or in a separate document that includes the
-exam. It works regardless of `show-rubric`.
+exam. It works regardless of `show-rubrics`.
 
 == The rubrics as data
 
 Every exam with rubrics also stores them in the document as invisible data, regardless of
-`show-rubric`. Read them out as JSON from the command line:
+`show-rubrics`. Read them out as JSON from the command line:
 
 ```bash
 typst eval --in exam.typ --pretty 'query(<examy-rubric>).first().value' > rubric.json

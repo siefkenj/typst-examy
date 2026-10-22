@@ -15,9 +15,9 @@ solutions that can be toggled on and off. This package follows the spirit of the
 
 == Installation
 
-To use examy, import it and run the mandatory show rule:
+To use examy, import it and start the exam with a show rule:
 
-#raw(IMPORT + "\n\n#show: e.prepare()", lang: "typ", block: true)
+#raw(IMPORT + "\n\n#show: exam", lang: "typ", block: true)
 
 A quick-start template is available by choosing examy under _Start from template_ in the Typst web
 app or in the command line by running
@@ -28,46 +28,56 @@ typst init @preview/examy
 
 == A first exam
 
-A basic document document starts with an `#exam()` and contains `#question[...]`s and
-`#solution[...]`s. Content of each `#solution[...]` is shown based on the 
-`show-solutions: true/false` #page-link("configuration.html")[config option].
+A basic document is built out of an #api("exam", body: raw("#exam[...]")) (alternatively
+`#show: exam`). Inside are questions, created with the command
+#api("question", body: raw("#question[...]")) (see
+#page-link("questions.html")[Questions and numbering]); boxes for students to write in, created with
+#api("answer-box", body: raw("#answer-box[...]")) (see #page-link("answer-boxes.html")[Answer
+boxes]); and solutions, created with #api("solution", body: raw("#solution[...]")) (see
+#page-link("solutions.html")[Solutions]). A #api("name-block", body: raw("#name-block()")) gives
+students a place to write their name (see #page-link("cover-pages.html")[Cover pages and name
+blocks]).
+
+Solutions are only shown when the `show-solutions` #page-link("configuration.html")[config option]
+is `true`. It can be given to the exam directly, as in `#show: exam.with(show-solutions: false)`.
 
 #example(
   ```typ
   #import "@preview/examy:1.0.0": *
 
-  #show: e.prepare()
-  #show: e.set_(config, show-solutions: false)
+  #show: exam.with(show-solutions: false)
 
   // A fill-in block (Name / Student ID) at the top of the page
-  #name-block()
+  #{
+    set text(font: "DejaVu Sans Mono")
+    name-block()
+  }
 
-  #exam(
-    questions: [
-      #question(points: 2)[
-        State the definition of a _continuous function_.
-        #answer-box(width: 100%, height: 1fr)[
-          #solution[A function $f$ is continuous at $a$ if
-            $lim_(x -> a) f(x) = f(a)$.]
-        ]
-      ]
-      #question(points: 3)[
-        Give an example of a continuous function that is not
-        differentiable.
-        #answer-box(width: 100%, height: 2fr)[
-          #solution[$f(x) = |x|$, at $x = 0$.]
-        ]
-      ]
-    ],
-  )
+  #question(points: 2)[
+    State the definition of a _continuous function_.
+    #answer-box(height: 1fr)[
+      #solution[A function $f$ is continuous at $a$ if
+        $lim_(x -> a) f(x) = f(a)$.]
+    ]
+  ]
+  #question(points: 3)[
+    Give an example of a continuous function that is not
+    differentiable.
+    #answer-box(height: 2fr)[
+      #solution[$f(x) = |x|$, at $x = 0$.]
+    ]
+  ]
   ```,
   height: 12cm,
 )
 
 #note[
-  _Note._ The `#show: e.prepare()` is required to set up the #link(
+  _Note._ `#show: exam` makes everything after it part of the exam, including a cover page before
+  the first question. It also sets up the #link(
     "https://typst.app/universe/package/elembic",
-  )[elembic] environment for enabling cross-references. Forgetting it can cause confusing errors.
+  )[elembic] environment that cross-references need (`#show: e.prepare()`). If you use
+  `#exam[...]` around just the questions instead, and refer to them from outside it, add
+  `#show: e.prepare()` at the top of the document yourself.
 ]
 
 == Basic Features

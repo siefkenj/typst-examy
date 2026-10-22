@@ -53,7 +53,7 @@
     + m-rubric.DOCS
     + (
       e: (
-        desc: "A re-export of [elembic](https://typst.app/universe/package/elembic), used mainly for `e.set_`. Every document needs `#show: e.prepare()`; options are set with `#show: e.set_(config, ..)`; element state is read with `e.get(get => ..)`.",
+        desc: "A re-export of [elembic](https://typst.app/universe/package/elembic), used mainly for `e.set_` and `e.get`. Options are set with `#show: e.set_(config, ..)` (or given to the exam, `#show: exam.with(..)`), and read with `e.get(get => ..)`. References need `#show: e.prepare()`, which `exam` applies to its own content.",
       ),
     )
 )
@@ -82,9 +82,11 @@
 /// One argument, from an `e.field` (an element's or a function's):
 /// `(name, type, doc, required, named, default)`, where `type` and `default`
 /// are written as Typst code (`default` is `none` for a required argument).
+/// A field's `meta` can give either as it is to be shown, as `type-shown` or
+/// `default-shown`: a type that takes more than is documented, say.
 #let field_to_arg(f) = (
   name: f.name,
-  type: describe_type(f.typeinfo),
+  type: f.meta.at("type-shown", default: describe_type(f.typeinfo)),
   required: f.required,
   named: f.named,
   default: if f.required { none } else {

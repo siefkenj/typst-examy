@@ -1,8 +1,8 @@
 #import "../template.typ": *
 
-A cover page is ordinary content before #api("exam", body: raw("#exam(...)")):
-a title block, a block of name fields, instructions, and a points table,
-followed by a page break.
+A cover page is ordinary content before the first question: a title block, a block of name fields,
+instructions, and a points table, followed by a page break. With `#show: exam` at the top of the
+document, the cover page is part of the exam, so the options given to the exam apply to it too.
 
 #screenshots(
   screenshot("cover.png", "An exam cover page with a title block, name fields, instructions, and a points table", caption: [The cover of #link(REPOSITORY + "/blob/main/examples/final-exam.typ")[`examples/final-exam.typ`].]),
@@ -16,8 +16,14 @@ are set with `fields:`. Each entry is either a `(prefix: ..., suffix: ...)` dict
 prefix followed by a line to write on with the suffix at its right end, or any other content, shown
 as a row of its own. An optional `title:` is shown above the block.
 
+Like #api("maketitle"), a name block is set in the document's font. The examples here set both in
+the monospaced font bundled with Typst with a `set` rule: in a code block (`#{ .. }`) around the
+blocks when the questions after them should keep the document's font.
+
 #example(
   ```typ
+  #set text(font: "DejaVu Sans Mono")
+
   // The default block: a Name row and a Student ID row.
   #name-block()
 
@@ -38,23 +44,25 @@ as a row of its own. An optional `title:` is shown above the block.
 )
 
 Institution-specific layouts ship with the package as #api("presets"). For example, the University
-of Toronto block is `#name-block(fields: presets.utoronto.name_fields)`.
+of Toronto block is `#name-block(fields: presets.utoronto.name-fields)`.
 
 == The title block
 
-Set the exam's details (`institution`, `exam-name`, `term`, `duration`) on the global #api("config")
-and render them with #api("maketitle", body: raw("#maketitle()")). Each configured value can be
+Give the exam its details (`institution`, `exam-name`, `term`, `duration`) and render them with #api("maketitle", body: raw("#maketitle()")). Each configured value can be
 overridden by passing arguments to `maketitle()`, e.g. `#maketitle(term: [Summer 2026])`.
+
+A `duration` such as `duration(minutes: 150)` is shown in minutes, as "150 Minutes". To word it
+another way, give content instead, e.g. `duration: [2 h 30 min]` or `duration: [2½ Stunden]`.
 
 #example(
   ```typ
-  #show: e.set_(
-    config,
+  #show: exam.with(
     institution: [University of Examples],
     exam-name: [MAT 101 Final Exam],
     term: [Winter 2026],
     duration: duration(minutes: 150),
   )
+  #set text(font: "DejaVu Sans Mono")
 
   #maketitle()
   #v(1em)
@@ -66,19 +74,23 @@ overridden by passing arguments to `maketitle()`, e.g. `#maketitle(term: [Summer
 == A whole cover page
 
 ```typ
-#show: e.set_(
-  config,
+#show: exam.with(
   institution: [University of Examples],
   exam-name: [MAT 101 Final Exam],
   term: [Winter 2026],
   duration: duration(minutes: 150),
 )
 
-#maketitle()
-#name-block(fields: (
-  (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),
-  // ...more fields
-))
+// The title and name blocks in the monospaced font bundled with Typst;
+// the questions keep the document's font.
+#{
+  set text(font: "DejaVu Sans Mono")
+  maketitle()
+  name-block(fields: (
+    (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),
+    // ...more fields
+  ))
+}
 
 #underline[_Instructions:_]
 - Fill out your name and student information at the top of this
@@ -88,10 +100,10 @@ overridden by passing arguments to `maketitle()`, e.g. `#maketitle(term: [Summer
 - No calculators or other aids are permitted.
 
 #v(1fr)
-#align(center, points-table)
+#align(center, points-table())
 #pagebreak()
 
-#exam(questions: [...])
+#question[...]
 ```
 
 The repository's examples include

@@ -47,10 +47,12 @@
   assert(disp(target, current) == expected, message: repr((target, current, disp(target, current))))
 }
 
-// display_number keeps the trailing dot for gutter labels.
+// display_number keeps the trailing dot for gutter labels. It takes the
+// division's address; `at` makes one of a level and its number.
+#let at(level, number) = range(level - 1).map(_ => 0) + (number,)
 #let GUTTER = ((1, 0, "1."), (2, 0, "(a)"), (3, 1, "ii."), (1, none, none))
 #for (level, number, expected) in GUTTER {
-  assert(display_number(level, number) == expected, message: repr((level, number)))
+  assert(display_number(at(level, number)) == expected, message: repr((level, number)))
 }
 
 // format_component drops it.
@@ -72,7 +74,7 @@
 #rule[The number in the gutter, by level: the trailing "." kept.]
 #cases(
   ([Level], [Number (0-based)], [Gutter]),
-  ..GUTTER.map(((level, number, _)) => ([#level], raw(repr(number)), [#display_number(level, number)])),
+  ..GUTTER.map(((level, number, _)) => ([#level], raw(repr(number)), [#display_number(at(level, number))])),
 )
 #rule[The number in a reference: the trailing "." dropped.]
 #cases(

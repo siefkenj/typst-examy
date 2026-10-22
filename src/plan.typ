@@ -10,7 +10,8 @@
 ///
 /// Instruction kinds:
 /// - (kind: "verbatim", item: idx)            — top-level chunk, rendered as-is
-/// - (kind: "break", target, weak)            — real page/column break
+/// - (kind: "break", target, weak, styles?)   — real page/column break; a
+///   top-level one keeps its styles (see `render`)
 /// - (kind: "nested", root: idx)              — render subtree as nested blocks
 /// - (kind: "frame", division: idx, labels: (idx, ..), rubrics: (idx, ..))
 ///                                            — a division given a `height`:
@@ -32,14 +33,26 @@
 ///   of its division's prose (see `plan_split`); `sticky` marks the segment
 ///   right before such a wrapper, which must not be separated from it.
 
-#import "scan.typ": has_rubric, is_whitespace_content
+#import "scan.typ": has_metadata, is_whitespace_content
+
+/// The items (see parse.typ) as the functions here take them: in `metadata`,
+/// as content, whose hash Typst works out once and keeps. Typst memoizes
+/// every call, hashing its arguments, and the items are passed to a call or
+/// more for each of them: as an array, hashed anew each time, laying out an
+/// exam would take time growing with the square of its length. Each
+/// function reads them with `items_of`, and passes them on as it was given
+/// them; `plan` and `render` take an array too, and hold it (see `hold`).
+#let hold(items) = if type(items) == content { items } else { metadata(items) }
+
+/// The items as an array, whether held (see `hold`) or not.
+#let items_of(items) = if type(items) == content { items.value } else { items }
 
 /// Sum of `indent`s of the division `idx` and all its ancestors.
 #let cumulative_indent(items, idx) = {
   let total = 0pt + 0em
   let cur = idx
   while cur != none {
-    let it = items.at(cur)
+    let it = items_of(items).at(cur)
     if it.kind == "division" { total += it.fields.indent }
     cur = it.parent
   }
@@ -54,7 +67,7 @@
 /// (see `plan_split`); it is never asked about itself, but about its
 /// children (see `frame_plan`).
 #let needs_split(items, idx) = {
-  let it = items.at(idx)
+  let it = items_of(items).at(idx)
   if it.kind == "break" or has_height(it) { return true }
   if it.kind == "chunk" {
     return it.has_inner_break or it.fr != none
@@ -66,7 +79,7 @@
 /// chunk/break for leaves, and frame for a division inside it given a
 /// `height`, which is laid out whole.
 #let _events(items, idx, top: true) = {
-  let it = items.at(idx)
+  let it = items_of(items).at(idx)
   if not top and has_height(it) {
     ((kind: "frame", item: idx),)
   } else if it.kind == "division" {
@@ -83,16 +96,16 @@
 }
 
 /// Whether a pending segment contains only whitespace chunks: if so, those
-/// of them that hold rubrics, else `none`. A rubric is invisible, and a
-/// segment of nothing else is dropped all the same, as it would take room,
-/// but its rubrics must still be placed, to be found: the next segment takes
-/// them in (see `rubrics` above).
+/// of them that hold `metadata` (a rubric, a labelled marker, ...), else
+/// `none`. `metadata` is invisible, and a segment of nothing else is dropped
+/// all the same, as it would take room, but the `metadata` must still be
+/// placed, to be found: the next segment takes it in (see `rubrics` above).
 #let _segment_blank(items, seg) = {
   let rubrics = ()
   for i in seg.items {
-    let body = items.at(i).body
+    let body = items_of(items).at(i).body
     if not is_whitespace_content(body) { return none }
-    if has_rubric(body) { rubrics.push(i) }
+    if has_metadata(body) { rubrics.push(i) }
   }
   rubrics
 }
@@ -154,7 +167,7 @@
       // label for the part's first line, unless a badge at the `"end"` of
       // that (no) text needs a line of its own there, as it gets when drawn
       // in one piece.
-      let force = current != none and current.first and items.at(current.division).badge_at_end
+      let force = current != none and current.first and items_of(items).at(current.division).badge_at_end
       (instructions, pending_labels, pending_rubrics) = flush(instructions, pending_labels, pending_rubrics, current, force: force)
       stack.push(ev.item)
       current = new_segment(ev.item, true)
@@ -166,7 +179,7 @@
       let _ = stack.pop()
       current = if stack.len() > 0 { new_segment(stack.at(-1), false) } else { none }
     } else if ev.kind == "chunk" {
-      let chunk = items.at(ev.item)
+      let chunk = items_of(items).at(ev.item)
       // An fr height only resolves against the page at the top level of the
       // flow, so a chunk sharing its segment with the division's prose would
       // negotiate against that prose's height instead of against the other fr
@@ -183,7 +196,7 @@
         // badge in the margin, is `place`d and costs no height, so it can
         // still ride along.
         let badged = (pending_labels + (current.division,)).any(d => (
-          items.at(d).badge_takes_line
+          items_of(items).at(d).badge_takes_line
         ))
         (instructions, pending_labels, pending_rubrics) = flush(
           instructions,
@@ -208,7 +221,7 @@
       // A division with a `height`: a peer of its own, laid out whole. Its
       // parent's text before it ends here; a parent with no text before it
       // has its number on the frame's first line, as with any part.
-      let force = current.first and items.at(current.division).badge_at_end
+      let force = current.first and items_of(items).at(current.division).badge_at_end
       (instructions, pending_labels, pending_rubrics) = flush(instructions, pending_labels, pending_rubrics, current, force: force)
       instructions.push((kind: "frame", division: ev.item, labels: pending_labels, rubrics: pending_rubrics))
       pending_labels = ()
@@ -217,7 +230,7 @@
     } else {
       // break
       (instructions, pending_labels, pending_rubrics) = flush(instructions, pending_labels, pending_rubrics, current, force: true)
-      let b = items.at(ev.item)
+      let b = items_of(items).at(ev.item)
       instructions.push((kind: "break", target: b.target, weak: b.weak))
       current = new_segment(stack.at(-1), false)
     }
@@ -246,13 +259,14 @@
 /// Plan the whole document: one instruction list covering every top-level
 /// item.
 #let plan(items) = {
+  let items = hold(items)
   let instructions = ()
-  for (i, it) in items.enumerate() {
+  for (i, it) in items_of(items).enumerate() {
     if it.parent != none { continue }
     if it.kind == "chunk" {
       instructions.push((kind: "verbatim", item: i))
     } else if it.kind == "break" {
-      instructions.push((kind: "break", target: it.target, weak: it.weak))
+      instructions.push((kind: "break", target: it.target, weak: it.weak, styles: it.styles))
     } else if has_height(it) {
       instructions.push((kind: "frame", division: i, labels: (), rubrics: ()))
     } else if needs_split(items, i) {
@@ -274,7 +288,7 @@
 /// holds nothing, a segment of their own. `rubrics` (see the `frame`
 /// instruction) go with them.
 #let frame_plan(items, idx, labels: (), rubrics: ()) = {
-  let it = items.at(idx)
+  let it = items_of(items).at(idx)
   if it.parent == none and not it.children.any(c => needs_split(items, c)) {
     return ((kind: "nested", root: idx),)
   }

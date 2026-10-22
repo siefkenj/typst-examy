@@ -1,7 +1,7 @@
 #import "../template.typ": *
 
-A document is built out of an #api("exam", body: raw("#exam(..., questions: [...])")). Inside are
-questions created with the commands #api("question", body: raw("#question[...]")), #api(
+A document is built out of an #api("exam", body: raw("#exam[...]")) (alternatively `#show: exam`).
+Inside are questions created with the commands #api("question", body: raw("#question[...]")), #api(
   "part",
   body: raw("#part[...]"),
 ), and #api("subpart", body: raw("#subpart[...]")), used to create a question hierarchy.
@@ -9,17 +9,19 @@ Questions/parts/subparts can be assigned points, heights, etc.
 
 #example(
   ```typ
+  #show: exam
+
   #question[
     Let $f(x) = x^2 sin(1/x)$ for $x != 0$ and let $f(0) = 0$.
     #part(points: 2)[
       Show that $f$ is continuous at $x = 0$.
-      #answer-box(width: 100%, height: 1fr)[]
+      #answer-box(height: 1fr)[]
     ]
     #part(points: 3)[
       Is $f$ differentiable at $x = 0$? Justify your answer.
       #subpart[Compute the difference quotient.]
       #subpart[Take its limit.]
-      #answer-box(width: 100%, height: 1fr)[]
+      #answer-box(height: 1fr)[]
     ]
   ]
   ```,
@@ -52,13 +54,14 @@ content. To omit a number completely, you can set `number: none`.
 == Numbering styles
 
 The numbering style of each level is set for the document via the global #api("config")'s
-`division-numbering` option.
+`numbering` option. It takes what `enum`'s `numbering` takes: a pattern such as `"1.a.i."`, whose
+counting symbols number the levels in turn, a function of the number, or an array with one of
+those per level.
 
 #example(
   ```typ
-  #show: e.set_(
-    config,
-    division-numbering: ("Problem 1.", "(A)", "i."),
+  #show: exam.with(
+    numbering: ("Problem 1.", "(A)", "i."),
   )
 
   #question[
@@ -74,6 +77,25 @@ The numbering style of each level is set for the document via the global #api("c
   inset: 5em,
 )
 
+With `numbering-full: true`, as with `enum`'s `full`, a part or subpart is numbered with the
+numbers of the divisions it is in: `"1.a.i."` numbers part (b) of question 2 "2.b.", and a
+function is given every level's number. References then read as the full number too, and a
+question whose body starts with a part shows only the part's number on their shared line, as it
+holds the question's.
+
+#example(
+  ```typ
+  #show: exam.with(numbering: "1.a.i.", numbering-full: true)
+
+  #question[
+    #part[A part.]
+    #part(label: <second>)[Another, with #subpart[a subpart.]]
+  ]
+  #question[See @second.]
+  ```,
+  inset: 3em,
+)
+
 == A question of a set height
 
 Giving a question/part/subpart a `height` reserves exactly that much space for it, parts included.
@@ -87,11 +109,11 @@ text leaves over.
     Sketch the graph of $f(x) = x^3 - x$.
     #part[
       Mark its zeros.
-      #answer-box(width: 100%, height: 1fr)[]
+      #answer-box(height: 1fr)[]
     ]
     #part[
       Mark its turning points.
-      #answer-box(width: 100%, height: 1fr)[]
+      #answer-box(height: 1fr)[]
     ]
   ]
   #question[The next question starts below the first one's 4.5cm.]

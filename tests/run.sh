@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Test runner: compiles every tests/unit/*.typ file. A test passes if it
-# compiles without errors (tests use `assert`/`panic` to fail).
+# compiles without errors (tests use `assert`/`panic` to fail). The
+# documents in tests/not-laid-out/ are checked for examy's warning (see below).
 set -u
 cd "$(dirname "$0")/.."
 
@@ -49,6 +50,36 @@ if [[ -z "$filter" || "config.typ" == *"$filter"* ]]; then
     check_show_solutions "false" false
 fi
 
+# Each command-line option is also read by its name in the singular, so that
+# either spelling works; given both, they must agree.
+if [[ -z "$filter" || "constants" == *"$filter"* ]]; then
+    check_input() {
+        local name="$1" expected="$2"
+        shift 2
+        local args=()
+        for i in "$@"; do args+=(--input "$i"); done
+        local got
+        got="$(typst eval --root . "{ import \"/src/constants.typ\": $name; $name }" --in tests/unit/config.typ "${args[@]}" 2>&1)"
+        if [[ "$got" == *"$expected"* ]]; then
+            pass=$((pass + 1))
+            echo "PASS constants ($name with $*)"
+        else
+            fail=$((fail + 1))
+            echo "FAIL constants ($name with $*): expected $expected, got $got"
+        fi
+    }
+    check_input SHOW_RUBRICS_OVERRIDE null
+    check_input SHOW_RUBRICS_OVERRIDE true show-rubrics=true
+    check_input SHOW_RUBRICS_OVERRIDE true show-rubric=true
+    check_input SHOW_RUBRICS_OVERRIDE false show-rubric=false show-rubrics=false
+    check_input SHOW_RUBRICS_OVERRIDE "disagree" show-rubric=true show-rubrics=false
+    check_input SHOW_SOLUTIONS_OVERRIDE false show-solution=false
+    check_input SHOW_SOLUTIONS_OVERRIDE "disagree" show-solution=false show-solutions=true
+    check_input SHOW_RUBRICS_OVERRIDE "must be \`true\` or \`false\`, got \`yes\`" show-rubric=yes
+    check_input SHOW_RUBRICS_OVERRIDE "must be \`true\` or \`false\`, got \`yes\`" show-rubrics=true show-rubric=yes
+    check_input SHOW_SOLUTIONS_OVERRIDE "must be \`true\` or \`false\`, got \`1\`" show-solutions=1
+fi
+
 # tests/unit/answer-box-exam-view.typ must hold whatever the
 # `--input show-solutions=..` override says, which wins over `config`; the
 # loop above compiled it with none.
@@ -65,6 +96,60 @@ if [[ -z "$filter" || "answer-box-exam-view.typ" == *"$filter"* ]]; then
         fi
     done
 fi
+
+# tests/not-laid-out/*.typ each hold a question no exam lays out. By default
+# (`--input _debug_panic=text-warning`) it must compile with examy's warning
+# drawn in its place, one `<examy-warning>` each; with `_debug_panic=panic`,
+# fail with examy's message instead; and with `_debug_panic=none`, compile
+# with no warning at all.
+for f in tests/not-laid-out/*.typ; do
+    name="not-laid-out/$(basename "$f")"
+    if [[ -n "$filter" && "$name" != *"$filter"* ]]; then
+        continue
+    fi
+    for mode in "" text-warning none; do
+        args=()
+        [[ -n "$mode" ]] && args=(--input "_debug_panic=$mode")
+        expected='["not-laid-out"]'
+        [[ "$mode" == none ]] && expected='[]'
+        got="$(typst eval --root . "query(<examy-warning>).map(m => m.value.kind)" --in "$f" "${args[@]}" 2>&1)"
+        if [[ "$got" == "$expected" ]]; then
+            pass=$((pass + 1))
+            echo "PASS $name (_debug_panic=${mode:-default}: $expected)"
+        else
+            fail=$((fail + 1))
+            echo "FAIL $name (_debug_panic=${mode:-default}): expected $expected, got $got"
+        fi
+    done
+    out="$(typst compile --root . -f pdf --input _debug_panic=panic "$f" /dev/null 2>&1)"
+    if [[ $? -ne 0 && "$out" == *"was not laid out by an exam"* ]]; then
+        pass=$((pass + 1))
+        echo "PASS $name (_debug_panic=panic fails)"
+    else
+        fail=$((fail + 1))
+        echo "FAIL $name (_debug_panic=panic): expected the not-laid-out error"
+        echo "$out" | sed 's/^/     /'
+    fi
+done
+
+# tests/fail/*.typ must each fail to compile, with the message their first
+# line gives after `// expect: `.
+for f in tests/fail/*.typ; do
+    name="fail/$(basename "$f")"
+    if [[ -n "$filter" && "$name" != *"$filter"* ]]; then
+        continue
+    fi
+    expected="$(head -n 1 "$f" | sed -n 's|^// expect: ||p')"
+    out="$(typst compile --root . -f pdf "$f" /dev/null 2>&1)"
+    if [[ $? -ne 0 && -n "$expected" && "$out" == *"$expected"* ]]; then
+        pass=$((pass + 1))
+        echo "PASS $name (fails as expected)"
+    else
+        fail=$((fail + 1))
+        echo "FAIL $name: expected an error with: $expected"
+        echo "$out" | sed 's/^/     /'
+    fi
+done
 
 echo "----"
 echo "$pass passed, $fail failed"

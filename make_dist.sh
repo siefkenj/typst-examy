@@ -13,7 +13,8 @@
 # Steps:
 #   1. run the test suite
 #   2. compile every example (with and without solutions) as validation
-#   3. regenerate the README screenshots from the examples
+#   3. regenerate the README screenshots from the examples, and the logo
+#      (docs/logo/: the mark from mark.typ, then the README's logo.svg)
 #   4. assemble the package (typst.toml, LICENSE, README.md, src/,
 #      template/ — no examples/, matching `exclude` in typst.toml); the
 #      README's relative links/images (which only work when browsing this repo on GitHub) are
@@ -176,6 +177,9 @@ typst compile --root . -f png --ppi 140 --input show-solutions=false examples/mu
 typst compile --root . -f png --ppi 140 --input show-solutions=true examples/multiple-choice.typ examples/images/multiple-choice-key.png
 typst compile --root . -f png --ppi 140 examples/cross-references.typ examples/images/cross-references.png
 typst compile --root . -f png --ppi 140 examples/name-blocks.typ examples/images/name-blocks.png
+# The logo: the mark first, since logo.typ places mark.svg beside the name.
+typst compile --root . docs/logo/mark.typ docs/logo/mark.svg
+typst compile --root . docs/logo/logo.typ docs/logo/logo.svg
 
 echo "==> Assembling $PKG/"
 rm -rf dist
@@ -197,11 +201,15 @@ awk '/^## Development$/ { skip = 1; next } skip && /^## / { skip = 0 } !skip' \
             : $p =~ m{/$} ? "](" . $ENV{TREE_BASE} . "/" . $p . ")"
             : "](" . $ENV{BLOB_BASE} . "/" . $p . ")"
         }ge;
+        # (The captures are copied first: the test against them is a match
+        # of its own, which would reset $1-$3 when it succeeds.)
         s{(<img\b[^>]*\bsrc=")([^"]+)(")}{
-            $2 =~ m{^https?:} ? "$1$2$3" : "$1" . $ENV{RAW_BASE} . "/$2" . "$3"
+            my ($pre, $p, $post) = ($1, $2, $3);
+            $p =~ m{^https?:} ? "$pre$p$post" : $pre . $ENV{RAW_BASE} . "/$p" . $post
         }ge;
         s{(<a\b[^>]*\bhref=")([^"]+)(")}{
-            $2 =~ m{^https?:} ? "$1$2$3" : "$1" . $ENV{BLOB_BASE} . "/$2" . "$3"
+            my ($pre, $p, $post) = ($1, $2, $3);
+            $p =~ m{^(?:https?:|#|mailto:)} ? "$pre$p$post" : $pre . $ENV{BLOB_BASE} . "/$p" . $post
         }ge;
     ' >"$PKG/README.md"
 cp -r src "$PKG/src"

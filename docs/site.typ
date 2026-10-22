@@ -14,6 +14,7 @@
 
 #import "site/template.typ": PAGES, REFERENCE_PAGES, entry_heading, entry_page, layout, output_css, paged_documents
 #import "site/pages/rubrics.typ": PAGED_EXAMPLES as RUBRIC_EXAMPLES
+#import "logo/logo.typ": examy-logo
 
 #for p in PAGES {
   document(p.path, title: p.title, layout(p, include "site/" + p.file, heading: p.at("heading", default: auto)))
@@ -34,6 +35,13 @@
 // (`output_css`), which the PDF is drawn with too.
 #asset("style.css", read("site/style.css") + "\n" + output_css())
 #asset("favicon.svg", read("site/favicon.svg"))
+
+// The logo heading the front page (see PAGES in site/template.typ), rendered
+// from logo/logo.typ with its name drawn as outlines.
+#document("logo.svg", {
+  set page(width: auto, height: auto, margin: 0pt, fill: none)
+  examy-logo(width: 240pt)
+})
 
 // The live editor (site/live.ts, bundled by Vite into live.js; see
 // vite.config.ts): editing an example recompiles it in the

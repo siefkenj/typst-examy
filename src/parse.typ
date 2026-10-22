@@ -129,7 +129,7 @@
     })
 }
 
-#import "scan.typ": has_rubric, is_whitespace_content, trim_leading_space
+#import "scan.typ": has_metadata, has_rubric, is_whitespace_content, trim_leading_space
 
 /// Normalize division bodies: drop leading whitespace-only chunks and strip
 /// leading space/parbreak elements from the first real chunk. This makes the
@@ -142,6 +142,10 @@
   for (i, it) in items.enumerate() {
     if it.kind != "division" { continue }
     let children = it.children
+    // Blank chunks holding `metadata` (a labelled marker, ...), kept: it is
+    // there to be found, and takes no room. They lead the body, before its
+    // first visible content.
+    let kept = ()
     while children.len() > 0 {
       let c = items.at(children.at(0))
       if (
@@ -151,6 +155,7 @@
           and c.fr == none
           and not c.has_inner_break
       ) {
+        if has_metadata(c.body) { kept.push(children.at(0)) }
         children = children.slice(1)
       } else {
         break
@@ -162,7 +167,7 @@
         items.at(ci).body = trim_leading_space(items.at(ci).body)
       }
     }
-    items.at(i).children = children
+    items.at(i).children = kept + children
   }
   items
 }

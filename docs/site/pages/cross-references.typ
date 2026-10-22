@@ -23,7 +23,7 @@ reads "1 (a)" from question 2, but just "(a)" from elsewhere in question 1.
 )
 
 Questions can be labelled too, as in `#question(label: <q-limits>)[..]`, and a reference to one
-shows its number. References follow the numbering style set with `division-numbering` (see
+shows its number. References follow the numbering style set with `numbering` (see
 #page-link("questions.html")[Questions and numbering]).
 
 #note[

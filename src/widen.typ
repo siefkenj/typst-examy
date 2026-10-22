@@ -169,8 +169,7 @@
 #let _is_visible(ev) = ev in ("text", "block", "context")
 
 /// Widen every `solution` in `body` that stands alone in its paragraph.
-/// `events` is `par_events(body)`, if already at hand. Returns the new body,
-/// as `body`, and whether it took `then` (see below), as `took-then`.
+/// `events` is `par_events(body)`, if already at hand. Returns the new body.
 ///
 /// Each widened solution is also told whether it is last: visible content
 /// before it, and none after. That matters to a solution that takes no
@@ -184,21 +183,19 @@
 /// Each would be placed out of the flow where its block begins, and as none
 /// takes any height, they would all begin at the same place, each drawn over
 /// the one before. So the first draws them all, stacked as the flow would
-/// stack them, and the others draw nothing. `then` (`answer-box`'s
-/// `solution:` argument, which would be drawn over a run that ends the body
-/// for the same reason) joins the run that ends the body, if there is one.
-/// A solution moved into the first of its run loses any set rule between
-/// the two.
-#let widen_par_solutions(body, events: auto, group: false, then: none) = {
+/// stack them, and the others draw nothing. (`answer-box`'s `solution:`
+/// argument is a solution at the end of its body, and so joins a run there
+/// as any other does.) A solution moved into the first of its run loses any
+/// set rule between the two.
+#let widen_par_solutions(body, events: auto, group: false) = {
   if events == auto { events = par_events(body, split: group) }
   let alone = _alone_flags(events)
-  if not alone.any(x => x) { return (body: body, took-then: false) }
+  if not alone.any(x => x) { return body }
   // A solution is last when it comes after the last visible event.
   let from_end = events.rev().position(_is_visible)
   let solution_at = events.enumerate().filter(((_, ev)) => ev == "solution").map(((i, _)) => i)
   let lasts = solution_at.map(i => from_end != none and i > events.len() - 1 - from_end)
   let thens = (none,) * alone.len()
-  let took-then = false
   if group {
     // The runs, as solution indices, and whether one ends the body.
     let runs = ()
@@ -214,17 +211,15 @@
         open = false
       }
     }
-    took-then = open and then != none
     let solutions = _collect(body)
-    for (n, run) in runs.enumerate() {
+    for run in runs {
       let rest = run.slice(1).map(j => _in_run(solutions.at(j)))
-      if took-then and n == runs.len() - 1 { rest.push(then) }
       if rest.len() == 0 { continue }
       thens.at(run.first()) = rest.map(x => parbreak() + x).join()
       for j in run.slice(1) { thens.at(j) = "drop" }
     }
   }
-  (body: _rewrite(body, alone.zip(lasts, thens), 0, group).first(), took-then: took-then)
+  _rewrite(body, alone.zip(lasts, thens), 0, group).first()
 }
 
 /// What `body` shows on the exam itself, that is, with its solutions, which

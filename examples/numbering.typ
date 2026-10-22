@@ -5,14 +5,12 @@
 #import "../src/lib.typ": *
 
 #set page(width: 11cm, height: auto, margin: 6mm)
-#show: e.prepare()
+#show: exam
 
-#exam(questions: [
-  #question[An automatically numbered question.]
-  #question[Another one.]
-  #question(number: 10)[An integer sets the number.]
-  #question[...and numbering continues from it.]
-  #question(number: "★")[Content is shown verbatim.]
-  #question(number: none)[An unnumbered question.]
-  #question[The automatic counter ignores the previous two.]
-])
+#question[An automatically numbered question.]
+#question[Another one.]
+#question(number: 10)[An integer sets the number.]
+#question[...and numbering continues from it.]
+#question(number: "★")[Content is shown verbatim.]
+#question(number: none)[An unnumbered question.]
+#question[The automatic counter ignores the previous two.]

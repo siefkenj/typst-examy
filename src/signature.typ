@@ -83,6 +83,9 @@
 ///   each mapped to a hint naming the right one.
 /// - `positional-error`: a function of the number of positional arguments
 ///   given, when there are too many, returning the message.
+/// - `takes`: what the function takes, for the message about an unknown
+///   argument (it ends "`name` takes .."); by default its named arguments,
+///   listed.
 /// - `group`, `alias-of`: passed through to the API reference (see
 ///   docs/api.typ).
 #let declare_function(
@@ -91,6 +94,7 @@
   fields: (),
   aliases: (:),
   positional-error: none,
+  takes: none,
   ..extra,
 ) = {
   assert(type(name) == str, message: "declare_function: name must be a string")
@@ -119,6 +123,7 @@
     positional: positional,
     aliases: aliases,
     positional-error: positional-error,
+    takes: takes,
     ..extra.named(),
   )
 }
@@ -189,8 +194,12 @@
       let message = if f != none {
         spec.name + ": `" + key + "` is given by position, not by name"
       } else {
-        let names = spec.fields.values().filter(f => f.named and not f.internal).map(f => "`" + f.name + "`")
-        spec.name + ": unknown argument `" + key + "`; `" + spec.name + "` takes " + names.join(", ")
+        let takes = if spec.takes != none {
+          spec.takes
+        } else {
+          spec.fields.values().filter(f => f.named and not f.internal).map(f => "`" + f.name + "`").join(", ")
+        }
+        spec.name + ": unknown argument `" + key + "`; `" + spec.name + "` takes " + takes
       }
       return (false, message)
     }

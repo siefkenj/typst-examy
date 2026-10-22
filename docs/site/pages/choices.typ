@@ -23,9 +23,13 @@ correct choice (it will only render differently if solutions are shown).
 
 == `#choices[...]` API
 
-- `correct: int | array` — An alternative to using `+` to mark a correct
-  choice. Setting `correct: 0` marks the first choice as correct,
-  `correct: (0, 2)` marks the first and third.
+- `correct: int | str | content | array` — An alternative to using `+` to
+  mark a correct choice, by index or by label. `correct: 0` marks the first
+  choice as correct. A label is the one drawn in the choice's bubble, so it
+  needs `enumerate`: with `enumerate: true`, `correct: "A"` marks the first.
+  Case and punctuation do not matter, so with `enumerate: "(i)"`, `"(ii)"`,
+  `"ii"`, and `"II"` all mark the second choice. An array marks several:
+  `correct: (0, 2)` or `correct: ("A", "C")`.
 - `bubble: "circle" | "square"` — Round bubbles (the default) for "select
   one", square ones for "select all that apply".
 - `columns: int` — Lay the choices out in this many equal columns, filled
@@ -63,7 +67,7 @@ The choices can also be given as an array:
 
 `enumerate: bool | str | function` — Put labels inside the bubbles. `true` gives A, B, C, …, and any
 numbering pattern or function that `enum` takes also works (`"a"`, `"1"`, `"(i)"`). It is off by
-default; turn it on for the whole document with `#show: e.set_(config, choices-enumerate: true)`.
+default; turn it on for the whole exam with `#show: exam.with(choices-enumerate: true)`.
 Labels use the monospaced font bundled with Typst, which can be changed with the global
 #api("config")'s `bubble-label-font` option. On the answer key, a correct bubble gets a thin ring
 inside its outline.
@@ -112,6 +116,6 @@ content:
 In every layout, a choice is kept whole. When its text wraps, the bubble stays on the first line and
 the further lines hang under the text, not under the bubble. The gap between a choice's bubble and
 its content can be set with `outset` (e.g. `outset: .6em`). The outline thickness of every bubble in
-the document is set with `#show: e.set_(config, bubble-stroke: .06em)` (default `.1em`). It is
+the exam is set with `#show: exam.with(bubble-stroke: .06em)` (default `.1em`). It is
 capped at about a fifth of the bubble's size, so that it never covers the mark in a filled-in
 bubble.

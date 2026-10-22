@@ -27,7 +27,13 @@
 #let PAGES = (
   // Headed "examy", as the README is, so that it opens with the README's
   // first paragraph.
-  (path: "index.html", title: "Getting started", file: "pages/index.typ", heading: [examy]),
+  // The front page's heading is the logo, which site.typ renders as logo.svg.
+  (
+    path: "index.html",
+    title: "Getting started",
+    file: "pages/index.typ",
+    heading: html.elem("img", attrs: (class: "logo", src: "logo.svg", alt: "examy")),
+  ),
   (path: "questions.html", title: "Questions and numbering", file: "pages/questions.typ"),
   (path: "points.html", title: "Points", file: "pages/points.typ"),
   (path: "cross-references.html", title: "Cross-references", file: "pages/cross-references.typ"),
@@ -298,9 +304,9 @@
 ///   `show-solutions:` setting is left out (each view sets its own).
 /// - `key`: whether to also show the answer key beside the exam; `auto` does
 ///   when the code has a solution or a correct choice.
-/// - `wrap`: whether to wrap the code in `#exam(questions: [..])`; `auto`
-///   does when it has a question but no exam. Leading `#show`, `#set` and
-///   `#let` lines stay outside it.
+/// - `wrap`: whether to wrap the code in `#exam[..]`; `auto` does when it
+///   has a question but no exam. Leading `#show`, `#set` and `#let` lines
+///   stay outside it.
 /// - `width`, `height`: the size of the page the example is laid out on. A
 ///   `height` gives `fr` answer boxes a page to fill.
 /// - `inset`: room around the page, for what is drawn outside it, as

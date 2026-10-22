@@ -1,16 +1,23 @@
-/// Ready-made argument sets for `exam` for specific institutions.
-/// Spread one into an exam call:
+/// The University of Toronto name-block rows.
+#let _UTORONTO_NAME_FIELDS = (
+  (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),
+  (prefix: [Email address:], suffix: [`@mail.utoronto.ca`]),
+  (prefix: [UTORid:]),
+)
+
+/// Ready-made settings for specific institutions, e.g. a name block's
+/// rows:
 ///
 /// ```typst
-/// #exam(..presets.utoronto, questions: [...])
+/// #name-block(fields: presets.utoronto.name-fields)
 /// ```
 #let presets = (
   utoronto: (
-    name_fields: (
-      (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),
-      (prefix: [Email address:], suffix: [`@mail.utoronto.ca`]),
-      (prefix: [UTORid:]),
-    ),
+    name-fields: _UTORONTO_NAME_FIELDS,
+    // Deprecated: the name `name-fields` had in 0.4 and earlier, when it
+    // was the only snake_case key. Kept so that documents written for 0.4
+    // still compile.
+    name_fields: _UTORONTO_NAME_FIELDS,
   ),
 )
 
@@ -18,6 +25,6 @@
 /// (keyed by export name).
 #let DOCS = (
   presets: (
-    desc: "Institution-specific argument sets. Currently `presets.utoronto.name_fields`: the University of Toronto name-block rows (NAME / Email address / UTORid).",
+    desc: "Institution-specific argument sets. Currently `presets.utoronto.name-fields`: the University of Toronto name-block rows (NAME / Email address / UTORid), for `#name-block(fields: presets.utoronto.name-fields)`. (`name_fields`, its name in 0.4 and earlier, still works, but is deprecated.)",
   ),
 )

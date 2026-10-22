@@ -475,9 +475,11 @@
     e.field(
       "bubble",
       e.types.union(e.types.literal("circle"), e.types.literal("square"), function),
-      doc: "The shape of the bubble: round for \"select one\", square for \"select all that apply\". Typst's own `circle` and `square` work too.",
+      doc: "The shape of the bubble: round for \"select one\", square for \"select all that apply\".",
       default: "circle",
-      meta: (check: v => shape_error(v, "choice")),
+      // Typst's own `circle` and `square` are taken too, and examy's
+      // `bubble` and `square-bubble` (see `choice`), but not documented.
+      meta: (check: v => shape_error(v, "choice"), type-shown: "\"circle\" | \"square\""),
     ),
     e.field(
       "correct",
@@ -520,7 +522,7 @@
 /// choice it labels; see `draw_choice` for how it is drawn. `body` is an
 /// *optional* positional argument, so `#choice[Paris]`, `#choice[]` and a
 /// bare `#choice()` all work.
-#let choice = define(_CHOICE, it => {
+#let _choice = define(_CHOICE, it => {
   // A string or a number is shown as written, like any other content.
   let body = it.body
   if _is_blank(body) { body = none }
@@ -533,6 +535,21 @@
     outset: it.outset,
   )
 })
+
+/// `_choice`, taking for its `bubble:` examy's own `bubble` and
+/// `square-bubble` as well, as `choices` does: every spelling of a shape
+/// works wherever one is taken. Only the strings are documented. They are
+/// recognized here, where they can be named, as two functions bound alike
+/// are equal.
+#let choice(..args) = {
+  let named = args.named()
+  let shape = named.at("bubble", default: none)
+  if type(shape) == function {
+    if shape == choice.with(bubble: "circle") { named.bubble = "circle" }
+    if shape == choice.with(bubble: "square") { named.bubble = "square" }
+  }
+  _choice(..args.pos(), ..named)
+}
 
 /// A round bubble: "select one".
 #let bubble = choice.with(bubble: "circle")

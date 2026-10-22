@@ -34,18 +34,14 @@
   ("question", "[Body]", (points: none, number: auto, indent: 1.5em)),
   ("question", "[Body], points: 2", (points: 2)),
   ("part", "[Body], intent: \"bonus\", label: <x>", (intent: "bonus", label: <x>)),
-  ("answer-box", "[]", (width: auto, height: none, stroke: .5pt)),
-  // A length stays a length, which `answer-box` tells from a relative one.
-  ("answer-box", "[], width: 2cm, height: 1fr", (width: 2cm, height: 1fr)),
   // A dictionary of sides stays a dictionary, as `box`'s `stroke` takes it.
-  ("answer-box", "[], stroke: (bottom: .5pt)", (stroke: (bottom: .5pt))),
   ("choice", "", (body: none, bubble: "circle", correct: false)),
   ("choice", "[Paris], correct: true", (body: [Paris], correct: true)),
   ("choice", "42, bubble: \"square\"", (body: 42, bubble: "square")),
   ("choices", "(1, 2), correct: 0, columns: 2", (body: (1, 2), correct: 0, columns: 2)),
   ("maketitle", "term: [Fall]", (term: [Fall], institution: auto)),
   ("name-block", "title: [Quiz]", (title: [Quiz], fields: m-exam.DEFAULT_NAME_FIELDS)),
-  ("page-points", "bonus: true", (page: auto, bonus: true)),
+  ("get-num-points-page", "bonus: true", (page: auto, bonus: true)),
 )
 
 #for (name, args, expected) in ACCEPTED {
@@ -69,8 +65,6 @@
   ("question", "[B], pts: 2", "question: unknown argument `pts`; `question` takes `points`, `intent`"),
   // Divisions once took a `solution:`; it is written in the body now.
   ("question", "[B], solution: [x]", "question: unknown argument `solution`; write the solution in the body, as `#solution[..]`"),
-  ("answer-box", "[], [extra]", "answer-box: takes at most 1 positional argument (`body`), got 2"),
-  ("answer-box", "[], height: \"2cm\"", "answer-box: `height` must be auto | length | ratio | relative | fraction | none"),
   ("choice", "[A], [B]", "use `#choices`"),
   ("choice", "true", "to mark the answer, write `correct: true`"),
   ("choice", "filled: true", "choice: unknown argument `filled`; to mark the answer, write `correct: true`"),
@@ -85,7 +79,7 @@
   ("maketitle", "[Title]", "maketitle: takes no positional arguments, got 1"),
   ("name-block", "fields: [Name]", "name-block: `fields` must be (dictionary | content)[]"),
   ("show-solutions", "", "show-solutions: missing its `get` argument"),
-  ("page-points", "page: \"1\"", "page-points: `page` must be auto | int"),
+  ("get-num-points-page", "page: \"1\"", "get-num-points-page: `page` must be auto | int"),
 )
 
 #for (name, args, expected) in REJECTED {

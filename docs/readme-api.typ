@@ -26,10 +26,10 @@
   ),
   (
     ("config",),
-    "Global configuration of package options. Options set via elembic. For example `#show: e.set_(config, show-solutions: true)` to show solutions globally.",
+    "Global configuration of package options. Give options to the exam, e.g. `#show: exam.with(show-solutions: true)`, or set them with `#show: e.set_(config, show-solutions: true)`.",
   ),
   (("e",), "A re-export of [elembic](https://typst.app/universe/package/elembic), used mainly for `e.set_`."),
-  (("exam",), "Entry point for the questions of an exam."),
+  (("exam",), "Lays out an exam. Start one with `#show: exam` (or `#show: exam.with(..)`, with `config` options)."),
   (
     ("maketitle",),
     "The exam title block (in the spirit of LaTeX's `\\maketitle`). Exam information is read from the global `config`.",
@@ -37,6 +37,10 @@
   (("name-block",), "A block of fill-in rows for a student to write their name."),
   (("points-table", "num-points", "num-questions"), "Display a scoring table and other information about the exam."),
   (("question", "part", "subpart"), "Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively."),
+  (
+    ("rubric", "rubric-list"),
+    "Grading rubric items for a question, part, or subpart, drawn on the graders' copy, and every rubric of the exam as a list.",
+  ),
   (
     ("solution",),
     "Declare a solution to a question, part, or subpart; this is only rendered if the config option to show solutions is enabled.",
@@ -49,7 +53,11 @@
   "bubble",
   "square-bubble",
   "num-bonus-points",
-  "page-points",
+  "num-points-page",
+  "get-num-points",
+  "get-num-questions",
+  "get-num-bonus-points",
+  "get-num-points-page",
   "page-score-box",
   "presets",
   "show-solutions",
@@ -88,14 +96,17 @@
 
 /// How an export is written in a document, bare of its arguments:
 /// `#name[...]` for one that takes content, `#name(...)` for one called with
-/// arguments only, `#name` for a value that is content, and `name` for
+/// arguments only, `#name()` for one that takes none, `#name` for a value
+/// that is content, and `name` for
 /// anything used in code (`config`, `e`, `presets`, or a function such as
 /// `show-solutions(get)`, which is given something other than content).
 #let bare_signature(name) = {
   let x = entry(name)
   if x.kind in ("function", "element") and x.show-signature {
     let positional = x.args.filter(a => not a.named)
-    if positional.len() == 0 {
+    if x.args.len() == 0 {
+      "#" + name + "()"
+    } else if positional.len() == 0 {
       "#" + name + "(...)"
     } else if positional.first().type.contains("content") {
       "#" + name + "[...]"

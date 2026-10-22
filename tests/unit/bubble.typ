@@ -512,7 +512,15 @@
   same("`choice` is round by default", choice(), bubble())
   same("bubble is choice with a circle", choice(bubble: "circle"), bubble())
   same("square-bubble is choice with a square", choice(bubble: "square"), square-bubble())
+  // Every spelling of a shape that `choices` takes, `choice` takes too:
+  // Typst's own `circle` and `square`, and examy's `bubble` and
+  // `square-bubble`, though only the strings are documented.
   same("Typst's own `square` names the shape too", choice(bubble: square), square-bubble())
+  same("Typst's own `circle` names the shape too", choice(bubble: circle), bubble())
+  same("examy's `square-bubble` names the shape too", choice(bubble: square-bubble), square-bubble())
+  same("examy's `bubble` names the shape too", choice(bubble: bubble), bubble())
+  same("`bubble(bubble: square-bubble)` is square", bubble(bubble: square-bubble), square-bubble())
+  same("`square-bubble(bubble: bubble)` is round", square-bubble(bubble: bubble), bubble())
   same("a correct choice matches a correct bubble", choice(correct: true)[X], bubble(correct: true)[X])
   // `size: auto` follows the shape; a size given explicitly wins.
   assert.eq(

@@ -1,6 +1,6 @@
 // `answer-box` height when none is given: a box with something in it — a
 // prompt, a list of choices — grows to fit it, while a box that is blank on
-// the exam (empty, or holding only its solution) takes `default_height`, so
+// the exam (empty, or holding only its solution) takes `default-height`, so
 // the student has room to write. Also: the `solution:` argument appears only
 // on the answer key; with no height given, solutions take no height, so the
 // key lays out exactly like the exam; and any explicit height, even `auto`,
@@ -119,10 +119,10 @@
     equals: DEFAULT,
   )
   v(1.2cm)
-  // `default_height` is honored for a blank box.
+  // `default-height` is honored for a blank box.
   check(
-    "Empty, with `default_height: 3cm`: 3cm tall.",
-    answer-box(width: 100%, default_height: 3cm)[],
+    "Empty, with `default-height: 3cm`: 3cm tall.",
+    answer-box(width: 100%, default-height: 3cm)[],
     equals: 3cm,
   )
 
@@ -400,7 +400,7 @@
 ]
 #v(.6cm)
 // A `context` expression may show nothing on the exam (a solution only the
-// key shows, through `e.get`), so the box keeps `default_height` at least,
+// key shows, through `e.get`), so the box keeps `default-height` at least,
 // and grows only for more than that.
 #for key in (false, true) {
   show: e.set_(config, show-solutions: key)

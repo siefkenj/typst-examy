@@ -25,7 +25,7 @@
 
 #rule[Plain text, for the label offset the others are compared with.]
 #{
-  show: e.set_(config, division-numbering: marked("plain"))
+  show: e.set_(config, numbering: marked("plain"))
   exam(questions: [#question[A#line("plain", 1) question.]])
 }
 
@@ -33,7 +33,7 @@
 // has its label level with the part's: both on the box's first line ---
 #rule[A question starting with a part that starts with a box: 1. and (a) on the box's first line.]
 #{
-  show: e.set_(config, division-numbering: marked("box"))
+  show: e.set_(config, numbering: marked("box"))
   exam(questions: [
     #question[#part[#answer-box(width: 100%)[F#line("box", 1)irst line #linebreak() second]]]
   ])
@@ -48,7 +48,7 @@
 // the label's anchor makes no empty line of its own ---
 #rule[A labelled part starting with a subpart: (a) and i. on one line, and the reference resolves.]
 #{
-  show: e.set_(config, division-numbering: marked("labelled"))
+  show: e.set_(config, numbering: marked("labelled"))
   exam(questions: [
     #question[#part(label: <labelled>)[#subpart[L#line("labelled", 3)abelled.]]]
     #question[See @labelled.]
@@ -67,7 +67,7 @@
 #{
   show: e.set_(
     config,
-    division-numbering: marked("end"),
+    numbering: marked("end"),
     points-position: "end",
     points-format: p => [#metadata(p)<end-badge>#default_points_format(p)],
   )

@@ -1,16 +1,17 @@
 // The content scans the exam pipeline runs before layout (src/scan.typ):
 // what is a break, what height a chunk asks for, what a scan finds (markers,
-// breaks, fr heights), how a body begins, and what counts as whitespace.
+// breaks, fr heights), where the rubrics are, how a body begins, and what
+// counts as whitespace.
 //
 // Each case is written as markup source, evaluated for the check, so that
 // the visual record at the end can show it as written.
 #import "/src/scan.typ": (
-  extract_height, is_break, is_whitespace_content, scan, starts_inline,
-  trim_leading_space,
+  extract_height, has_rubric, is_break, is_whitespace_content, rubric_markers, scan,
+  starts_inline, trim_leading_space,
 )
 #import "/src/markers.typ": begin_marker, end_marker, height_hint
 #import "/src/divisions.typ": part, question
-#import "/src/lib.typ": e
+#import "/src/lib.typ": config, e, rubric
 #import "/tests/record.typ": cases, rule
 
 #set page(width: 6.5in, height: auto, margin: .5in)
@@ -22,6 +23,9 @@
   height_hint: height_hint,
   question: question,
   part: part,
+  rubric: rubric,
+  e: e,
+  config: config,
 )
 #let ev(src) = eval(src, mode: "markup", scope: SCOPE)
 
@@ -142,6 +146,21 @@
   (" x ", false),
 ))
 
+// Rubrics are found inside other elements, and behind a set rule of
+// elembic's, which keeps what it applies to in its tag.
+#let RUBRIC_CASES = (
+  ("plain text", 0),
+  ("#rubric(points: 1)[A]", 1),
+  ("a #box[#rubric(points: 1)[A]] b #rubric(points: 2)[B]", 2),
+  ("#show: e.set_(config, show-rubrics: true)\nb #rubric(points: 1)[A]", 1),
+)
+#let RUBRIC_MARKERS = check("rubric_markers(..).len()", c => rubric_markers(c).len(), RUBRIC_CASES)
+#let HAS_RUBRIC = check(
+  "has_rubric",
+  has_rubric,
+  RUBRIC_CASES.map(((src, n)) => (src, n > 0)),
+)
+
 // A visual record of each case above: the source, and what came of it.
 #let record(desc, f, rows, fmt: repr) = {
   rule(desc)
@@ -161,6 +180,8 @@
 #record([`scan(..).marker_names`: which markers.], c => scan(c).marker_names, SCAN_NAMES)
 #record([`scan(..).has_break`: a break anywhere inside.], c => scan(c).has_break, SCAN_BREAKS)
 #record([`scan(..).fr`: the fr height a chunk negotiates with.], c => scan(c).fr, SCAN_FR)
+#record([`rubric_markers(..).len()`: how many rubrics are inside.], c => rubric_markers(c).len(), RUBRIC_MARKERS)
+#record([`has_rubric`: a rubric anywhere inside.], has_rubric, HAS_RUBRIC)
 #record([`starts_inline`: whether a body begins inline (`none`: invisible).], starts_inline, STARTS_INLINE)
 #record([`trim_leading_space`: the body with its leading space removed.], c => repr(trim_leading_space(c)), TRIM, fmt: x => x)
 #record([`is_whitespace_content`: nothing visible.], is_whitespace_content, WHITESPACE)

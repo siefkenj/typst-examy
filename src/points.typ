@@ -5,7 +5,7 @@
 /// come from markers the exam leaves where each division's points are drawn.
 
 #import "prelude.typ": *
-#import "config.typ": config, DEFAULT_DIVISION_NUMBERING
+#import "config.typ": config, DEFAULT_NUMBERING
 #import "refs.typ": format_component
 #import "signature.typ": declare_function, define
 
@@ -37,22 +37,22 @@
 #let POINTS_MARKER = label(PREFIX + "/points")
 
 /// The marker a division with points leaves where it starts, which
-/// `page-points` and the table by page count. Invisible.
+/// `get-num-points-page` and the table by page count. Invisible.
 #let points_marker(points, intent) = [#metadata((points: points, intent: intent))#POINTS_MARKER]
 
 /// How a question is labelled in the points table: its number as a reference
 /// would show it (without a trailing "."), or a dash for an unnumbered one.
-#let _question_label(number, numberings) = {
-  if number == none { sym.dash.en } else { format_component(0, number, numberings: numberings) }
+#let _question_label(number, numbering) = {
+  if number == none { sym.dash.en } else { format_component(0, number, numbering: numbering) }
 }
 
 /// Extract the per-question point data from parsed items.
-#let compute_points_data(items, numberings: DEFAULT_DIVISION_NUMBERING) = {
+#let compute_points_data(items, numbering: DEFAULT_NUMBERING) = {
   items
     .filter(it => it.kind == "division" and it.level == 1)
     .map(q => (
       number: q.number,
-      label: _question_label(q.number, numberings),
+      label: _question_label(q.number, numbering),
       total_points: q.total_points,
       total_bonus_points: q.total_bonus_points,
     ))
@@ -114,25 +114,53 @@
   text(fill: red)[examy: this #name has points of its own (#badge.own) and points on its #parts (#badge.parts); with `points-show-totals`, give points to one or the other.]
 }
 
-/// The total number of questions in the exam.
-#let num_questions = context {
+// Each count comes twice: as a number, `get-num-..()`, to compute or test
+// with, which needs context; and as content, `num-..`, which shows it
+// anywhere, with no context of its own to write.
+
+#let _GET_NUM_QUESTIONS = declare_function(
+  "get-num-questions",
+  doc: "The total number of questions in the exam, as a number, to compute or test with. Needs context: `context get-num-questions()`. To show it, `num-questions` needs none.",
+)
+
+/// The total number of questions in the exam (see DOCS). Needs context.
+#let get_num_questions = define(_GET_NUM_QUESTIONS, it => {
   let data = exam_points_data()
   if data == none { 0 } else { data.len() }
-}
+})
 
-/// The total number of regular (non-bonus, non-practice) points.
-#let num_points = context {
+#let _GET_NUM_POINTS = declare_function(
+  "get-num-points",
+  doc: "The total number of regular (non-bonus, non-practice) points, as a number, to compute or test with, e.g. a pass mark: `context calc.ceil(get-num-points() * .6)`. Needs context. To show it, `num-points` needs none.",
+)
+
+/// The total number of regular points (see DOCS). Needs context.
+#let get_num_points = define(_GET_NUM_POINTS, it => {
   let data = exam_points_data()
   if data == none { 0 } else { data.map(q => q.total_points).sum(default: 0) }
-}
+})
 
-/// The total number of bonus points.
-#let num_bonus_points = context {
+#let _GET_NUM_BONUS_POINTS = declare_function(
+  "get-num-bonus-points",
+  doc: "The total number of bonus points, as a number, to compute or test with. Needs context: `context if get-num-bonus-points() > 0 [..]`. To show it, `num-bonus-points` needs none.",
+)
+
+/// The total number of bonus points (see DOCS). Needs context.
+#let get_num_bonus_points = define(_GET_NUM_BONUS_POINTS, it => {
   let data = exam_points_data()
   if data == none { 0 } else {
     data.map(q => if q.total_bonus_points == none { 0 } else { q.total_bonus_points }).sum(default: 0)
   }
-}
+})
+
+/// The total number of questions in the exam, shown (see DOCS).
+#let num_questions = context get_num_questions()
+
+/// The total number of regular points, shown (see DOCS).
+#let num_points = context get_num_points()
+
+/// The total number of bonus points, shown (see DOCS).
+#let num_bonus_points = context get_num_bonus_points()
 
 /// The points markers, grouped by page: an array of `(page: n, location,
 /// points, bonus)`, one per page with points, in page order, where
@@ -149,9 +177,9 @@
   pages.values().sorted(key: p => p.page)
 }
 
-#let _PAGE_POINTS = declare_function(
-  "page-points",
-  doc: "The number of points on a page: the points of each question, part, and subpart that starts on it. Needs context, and returns a number, so it can be tested, e.g. in a page footer: `context if page-points() > 0 [..]`.",
+#let _GET_NUM_POINTS_PAGE = declare_function(
+  "get-num-points-page",
+  doc: "The number of points on a page, as a number, to compute or test with: the points of each question, part, and subpart that starts on it. Needs context, e.g. in a page footer: `context if get-num-points-page() > 0 [..]`. To show the current page's, `num-points-page` needs none.",
   fields: (
     e.field(
       "page",
@@ -169,7 +197,7 @@
 )
 
 /// The number of points on a page (see DOCS). Needs context.
-#let page_points = define(_PAGE_POINTS, it => {
+#let get_num_points_page = define(_GET_NUM_POINTS_PAGE, it => {
   let page = if it.page == auto { here().page() } else { it.page }
   let intent = if it.bonus { "bonus" } else { none }
   query(POINTS_MARKER)
@@ -178,15 +206,23 @@
     .sum(default: 0)
 })
 
+/// The number of points on the current page, shown (see DOCS).
+#let num_points_page = context get_num_points_page()
+
+#let _PAGE_SCORE_BOX = declare_function(
+  "page-score-box",
+  doc: "A box for the grader to write the score of the current page in, \"Score: ____ / 7\", made for a page footer: `#set page(footer: align(right, page-score-box()))`. Draws nothing on a page without points. Its word is `strings`' `score`.",
+)
+
 /// A score box for the current page (see DOCS).
-#let page_score_box = e.get(get => {
-  let points = page_points()
+#let page_score_box = define(_PAGE_SCORE_BOX, it => e.get(get => {
+  let points = get_num_points_page()
   if points == 0 { return }
   let strings = get(config).strings
   box(stroke: .5pt, inset: (x: .6em, y: .4em))[
     #strings.score: #box(width: 2.5em, stroke: (bottom: .5pt), outset: (bottom: .15em)) / #points
   ]
-})
+}))
 
 /// The page number as the page shows it, for the table by page.
 #let _page_label(loc) = {
@@ -198,26 +234,27 @@
 #let _cell(points) = if points == none or points == 0 { [] } else { [#points] }
 
 /// Lay out the points table: `entries` are `(label, points, bonus)`, one per
-/// question or page, and `cfg` is `config`'s values.
-#let _points_table(entries, heading, cfg) = {
-  let strings = cfg.strings
+/// question or page, and `o` the table's options, resolved (see
+/// `points_table`).
+#let _points_table(entries, heading, o) = {
+  let strings = o.strings
   let total = (
     label: strings.total,
     points: entries.map(x => x.points).sum(default: 0),
     bonus: entries.map(x => if x.bonus == none { 0 } else { x.bonus }).sum(default: 0),
   )
-  let with_bonus = cfg.points-table-bonus and total.bonus > 0
+  let with_bonus = o.bonus and total.bonus > 0
   // The series the table shows, in order: each a heading and a cell per entry.
   let series = (
     (heading: heading, cell: x => x.label),
     (heading: strings.points, cell: x => [#x.points]),
     ..if with_bonus { ((heading: strings.bonus, cell: x => _cell(x.bonus)),) },
-    ..if cfg.points-table-score { ((heading: strings.score, cell: x => [], score: true),) },
+    ..if o.score { ((heading: strings.score, cell: x => [], score: true),) },
   )
-  let table_of(entries) = if cfg.points-table-direction == "vertical" {
+  let table_of(entries) = if o.direction == "vertical" {
     table(
       // The score column is wide enough to write in.
-      columns: if cfg.points-table-score { (auto,) * (series.len() - 1) + (4em,) } else { series.len() },
+      columns: if o.score { (auto,) * (series.len() - 1) + (4em,) } else { series.len() },
       align: center,
       stroke: .2pt,
       inset: .6em,
@@ -231,25 +268,73 @@
       stroke: .2pt,
       inset: .6em,
       // The score row is tall enough to write in.
-      ..if cfg.points-table-score { (rows: (auto,) * (series.len() - 1) + (2.5em,)) },
+      ..if o.score { (rows: (auto,) * (series.len() - 1) + (2.5em,)) },
       ..series.map(s => ([#s.heading:], ..entries.map(s.cell))).flatten(),
     )
   }
   let entries = entries + (total,)
-  let per = cfg.points-table-max-columns
-  if per == none or cfg.points-table-direction == "vertical" {
+  let per = o.max-columns
+  if per == none or o.direction == "vertical" {
     table_of(entries)
   } else {
-    assert(per > 0, message: "examy: `points-table-max-columns` must be positive, found " + str(per))
+    assert(per > 0, message: "examy: points-table: `max-columns` must be positive, found " + str(per))
     entries.chunks(per).map(table_of).join()
   }
 }
 
-/// A scoring table showing the point value of each question (or page).
-#let points_table = e.get(get => {
+#let _POINTS_TABLE = declare_function(
+  "points-table",
+  doc: "A scoring table with a column per question plus a total. Works anywhere in the document, even before the exam.\n\nEach argument left `auto` is `config`'s option of the same name, `points-table-..`, so that all of a document's tables can be set at once; its words are set by `strings`.",
+  fields: (
+    e.field(
+      "direction",
+      e.types.union(auto, "horizontal", "vertical"),
+      doc: "`\"horizontal\"`, with a column per question, or `\"vertical\"`, with a row per question. `auto`: `config`'s `points-table-direction`.",
+      default: auto,
+    ),
+    e.field(
+      "by",
+      e.types.union(auto, "question", "page"),
+      doc: "Whether to total the points by question or by page; by page, a page without points is left out. `auto`: `config`'s `points-table-by`.",
+      default: auto,
+    ),
+    e.field(
+      "score",
+      e.types.union(auto, bool),
+      doc: "Whether to add an empty Score row (a column, when vertical) for the grader to fill in. `auto`: `config`'s `points-table-score`.",
+      default: auto,
+    ),
+    e.field(
+      "bonus",
+      e.types.union(auto, bool),
+      doc: "Whether to add a Bonus row (a column, when vertical) with the bonus points, when the exam has any. `auto`: `config`'s `points-table-bonus`.",
+      default: auto,
+    ),
+    e.field(
+      "max-columns",
+      e.types.union(auto, int, none),
+      doc: "The most questions (or pages) a horizontal table shows side by side; more are split into several tables, one below the other, with the total in the last. `none` keeps them all in one table. `auto`: `config`'s `points-table-max-columns`.",
+      default: auto,
+    ),
+  ),
+)
+
+/// A scoring table showing the point value of each question (or page) (see
+/// DOCS).
+#let points_table = define(_POINTS_TABLE, it => e.get(get => {
   let cfg = get(config)
-  let strings = cfg.strings
-  let (entries, heading) = if cfg.points-table-by == "page" {
+  // Each option as given, else `config`'s.
+  let pick(key) = if it.at(key) == auto { cfg.at("points-table-" + key) } else { it.at(key) }
+  let o = (
+    strings: cfg.strings,
+    direction: pick("direction"),
+    by: pick("by"),
+    score: pick("score"),
+    bonus: pick("bonus"),
+    max-columns: pick("max-columns"),
+  )
+  let strings = o.strings
+  let (entries, heading) = if o.by == "page" {
     (
       _points_by_page()
         .filter(p => p.points > 0 or p.bonus > 0)
@@ -266,29 +351,31 @@
     )
   }
   if entries.len() == 0 {
-    let missing = if cfg.points-table-by == "page" { "points" } else { "questions" }
+    let missing = if o.by == "page" { "points" } else { "questions" }
     return text(fill: red, "WARNING: No " + missing + " found! Can't make a points table.")
   }
-  _points_table(entries, heading, cfg)
-})
+  _points_table(entries, heading, o)
+}))
 
 /// API documentation for this module's exports, consumed by
 /// docs/api.typ (keyed by export name).
 #let DOCS = (
-  "points-table": (
-    desc: "A scoring table with a column per question plus a total. Works anywhere in the document, even before the exam.\n\nIts layout is set on `config`: `points-table-direction`, `points-table-by` (questions or pages), `points-table-score`, `points-table-bonus`, and `points-table-max-columns`; its words by `strings`. Set them in a scope of their own for one table, e.g. `#[#show: e.set_(config, points-table-direction: \"vertical\"); #points-table]`.",
-  ),
+  "points-table": _POINTS_TABLE,
   "num-questions": (
-    desc: "The total number of questions in the exam. Works anywhere in the document.",
+    desc: "The total number of questions in the exam, shown: `#num-questions`. Works anywhere in the document. To compute or test with it, `get-num-questions()` gives it as a number.",
   ),
   "num-points": (
-    desc: "The total number of regular (non-bonus, non-practice) points. Works anywhere in the document.",
+    desc: "The total number of regular (non-bonus, non-practice) points, shown: `#num-points`. Works anywhere in the document. To compute or test with it, `get-num-points()` gives it as a number.",
   ),
   "num-bonus-points": (
-    desc: "The total number of bonus points. Works anywhere in the document.",
+    desc: "The total number of bonus points, shown: `#num-bonus-points`. Works anywhere in the document. To compute or test with it, `get-num-bonus-points()` gives it as a number.",
   ),
-  "page-points": _PAGE_POINTS,
-  "page-score-box": (
-    desc: "A box for the grader to write the score of the current page in, \"Score: ____ / 7\", made for a page footer: `#set page(footer: align(right, page-score-box))`. Draws nothing on a page without points. Its word is `strings`' `score`.",
+  "num-points-page": (
+    desc: "The number of points on the current page, shown: the points of each question, part, and subpart that starts on it, e.g. in a page footer. To compute or test with it, or for another page or the bonus points, `get-num-points-page()` gives it as a number.",
   ),
+  "get-num-questions": _GET_NUM_QUESTIONS,
+  "get-num-points": _GET_NUM_POINTS,
+  "get-num-bonus-points": _GET_NUM_BONUS_POINTS,
+  "get-num-points-page": _GET_NUM_POINTS_PAGE,
+  "page-score-box": _PAGE_SCORE_BOX,
 )

@@ -149,7 +149,7 @@
 /// as `metadata` labelled `<examy-rubric>`: `(exam, questions)`, `exam`
 /// counted from 1 and `questions` each division with a rubric, in order
 /// (see `rubric_data`). Emitted at the end of an exam with rubrics, whatever
-/// `show-rubric` says, all in one place, so that it costs the same however
+/// `show-rubrics` says, all in one place, so that it costs the same however
 /// many divisions there are. `divisions`: those that may have a rubric, in
 /// order, each `(address, field, info)` (see `rubric_info`).
 #let rubric_export(divisions) = context {
