@@ -131,6 +131,12 @@
         entry.kind = "function"
         entry.desc = _sentence(info.doc)
         entry.args = _args(info.fields.values())
+        // Named arguments taken beyond its fields (`exam`'s `config`
+        // options): `..name` in the signature, documented as one.
+        let rest = info.at("rest", default: none)
+        if rest != none {
+          entry.args.push((..rest, doc: _sentence(rest.doc), required: false, named: true, variadic: true, default: none))
+        }
       } else if entry.alias-of != none {
         entry.kind = "alias"
       }
@@ -168,9 +174,11 @@
 /// One argument in a signature: a positional one appears bare (an optional
 /// one, like a bubble's content, shows its default in the argument list
 /// instead), a required named one as `name: ..`, an optional named one as
-/// `name: default`.
+/// `name: default`, and any number of them (see `rest`) as `..name`.
 #let sig_arg(a) = {
-  if not a.named {
+  if a.at("variadic", default: false) {
+    ".." + a.name
+  } else if not a.named {
     a.name
   } else if a.required {
     a.name + ": .."

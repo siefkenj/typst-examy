@@ -417,6 +417,10 @@
   s.split(regex("\n\s*\n")).map(p => inline(p.trim())).join(parbreak())
 }
 
+/// An argument's name as written in a call: `..options` for any number of
+/// them (see `rest` in docs/api.typ).
+#let _arg_name(a) = if a.at("variadic", default: false) { ".." + a.name } else { a.name }
+
 /// One argument of a reference entry, with the anchor `api(.., arg:)` links
 /// to.
 #let _arg(owner, a) = {
@@ -424,9 +428,11 @@
   _either(
     () => html.elem("div", attrs: (class: "arg", id: owner + "." + a.name), {
       html.elem("div", attrs: (class: "arg-head"), {
-        html.elem("code", attrs: (class: "arg-name"), a.name)
+        html.elem("code", attrs: (class: "arg-name"), _arg_name(a))
         html.elem("code", attrs: (class: "arg-type"), a.type)
-        if a.required {
+        if a.at("variadic", default: false) {
+          html.elem("span", attrs: (class: "badge"), [any number])
+        } else if a.required {
           html.elem("span", attrs: (class: "badge required"), [required])
         } else {
           html.elem("span", attrs: (class: "arg-default"), [default #raw(a.default, lang: "typc")])
@@ -437,11 +443,13 @@
     }),
     () => block(above: 1.2em, {
       block(sticky: true, {
-        strong(raw(a.name))
+        strong(raw(_arg_name(a)))
         h(.8em)
         text(fill: luma(90), raw(a.type))
         h(.8em)
-        text(size: .9em, if a.required [_required_] else [default #raw(a.default, lang: "typc")])
+        text(size: .9em, if a.at("variadic", default: false) [_any number_] else if a.required [_required_] else [
+          default #raw(a.default, lang: "typc")
+        ])
         if not a.named { text(size: .9em)[ · _positional_] }
       })
       pad(left: 1.5em, doc(a.doc))

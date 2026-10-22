@@ -254,7 +254,7 @@
 
 #let _EXAM = declare_function(
   "exam",
-  doc: "Lay out an exam: number its questions, parts, and subparts, draw them, and total their points for `points-table` and the other point counts. Written as a show rule, `#show: exam` (or `#show: exam.with(..)`, with options), it makes the rest of the document the exam.\n\nAny `config` option can be given too, e.g. `exam.with(show-solutions: true)`, and applies to everything inside the exam: its questions, and whatever comes before them in it, such as a title block or a points table. It also applies `e.prepare()`, which the exam's references need.",
+  doc: "Lay out an exam: number its questions, parts, and subparts, draw them, and total their points for `points-table` and the other point counts. Written as a show rule, `#show: exam` (or `#show: exam.with(..)`, with options), it makes the rest of the document the exam.\n\nIt also applies `e.prepare()`, which the exam's references need.",
   fields: (
     e.field(
       "questions",
@@ -333,4 +333,17 @@
 
 /// API documentation for this module's exports, consumed by docs/api.typ
 /// (keyed by export name).
-#let DOCS = (exam: _EXAM, maketitle: _MAKETITLE, "name-block": _NAME_BLOCK)
+#let DOCS = (
+  exam: (
+    .._EXAM,
+    // Not a field of `_EXAM`: the options are `config`'s, checked against it
+    // (see `_EXAM_ARGS`), and documented there.
+    rest: (
+      name: "options",
+      type: "any",
+      doc: "Any of `config`'s options, by name, e.g. `#show: exam.with(show-solutions: false, points-position: \"end\")`. They apply to everything inside the exam: its questions, and whatever comes before them in it, such as a cover page or a points table. See `config` for every option and its default.",
+    ),
+  ),
+  maketitle: _MAKETITLE,
+  "name-block": _NAME_BLOCK,
+)
