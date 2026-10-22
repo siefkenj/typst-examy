@@ -12,9 +12,9 @@
   in a scope of their own. Redefining it with `.with(..)` still works. In an
   exam, which draws its boxes itself, only `e.set_` and `e.apply` rules apply
   to them, their `stroke`, `radius` and `outset` folded as elembic folds
-  them; elembic's other rules on answer boxes (`e.show_`, `e.cond-set`,
-  `e.filtered`, `e.select`, `e.reset`, and an `e.revoke` of a rule that set
-  them) are an error, inside the exam or before it. Typst's own show rules
+  them, and an `e.reset` undoes them; elembic's other rules on answer boxes
+  (`e.show_`, `e.cond-set`, `e.filtered`, `e.select`, and an `e.revoke` of a
+  rule that set them) are an error, inside the exam or before it. Typst's own show rules
   on `e.selector(answer-box)` apply to the exam's boxes too.
 - New options `answer-box-height`, `answer-box-width`,
   `answer-box-default-height` and `answer-box-default-width` give the
@@ -29,7 +29,8 @@
 - `answer-box`'s `default_height` and `default_width` are now
   `default-height` and `default-width`, kebab-case like the rest of examy.
   The old names still work, on a call or in a set rule, but are deprecated;
-  given both, the new name wins.
+  given both, the new name wins, but a call's old name wins over a set
+  rule's new one, as any call's field does.
 - `choice`'s `bubble:` also takes `bubble` and `square-bubble`, as
   `choices`' does, so both take the same spellings of a shape. Only
   `"circle"` and `"square"` are documented; the others keep working.
@@ -159,7 +160,9 @@
   numbered, as `enum`'s `numbering` does: a pattern (`"1.a.i."`), a function
   of the number, or one of those per level (`("Problem 1.", "(a)", "i.")`).
   `numbering-full: true` numbers a part with its question's number too
-  ("1.a."), as `enum`'s `full` does, in references as well. `strings` sets
+  ("1.a."), as `enum`'s `full` does, in references as well; with one
+  pattern per level, a level whose pattern has one counting symbol follows
+  the number above it ("1(a)"). `strings` sets
   the words examy prints (Question, Points, Total, ...).
 - `answer-box(stroke: ..)` sets the box's outline, or removes it (`none`);
   `fill`, `radius`, `outset`, and `clip` work as `box`'s do.

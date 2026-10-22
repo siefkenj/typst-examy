@@ -86,6 +86,10 @@
 /// - `takes`: what the function takes, for the message about an unknown
 ///   argument (it ends "`name` takes .."); by default its named arguments,
 ///   listed.
+/// - `rest`: named arguments it takes beyond its fields, any number of
+///   them, documented as one: `(name, doc, fields)`, `fields` a dictionary
+///   of `e.field`s by name. The API reference shows them as `..name`; the
+///   fields are for checking them (see `exam`'s `_EXAM_ARGS`).
 /// - `group`, `alias-of`: passed through to the API reference (see
 ///   docs/api.typ).
 #let declare_function(

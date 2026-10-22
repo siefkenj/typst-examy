@@ -3,6 +3,13 @@
 /// markers) and by the planner to detect page-breaking/fr-height elements.
 
 #import "markers.typ": marker_value, rubric_value
+#import "prelude.typ": PREFIX, e
+
+/// The eid of examy's `answer-box`, which elembic makes from an element's
+/// prefix and name alone: read from one declared under the same, as
+/// answer-box.typ, which imports this module, cannot be imported here (it
+/// checks that the two agree).
+#let ANSWER_BOX_EID = e.eid(e.element.declare("answer-box", prefix: PREFIX, display: it => none, fields: ()))
 
 /// The internal `sequence` and `styled` element functions.
 #let SEQUENCE_FUNC = [#none#none].func()
@@ -126,7 +133,7 @@
   // instance, which carries the call's fields.
   if c.func() == metadata and c.at("label", default: none) == <__elembic_element_tag> {
     let v = c.value
-    if type(v) == dictionary and v.at("name", default: none) == "answer-box" {
+    if type(v) == dictionary and v.at("eid", default: none) == ANSWER_BOX_EID {
       let h = v.fields.at("height", default: none)
       let inner = scan(v.fields.at("body", default: none))
       inner.fr = if type(h) == fraction { h } else { none }
@@ -270,17 +277,24 @@
   if f == SEQUENCE_FUNC {
     let kids = c.children
     let i = 0
+    let out = none
     while i < kids.len() {
       let trimmed = trim_leading_space(kids.at(i))
       if trimmed == none {
         i += 1
-      } else if trimmed != kids.at(i) {
-        return (trimmed, ..kids.slice(i + 1)).join()
       } else {
+        if trimmed != kids.at(i) { out = (trimmed, ..kids.slice(i + 1)).join() }
         break
       }
     }
-    return kids.slice(i).join()
+    // Kept as it is with nothing to trim, and its label (a labelled answer
+    // box's, say) kept on what is left, as joining would drop it.
+    if out == none {
+      if i == 0 { return c }
+      out = kids.slice(i).join()
+    }
+    let lbl = c.at("label", default: none)
+    return if lbl == none or out == none { out } else [#out#lbl]
   }
   if f == STYLED_FUNC {
     let trimmed = trim_leading_space(c.at("child"))

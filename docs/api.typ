@@ -80,8 +80,10 @@
 }
 
 /// One argument, from an `e.field` (an element's or a function's):
-/// `(name, type, doc, required, named, default)`, where `type` and `default`
-/// are written as Typst code (`default` is `none` for a required argument).
+/// `(name, type, doc, required, named, variadic, default)`, where `type` and
+/// `default` are written as Typst code (`default` is `none` for a required
+/// argument). `variadic` is false: only a function's `rest` is (see
+/// EXPORTS).
 /// A field's `meta` can give either as it is to be shown, as `type-shown` or
 /// `default-shown`: a type that takes more than is documented, say.
 #let field_to_arg(f) = (
@@ -89,6 +91,7 @@
   type: f.meta.at("type-shown", default: describe_type(f.typeinfo)),
   required: f.required,
   named: f.named,
+  variadic: false,
   default: if f.required { none } else {
     f.meta.at("default-shown", default: show_value(f.at("default", default: none)))
   },
@@ -132,10 +135,19 @@
         entry.desc = _sentence(info.doc)
         entry.args = _args(info.fields.values())
         // Named arguments taken beyond its fields (`exam`'s `config`
-        // options): `..name` in the signature, documented as one.
+        // options): `..name` in the signature, documented as one, with no
+        // type of its own (each is checked against its own field).
         let rest = info.at("rest", default: none)
         if rest != none {
-          entry.args.push((..rest, doc: _sentence(rest.doc), required: false, named: true, variadic: true, default: none))
+          entry.args.push((
+            name: rest.name,
+            type: none,
+            doc: _sentence(rest.doc),
+            required: false,
+            named: true,
+            variadic: true,
+            default: none,
+          ))
         }
       } else if entry.alias-of != none {
         entry.kind = "alias"
@@ -171,13 +183,17 @@
 /// The entry documenting the export `name` (which may be one of a group).
 #let entry(name) = ENTRIES.find(x => name in x.names)
 
+/// An argument's name as written in a call: `..name` for any number of them
+/// (a function's `rest`), else its name.
+#let arg_name(a) = if a.variadic { ".." + a.name } else { a.name }
+
 /// One argument in a signature: a positional one appears bare (an optional
 /// one, like a bubble's content, shows its default in the argument list
 /// instead), a required named one as `name: ..`, an optional named one as
-/// `name: default`, and any number of them (see `rest`) as `..name`.
+/// `name: default`, and any number of them (a function's `rest`) as `..name`.
 #let sig_arg(a) = {
-  if a.at("variadic", default: false) {
-    ".." + a.name
+  if a.variadic {
+    arg_name(a)
   } else if not a.named {
     a.name
   } else if a.required {

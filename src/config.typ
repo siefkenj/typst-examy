@@ -174,7 +174,7 @@
     e.field(
       "numbering-full",
       bool,
-      doc: "Whether a part or subpart is numbered with the numbers of the divisions it is in, as `enum`'s `full` does: `\"1.a.\"` numbers part (a) of question 1 \"1.a.\", and a function is given every level's number, `(1, 1)`. A reference then reads as the full number too, \"1.a\", and a question whose body starts with a part shows only the part's number on their shared line, which holds its own. A level whose numbers are not all counted (a division given `number: [..]` or `none`, or one inside it) is numbered on its own",
+      doc: "Whether a part or subpart is numbered with the numbers of the divisions it is in, as `enum`'s `full` does: `\"1.a.\"` numbers part (a) of question 1 \"1.a.\", and a function is given every level's number, `(1, 1)`. With an array of `numbering`s, a level's entry numbers it so if it has a counting symbol for each level (`(\"1.\", \"1.a.\")`); otherwise it is the number above it, without its trailing `.`, followed by its own: \"1(a)\". A reference then reads as the full number too, \"1.a\", and a question whose body starts with a part shows only the part's number on their shared line, which holds its own. A level whose numbers are not all counted (a division given `number: [..]` or `none`, or one inside it) is numbered on its own",
       default: false,
     ),
     e.field(
@@ -374,9 +374,10 @@
   let d = data.elements.at(e.data(config).eid, default: none)
   if d == none { return () }
   let names = ()
+  // `data-chain` has `none` for a rule with no names before a named one.
   for (args, info) in d.chain.zip(d.data-chain) {
-    if type(args) == dictionary and args.keys().any(k => k in EXAM_WIDE_OPTIONS) {
-      names += info.at("names", default: ())
+    if info != none and type(args) == dictionary and args.keys().any(k => k in EXAM_WIDE_OPTIONS) {
+      names += info.names
     }
   }
   names.dedup()

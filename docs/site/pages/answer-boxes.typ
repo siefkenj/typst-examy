@@ -163,9 +163,9 @@ A box's own arguments win over a set rule on `answer-box`, and a set rule wins o
 options. A box given `height: none` keeps it, even when `answer-box-height` is set.
 
 #note(kind: "warning")[
-  _Warning._ Inside an exam, the exam draws its answer boxes itself. It applies only the `e.set_` and
-  `e.apply` rules on answer boxes and on the `answer-box-` options. Elembic's other rules on them
-  (`e.show_`, `e.cond-set`, `e.filtered`, `e.select`, `e.reset`, and an `e.revoke` of a rule that
+  _Warning._ Inside an exam, the exam draws its answer boxes itself. It applies only the `e.set_`,
+  `e.apply`, and `e.reset` rules on answer boxes and on the `answer-box-` options. Elembic's other
+  rules on them (`e.show_`, `e.cond-set`, `e.filtered`, `e.select`, and an `e.revoke` of a rule that
   set them) are an error, whether they are written inside the exam or before it. Typst's own show
   rules on `e.selector(answer-box)`, such as `#show e.selector(answer-box): set text(blue)`, apply
   to the exam's boxes as to any other.

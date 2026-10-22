@@ -58,7 +58,10 @@
 /// numbered levels, content for custom numbers), as displayed in the gutter
 /// (trailing dot kept); `none` for an unnumbered one. With `full`, it is
 /// numbered with every level's number, as `enum`'s `full` does, when they
-/// are all counted.
+/// are all counted. An array's entry for the level with fewer counting
+/// symbols than levels (the default's `"(a)"`) would repeat its last one
+/// for each, so then it is the full number of the level above, without its
+/// trailing ".", followed by the level's own: "2(b)ii.".
 #let display_number(address, numbering: DEFAULT_NUMBERING, full: false) = {
   let number = address.last()
   if number == none { return none }
@@ -67,7 +70,10 @@
   if full and address.all(n => type(n) == int) {
     let entry = if type(numbering) == array { numbering.at(level - 1, default: "1.") } else { numbering }
     let numbers = address.map(n => n + 1)
-    return if type(entry) == function { entry(..numbers) } else { std.numbering(entry, ..numbers) }
+    if type(entry) == function { return entry(..numbers) }
+    if type(numbering) == str or _pattern(entry).pieces.len() >= level { return std.numbering(entry, ..numbers) }
+    let above = display_number(address.slice(0, -1), numbering: numbering, full: true)
+    return _strip(above) + _level_label(level, number + 1, numbering)
   }
   _level_label(level, number + 1, numbering)
 }

@@ -103,8 +103,9 @@ from its call's own arguments, its fields, and the options, in that order. That 
 exam's own `e.get`, so that the exam can read every box's height and width as it reads any other
 `box` or `block`, which it needs to share out `fr` heights and to place question numbers. A box
 inside an element the exam doesn't go through, such as `align`, draws itself, and the exam leaves a
-note of its `fr` height beside it. Elembic's other rules on answer boxes inside an exam, such as
-`e.reset`, are an error, since the exam does not follow them.
+note of its `fr` height beside it. It also follows an `e.reset`, drawing the boxes after it as if no
+rules had been set. Elembic's other rules on answer boxes inside an exam, such as `e.show_`, are an
+error, since the exam does not follow them.
 
 Use the `e` that examy exports rather than importing elembic yourself, since it is the version examy
 was made with. examy's elements are named after its version, so two versions of examy in one

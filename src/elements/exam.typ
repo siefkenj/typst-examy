@@ -264,13 +264,18 @@
       named: false,
     ),
   ),
+  rest: (
+    name: "options",
+    doc: "Any of `config`'s options, by name, e.g. `#show: exam.with(show-solutions: false, points-position: \"end\")`. They apply to everything inside the exam: its questions, and whatever comes before them in it, such as a cover page or a points table. Each is checked as `config` checks it; see `config` for every option and its default.",
+    fields: _OPTIONS,
+  ),
 )
 
-/// What `exam`'s arguments are checked against: its questions, and
-/// `config`'s options.
+/// What `exam`'s arguments are checked against: its questions, and its
+/// `rest`, `config`'s options.
 #let _EXAM_ARGS = declare_function(
   "exam",
-  fields: (_EXAM.fields.questions, .._OPTIONS.values()),
+  fields: (_EXAM.fields.questions, .._EXAM.rest.fields.values()),
   positional-error: n => "exam: takes one positional argument, the questions, got " + str(n),
   takes: "its questions and `config`'s options",
 )
@@ -333,17 +338,4 @@
 
 /// API documentation for this module's exports, consumed by docs/api.typ
 /// (keyed by export name).
-#let DOCS = (
-  exam: (
-    .._EXAM,
-    // Not a field of `_EXAM`: the options are `config`'s, checked against it
-    // (see `_EXAM_ARGS`), and documented there.
-    rest: (
-      name: "options",
-      type: "any",
-      doc: "Any of `config`'s options, by name, e.g. `#show: exam.with(show-solutions: false, points-position: \"end\")`. They apply to everything inside the exam: its questions, and whatever comes before them in it, such as a cover page or a points table. See `config` for every option and its default.",
-    ),
-  ),
-  maketitle: _MAKETITLE,
-  "name-block": _NAME_BLOCK,
-)
+#let DOCS = (exam: _EXAM, maketitle: _MAKETITLE, "name-block": _NAME_BLOCK)

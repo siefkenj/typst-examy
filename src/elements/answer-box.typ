@@ -2,7 +2,9 @@
 #import "../config.typ": config
 #import "../widen.typ": exam_content, par_events, widen_par_solutions
 #import "solution.typ": solution as solution_element
-#import "../scan.typ": STYLED_FUNC, SEQUENCE_FUNC, _find, _inside, elembic_rule, has_metadata, is_whitespace_content
+#import "../scan.typ": (
+  ANSWER_BOX_EID, STYLED_FUNC, SEQUENCE_FUNC, _find, _inside, elembic_rule, has_metadata, is_whitespace_content,
+)
 #import "../signature.typ": declare_function
 #import "../tokenize.typ": _elembic_show
 #import "../markers.typ": height_hint
@@ -29,6 +31,9 @@
   CONFIG_FIELDS.keys().map(k => (k, fields.at(k).default)).to-dict()
 }
 
+/// A label nothing has (see `resolve_boxes`).
+#let _NEVER = <examy-answer-box-never>
+
 /// What `height` and `width` hold when nothing gives them, to be taken from
 /// `config`. Every value they take means something (`none` and `auto`
 /// included), so that a box given one keeps it whatever `config` says.
@@ -48,9 +53,16 @@
 /// 0.4.0, before the rest of examy was kebab-case.
 #let _OLD_NAMES = ("default-height": "default_height", "default-width": "default_width")
 
-/// `args`, the fields a call or a set rule gives a box, with those given by
-/// their old names (see `_OLD_NAMES`) under their names now, unless also
-/// given by those.
+/// Whether `value`, given to `field`, leaves it to `config`: `_UNSET`, or
+/// `auto` for `default-height` and `default-width`, which take no other.
+#let _left(field, value) = value == _UNSET or value == auto and field.starts-with("default")
+
+/// `args`, the fields a call gives a box, with those given by their old
+/// names (see `_OLD_NAMES`) under their names now, unless also given by
+/// those: the box's constructor does this (see `answer_box`), so that a
+/// call's old name wins over a set rule's name now, as any call's field
+/// does. A set rule keeps the old name, the field of its own it is (see
+/// `_configured`).
 #let _renamed(args) = {
   for (name, old) in _OLD_NAMES {
     if old in args {
@@ -61,13 +73,10 @@
   args
 }
 
-/// Whether `value`, given to `field`, leaves it to `config`: `_UNSET`, or
-/// `auto` for `default-height` and `default-width`, which take no other.
-#let _left(field, value) = value == _UNSET or value == auto and field.starts-with("default")
-
 /// `it`, the fields of a box, with those left to `config` taken from `cfg`,
 /// the options of `CONFIG_FIELDS` in force. A field left `auto` under its
-/// name now takes what its old name was given, if anything.
+/// name now takes what its old name was given, if anything (by a set rule:
+/// a call's is renamed, see `_renamed`).
 #let _configured(it, cfg) = {
   for (name, old) in _OLD_NAMES {
     if it.at(name) == auto { it.insert(name, it.at(old)) }
@@ -338,6 +347,7 @@
   "answer-box",
   prefix: PREFIX,
   doc: _SPEC.doc,
+  construct: constructor => (..args) => constructor(..args.pos(), .._renamed(args.named())),
   display: it => if _needs_config(it) {
     e.get(get => _draw(_configured(it, config_options(get))))
   } else {
@@ -347,6 +357,7 @@
 )
 
 #let _EID = e.data(answer_box).eid
+#assert(_EID == ANSWER_BOX_EID, message: "examy: scan.typ's eid for answer-box is not its own")
 
 /// The label elembic gives each answer box it draws, which `e.selector(answer-box)`
 /// is: the exam gives it to the boxes it draws too, so that a native show rule
@@ -420,22 +431,21 @@
   let cfg = data.elements.at(_CONFIG_EID, default: none)
   let names = if ab == none { () } else { ab.names.keys() }
   if cfg != none {
+    // `data-chain` has `none` for a rule with no names before a named one.
     for (args, d) in cfg.chain.zip(cfg.data-chain) {
-      if type(args) == dictionary and _box_options(args) != (:) { names += d.at("names", default: ()) }
+      if d != none and type(args) == dictionary and _box_options(args) != (:) { names += d.names }
     }
   }
   // Whether any of the rules `entries` (each `(index, names)`, its place in
   // the chain and its names) is still in force: not undone by a later
   // `reset`, or a later `revoke` naming it.
   let active(entries) = entries.any(d => not ab.revoke-chain.any(r => (
-    r.index > d.at("index", default: 0) and (
-      r.kind == "reset" or r.at("revoking", default: none) in d.at("names", default: ())
-    )
+    r.index > d.index and (r.kind == "reset" or r.at("revoking", default: none) in d.names)
   )))
   let error = if ab == none { none } else if active(ab.show-rules.data) { "e.show_" } else if active(
     ab.cond-sets.data,
-  ) { "e.cond-set" } else if active(ab.filters.data) { "e.filtered" } else if (
-    ab.at("selects", default: (:)).at("filters", default: ()).len() > 0
+  ) { "e.cond-set" } else if active(ab.filters.data) { "e.filtered" } else if active(
+    ab.at("selects", default: (:)).at("data", default: ()),
   ) { "e.select" }
   (names: names.dedup(), error: error)
 }
@@ -447,7 +457,7 @@
 /// around answer boxes, does to them: `(fields, cfg, names, error)`,
 /// `fields`, `cfg` (the options of `CONFIG_FIELDS`) and `names` (those of
 /// the set rules in force on either, for `revoke`) updated by its `set_`
-/// rules, and an `error` for a rule the exam cannot follow, which it would
+/// and `reset` rules, and an `error` for a rule the exam cannot follow, which it would
 /// otherwise ignore, drawing the boxes wrong. `before` are the names of the
 /// rules before the exam that set `answer-box` fields or those options (see
 /// `rules_before`), which a `revoke` might name too.
@@ -463,15 +473,16 @@
     if kind == "apply" {
       stack += r.at("rules", default: ()).rev()
     } else if kind == "set" and eid == _EID {
-      fields = _given(fields, _renamed(r.args))
+      fields = _given(fields, r.args)
       names += r.at("names", default: ())
     } else if kind == "set" and options != (:) {
       cfg += options
       names += r.at("names", default: ())
-    } else if kind == "reset" and (
-      r.eids == () or _EID in r.eids or _CONFIG_EID in r.eids and cfg != CONFIG_DEFAULTS
-    ) {
-      return (fields, cfg, names, "e.reset")
+    } else if kind == "reset" {
+      // Undoes every rule before it on the elements it names (all, with
+      // none named), as it does for boxes elembic draws.
+      if r.eids == () or _EID in r.eids { fields = DEFAULT_FIELDS }
+      if r.eids == () or _CONFIG_EID in r.eids { cfg = CONFIG_DEFAULTS }
     } else if kind == "cond-set" and (eid == _EID or options != (:)) {
       return (fields, cfg, names, "e.cond-set")
     } else if kind == "filtered" and {
@@ -533,8 +544,8 @@
     + name
     + (if before { "` rule on `answer-box` before an exam" } else { "` rule inside an exam, around answer boxes," })
     + " may change them, which examy "
-    + "cannot follow: the exam draws its answer boxes itself, applying the `e.set_` and `e.apply` "
-    + "rules on them (and on `config`'s `answer-box-..` options) only. Give the boxes their fields "
+    + "cannot follow: the exam draws its answer boxes itself, applying the `e.set_`, `e.apply`, and "
+    + "`e.reset` rules on them (and on `config`'s `answer-box-..` options) only. Give the boxes their fields "
     + "on the call (`#answer-box(height: ..)[..]`), or scope a set rule around them instead."
 )
 
@@ -563,15 +574,25 @@
   if _find(c, is_box, first: true).len() == 0 { return c }
   assert(before.error == none, message: if before.error == none { "" } else { _rule_error(before.error, before: true) })
   // A box from `args`, its call's, with the rules in force `at` (a frame's
-  // `fields`, `cfg`, and `names`).
-  let draw(args, at) = {
-    let all = _given(at.fields, _renamed(args))
+  // `fields`, `cfg`, and `names`), and the label `lbl` its call was given,
+  // if any.
+  let draw(args, at, lbl) = {
+    let all = _given(at.fields, args)
     // Its body is drawn with the rules in force here, whose names a `revoke`
     // in it might name too.
     all.body = resolve_boxes(all.body, at.fields, at.cfg, before: (names: before.names + at.names, error: none))
     // On the `box` or `block` it draws, which the exam keeps whole, so that
     // the label stays.
-    [#_draw(_configured(all, at.cfg))#_SHOWN]
+    let drawn = [#_draw(_configured(all, at.cfg))#_SHOWN]
+    if lbl == none { return drawn }
+    // A label of its own goes around it, for a `query` or a link to find:
+    // on `styled` content, with a show rule that matches nothing, as the
+    // exam joins what it lays out, which splices a sequence into the one
+    // beside it and drops the sequence's label.
+    [#{
+        show _NEVER: it => it
+        drawn
+      }#lbl]
   }
   // A frame for each container being rebuilt: what is left of it, last
   // first (`todo`), what it is rebuilt from so far (`done`), the rules in
@@ -610,12 +631,12 @@
     let at = (fields: frames.last().fields, cfg: frames.last().cfg, names: frames.last().names)
     // A box spliced into this sequence: its body is the part before.
     let spliced = _tag_args(x)
-    let args = if spliced != none and frames.last().done.len() > 0 {
+    let (args, lbl) = if spliced != none and frames.last().done.len() > 0 {
       let _ = frames.last().done.pop()
-      spliced
-    } else { box_args(x) }
+      (spliced, none)
+    } else { (box_args(x), if type(x) == content { x.at("label", default: none) }) }
     if args != none {
-      frames.last().done.push(draw(args, at))
+      frames.last().done.push(draw(args, at, lbl))
       frames.last().changed = true
       frames.last().boxes = true
       continue
@@ -630,7 +651,9 @@
       // splice sequences among them (an elembic rule's, a box's) into it.
       frames.push(frame(x.children.rev(), at, parts => SEQUENCE_FUNC(parts), x))
     } else if type(x) == content and x.func() == STYLED_FUNC {
-      frames.push(frame((x.child,), at, parts => STYLED_FUNC(parts.first(), x.styles), x))
+      // Its styles only, not all of `x`, in the closure.
+      let styles = x.styles
+      frames.push(frame((x.child,), at, parts => STYLED_FUNC(parts.first(), styles), x))
     } else {
       // Boxes inside an element the walk does not rebuild (`align`, a list,
       // ...) draw themselves, and `scan` reads only what their calls give:
@@ -642,7 +665,7 @@
       }
       let hints = inside
         .filter(((args, ..)) => "height" not in args)
-        .map(((args, fields, cfg)) => _configured(_given(fields, _renamed(args)), cfg).height)
+        .map(((args, fields, cfg)) => _configured(_given(fields, args), cfg).height)
         .filter(h => type(h) == fraction)
         .map(height_hint)
       frames.last().boxes = true

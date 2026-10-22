@@ -2,7 +2,8 @@
 // `default-height` and `default-width` had in 0.4.0, are still accepted, on
 // a call and in a set rule: a box given a field by its old name lays out
 // exactly as one given it by its name now. Given both names, the name now
-// wins; a call's old name wins over a set rule's name now, as any call does.
+// wins; a call's old name wins over a set rule's name now, as any call does,
+// whether the exam draws the box or it draws itself.
 // Each case is laid out both ways, on a page of its own, and every mark
 // placed after a box must land in the same place.
 #import "/src/lib.typ": *
@@ -56,11 +57,21 @@
     },
   ),
   (
+    "a call's old name over a rule's name now, in an exam and inside an align, which draws itself",
+    way => {
+      show: e.set_(answer-box, default-height: 3cm)
+      exam[
+        #question[Exam's: #answer-box(width: 100%, ..named(way, 1cm, 2cm))[] #mark(3, way, 1)]
+        #question[Its own: #align(left, answer-box(width: 100%, ..named(way, 1cm, 2cm))[]) #mark(3, way, 2)]
+      ]
+    },
+  ),
+  (
     "outside any exam",
     way => {
-      [Name: #answer-box(..named(way, 1.5cm, 4cm))[] #mark(3, way, 1)]
+      [Name: #answer-box(..named(way, 1.5cm, 4cm))[] #mark(4, way, 1)]
       answer-box(width: 100%, ..named(way, 1.5cm, 4cm))[]
-      mark(3, way, 2)
+      mark(4, way, 2)
     },
   ),
 )
