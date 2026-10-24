@@ -2,6 +2,26 @@
 
 ## 1.0.0 (unreleased)
 
+- `points-table(by: "part")` and `by: "subpart"` give a column per part or
+  subpart. A question or part with points of its own keeps a column of them,
+  so every point is in one column and the total is the same at every level.
+  `config`'s `points-table-by` takes them too.
+- A points table labels each column exactly as a reference to its question
+  or part reads (so `numbering-full` labels a part "2 (a)"), and each label is
+  a link to it. An unnumbered question (`number: none`) reads "??", as a
+  reference to it does, instead of "–".
+- Fixed: with `points-position: "end"`, a badge that wrapped to a line of
+  its own, after a full-width answer box of fixed height in the line, was
+  drawn at the left instead of flush right.
+- Fixed: on a page of no fixed height (`#set page(height: auto)`), the badge
+  at the `"end"` of a question or part with an `fr` answer box was drawn
+  over what followed it, such as the next part's badge. An `fr` height comes
+  to nothing on such a page, so the box is only its outline; the badge now
+  follows it.
+- The badge of bonus points (`intent: "bonus"`) reads "(2 bonus points)"
+  instead of "(2 points)". It is drawn by the new option
+  `bonus-points-format`, as `points-format` draws the others, e.g.
+  `bonus-points-format: p => [(#p Bonuspunkte)]`.
 - Fixed: content that takes no room, such as a labelled `#metadata(..)`, was
   left out of the exam when it stood alone at the start of a question's
   body, or next to an `fr` answer box, with nothing visible beside it: a
@@ -102,8 +122,9 @@
   where it should be drawn. (The argument drew the solution after the
   division's parts, run into the last line of its text.)
 - Documentation site: <https://siefkenj.github.io/typst-examy/>, with a guide
-  whose examples are rendered from their own code, and a reference generated
-  from the package itself. The README is shorter, and links to it.
+  whose examples are rendered from their own code, a reference generated
+  from the package itself, and a playground for writing an exam in the
+  browser. The README is shorter, and links to it.
 - Every function checks its arguments: a misspelled argument or a value of
   the wrong type is reported at the call, naming the argument and the types
   it takes (e.g. "question: `points` must be int | float | none, got "2"").
@@ -162,8 +183,9 @@
   `numbering-full: true` numbers a part with its question's number too
   ("1.a."), as `enum`'s `full` does, in references as well; with one
   pattern per level, a level whose pattern has one counting symbol follows
-  the number above it ("1(a)"). `strings` sets
-  the words examy prints (Question, Points, Total, ...).
+  the number above it, after a thin space and without its trailing "." or
+  "," ("1 (a)"), unless every level is a number in digits ("1.1."). `strings`
+  sets the words examy prints (Question, Points, Total, ...).
 - `answer-box(stroke: ..)` sets the box's outline, or removes it (`none`);
   `fill`, `radius`, `outset`, and `clip` work as `box`'s do.
 - `solution(otherwise: ..)` shows content in the solution's place when

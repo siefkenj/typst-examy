@@ -1,4 +1,5 @@
-// The points badge each division shows (`assign_badges`), the numbering
+// The points badge each division shows (`assign_badges`), its words (and
+// those of a bonus badge), the numbering
 // options as `refs` applies them, and the labels of the points table. The
 // checks are pure; a visual record of each case, as a document draws it,
 // follows at the end.
@@ -6,6 +7,8 @@
 #import "/src/parse.typ": parse
 #import "/src/points.typ": assign_badges, compute_points_data
 #import "/src/refs.typ": display_number, format_component, reference_body
+#import "/src/config.typ": default_points_format
+#import "/src/markers.typ": excerpt
 #import "/src/divisions.typ": part, question, subpart
 #import "/src/lib.typ": config, e, exam, points-table
 #import "/tests/record.typ": rule
@@ -16,7 +19,7 @@
 #let badges(body, ..args) = (
   assign_badges(parse(tokenize(body)), ..args).filter(it => it.kind == "division").map(it => it.badge)
 )
-#let points(n, total: false) = (kind: "points", points: n, total: total)
+#let points(n, total: false, bonus: false) = (kind: "points", points: n, total: total, bonus: bonus)
 
 // --- without totals, a division shows its own points, if any ---
 #{
@@ -25,6 +28,28 @@
     #question(points: 3)[q]
   ])
   assert(got == (none, points(2), points(2), points(3)), message: repr(got))
+}
+
+// --- a division's own bonus points are a bonus badge, with totals or
+// without; practice points are an ordinary one ---
+#for show-totals in (false, true) {
+  let got = badges(
+    question(points: 3)[
+      #part(points: 2, intent: "bonus")[a]
+      #part(points: 1, intent: "practice")[b]
+    ],
+    show-totals: show-totals,
+  )
+  assert(got == (points(3), points(2, bonus: true), points(1)), message: repr(got))
+}
+
+// --- the default badges' words ---
+#{
+  let words(..args) = excerpt(default_points_format(..args), 60)
+  assert.eq(words(1), "(1 point)")
+  assert.eq(words(2), "(2 points)")
+  assert.eq(words(1, bonus: true), "(1 bonus point)")
+  assert.eq(words(2.5, bonus: true), "(2.5 bonus points)")
 }
 
 // --- with totals, a division without points shows those of its parts ---
@@ -101,12 +126,12 @@
   assert(display_number(at(1, 3), numbering: (roman,)) == "iv)")
 }
 
-// --- the points table labels a question by its number as a reference
-// shows it ---
+// --- the points table labels a question as a reference to it reads: "??"
+// for an unnumbered one ---
 #{
   let items = parse(tokenize([#question(points: 1)[a] #question(points: 2, number: none)[b]]))
   let data = compute_points_data(items, numbering: ("Q1.",))
-  assert(data.map(q => q.label) == ([Q1], sym.dash.en), message: repr(data))
+  assert(data.map(q => q.label) == ([Q1], [??]), message: repr(data))
   assert(data.map(q => q.total_points) == (1, 2))
 }
 
@@ -138,6 +163,20 @@
 #case([Own points beside points on the parts: a conflict, with totals.], points-show-totals: true)[
   #question(points: 1)[#part(points: 2)[a] #part(points: 2)[b]]
 ]
+#case([Bonus points are labelled so: "(1 bonus point)", "(2 bonus points)".])[
+  #question(points: 3)[
+    #part(points: 1, intent: "bonus")[a, bonus]
+    #part(points: 2, intent: "bonus")[b, bonus]
+  ]
+  #question(points: 2, intent: "bonus")[A bonus question.]
+]
+#case(
+  [`points-format: p => [[#p]]` and `bonus-points-format: p => [[#p bonus]]`: "[3]", "[2 bonus]".],
+  points-format: p => [[#p]],
+  bonus-points-format: p => [[#p bonus]],
+)[
+  #question(points: 3)[#part(points: 2, intent: "bonus")[b, bonus]]
+]
 #case([A bonus part beside own points: no conflict, 4.], points-show-totals: true)[
   #question(points: 4)[#part(points: 2, intent: "bonus")[b, bonus]]
 ]
@@ -153,8 +192,32 @@
   #question[one]
   #question[two]
 ]
-#case([The points table labels questions as references do: Q1, then a dash.], numbering: ("Q1.",))[
+#case([The points table labels questions as references do: Q1, then ?? for an unnumbered one.], numbering: ("Q1.",))[
   #question(points: 1)[a]
   #question(points: 2, number: none)[b]
 ]
 #align(center, points-table())
+
+// --- `strings` takes `points-format` and `bonus-points-format` too, though
+// it is not documented, as an author easily puts them there; the options
+// themselves win over it. Each format marks which one drew a badge ---
+#let marked(name, word) = p => [#metadata(name)<format>(#p #word)]
+#case(
+  [`points-format` and `bonus-points-format` in `strings`: "(2 Punkte)", "(1 Bonuspunkte)"; the table's words too.],
+  strings: (
+    points: [Punkte],
+    points-format: marked("strings", [Punkte]),
+    bonus-points-format: marked("strings bonus", [Bonuspunkte]),
+  ),
+)[
+  #question(points: 2)[#part(points: 1, intent: "bonus")[b]]
+]
+#align(center, points-table(bonus: true))
+#case(
+  [The option wins over `strings`: "(2 pts)".],
+  strings: (points-format: marked("strings", [Punkte])),
+  points-format: marked("option", [pts]),
+)[
+  #question(points: 2)[a]
+]
+#context assert.eq(query(<format>).map(m => m.value), ("strings", "strings bonus", "option"))

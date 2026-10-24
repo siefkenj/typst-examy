@@ -54,9 +54,10 @@ content. To omit a number completely, you can set `number: none`.
 == Numbering styles
 
 The numbering style of each level is set for the document via the global #api("config")'s
-`numbering` option. It takes what `enum`'s `numbering` takes: a pattern such as `"1.a.i."`, whose
-counting symbols number the levels in turn, a function of the number, or an array with one of
-those per level.
+`numbering` option. It takes an array of numbering patterns (e.g., `("1.", "(a)", "(i)")`) or
+numbering strings following the same format as an `enum`'s `numbering` argument (e.g., `"1.a.i."`).
+Questions/parts/subparts are labelled hierarchically with the left-most numbering pattern being
+assigned to the outer-most question/part/subpart.
 
 #example(
   ```typ
@@ -77,11 +78,8 @@ those per level.
   inset: 5em,
 )
 
-With `numbering-full: true`, as with `enum`'s `full`, a part or subpart is numbered with the
-numbers of the divisions it is in: `"1.a.i."` numbers part (b) of question 2 "2.b.", and a
-function is given every level's number. References then read as the full number too, and a
-question whose body starts with a part shows only the part's number on their shared line, as it
-holds the question's.
+To force each question/part/subpart to be labeled with a globally unique identifier, use
+`numbering-full: true`. This is similar to setting the `full` argument on an `enum`.
 
 #example(
   ```typ
@@ -96,12 +94,13 @@ holds the question's.
   inset: 3em,
 )
 
-== A question of a set height
+== A question's height
 
-Giving a question/part/subpart a `height` reserves exactly that much space for it, parts included.
-The height can be a length like `4.5cm`, or a fraction like `1fr`, which takes a share of the space
-left on the page, just as an answer box does. Any `fr` answer boxes inside share the space that the
-text leaves over.
+To allow students a space to write, use #api(
+  "answer-box",
+  body: raw("#answer-box(height: ...)[]"),
+). However, if you need a question and all its part/subparts to cumulatively take up a fixed amount
+of space, you can provide a `height: ...` argument directly on a question.
 
 #example(
   ```typ
@@ -120,35 +119,35 @@ text leaves over.
   ```,
 )
 
-A question/part/subpart with a `height` is laid out as a single block, so it cannot break across
-pages, and a `#pagebreak()` inside it is an error. Its content is not shrunk to fit either: content
-taller than the `height` overflows onto whatever comes next.
-
-#note[
-  _Note._ The preferred way to give a question room to write in is an answer box, #api(
+#warning[
+  _Warning._
+  A question/part/subpart with a `height` is laid out as a single block, so it cannot break across
+  pages, and the height of its part/subparts cannot be shared with other questions. Usually, you wan
+  to use something like #api(
     "answer-box",
-    body: raw("#answer-box(width: 100%, height: 3cm)[]"),
-  ). If you don't want a border, set `stroke: none` to get blank space of that size. On the answer
-  key, that space holds the solution.
+    body: raw("#answer-box(width: 100%, stroke: none, height: ...)[]"),
+  ) instead.
 ]
+
+== Pagebreaks
+
+`#pagebreak()` works inside questions, parts, and subparts. The question/part/subpart continues on
+the next page with the same indentation.
 
 #example(
   ```typ
   #question(points: 2)[
     Explain why every differentiable function is continuous.
-    #answer-box(width: 100%, height: 2.5cm, stroke: none)[
+    #answer-box(width: 100%, height: 1.5cm)[
       #solution[If $f'(a)$ exists,
         $f(a + h) - f(a) = h dot (f(a + h) - f(a)) / h
           -> 0 dot f'(a) = 0$.]
+    ]
+    #pagebreak()
+    #answer-box(width: 100%, height: 1.5cm)[
+      #text(fill:gray)[_Scratch area_]
     ]
   ]
   #question[The next question.]
   ```,
 )
-
-== Page breaks inside questions
-
-`#pagebreak()` works inside questions, parts, and subparts. The question/part/subpart continues on
-the next page at the same indentation, without repeating its number, and the `fr` answer boxes on
-each page share the space left on that page. The only exception is a question/part/subpart with a
-`height` (see above), where a `#pagebreak()` is an error.

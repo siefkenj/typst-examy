@@ -5,7 +5,7 @@
 #import "tokenize.typ": apply_styles, stack_of
 #import "plan.typ": cumulative_indent, frame_plan, hold, items_of
 #import "config.typ": DEFAULT_EXAM_OPTIONS
-#import "points.typ": conflict_warning, points_marker
+#import "points.typ": conflict_warning, division_marker, points_marker
 #import "refs.typ": display_number, division_anchor, enum_numbering, reference_body, update_current_address
 #import "rubric.typ": owner_update, rubric_area, rubric_end_area, rubric_head, rubric_leaders, stacked_badges
 
@@ -32,8 +32,9 @@
   if badge == none { none } else if badge.kind == "conflict" { "start" } else { opts.points-position }
 }
 
-/// The points badge of a division, as drawn by `points-format`, or the
-/// conflict warning in its place.
+/// The points badge of a division, as drawn by `points-format` (or
+/// `bonus-points-format`, for bonus points), or the conflict warning in its
+/// place.
 ///
 /// The badge is boxed so it acts as a single atomic inline unit: it never
 /// breaks across lines, and its inner space is not stretched by paragraph
@@ -45,7 +46,8 @@
   let badge = _badge(d)
   if badge == none { return none }
   if badge.kind == "conflict" { return conflict_warning(badge) }
-  box((opts.points-format)(badge.points))
+  let format = if badge.bonus { opts.bonus-points-format } else { opts.points-format }
+  box(format(badge.points))
 }
 
 /// The badges of `d_idxs` that go in the margin, as they are drawn there
@@ -100,9 +102,15 @@
 /// the same line when there is room for it. After a block, such as an `fr`
 /// answer box, it takes a line of its own, which in a segment of fixed
 /// (`fr`) height the box gives up to it.
+///
+/// When the line is too full for it, as after a full-width box in the line,
+/// it wraps, still flush right: the line may break only before the space
+/// that pushes it right (at the zero-width space), never between the two
+/// (the word joiner), and the empty box keeps that space from being dropped
+/// as the start of the new line.
 #let _end_badge(d, opts) = {
   if _badge_position(d, opts) != "end" { return none }
-  h(.5em, weak: true) + h(1fr) + _badge_body(d, opts)
+  [#h(.5em, weak: true)#sym.zws#box()#h(1fr)#sym.wj#_badge_body(d, opts)]
 }
 
 /// The gutter label for a division, placed to the left of the body.
@@ -223,8 +231,10 @@
     // room.
     place(anchor)
   }
-  // Where `get-num-points-page` finds the division's points.
+  // Where `get-num-points-page` finds the division's points, and where the
+  // points table links its label to.
   if d.fields.points != none { points_marker(d.fields.points, d.fields.intent) }
+  division_marker(d.address)
   if _badge_position(d, opts) == "start" { _badge_body(d, opts) + h(.5em) }
 }
 
@@ -304,7 +314,11 @@
   (
     heading: (
       title: [#opts.strings.question #reference_body(d.address, (), numbering: opts.numbering, full: opts.numbering-full)],
-      points: if weight != none { (opts.points-format)(weight) },
+      points: if weight == none { none } else if d.fields.points != none and d.fields.intent == "bonus" {
+        (opts.bonus-points-format)(weight)
+      } else {
+        (opts.points-format)(weight)
+      },
     ),
     points: weight,
   )
@@ -412,6 +426,15 @@
   )
 }
 
+/// The height an exam lays out `h`, a division's own `height`, at: a
+/// fraction as `opts.fr-unit` says (see `exam_options`), anything else as it
+/// is. (A segment of `fr` boxes is sized in `render_segment`.)
+#let fr_height(h, opts) = {
+  if type(h) != fraction or opts.fr-unit == none { h } else if opts.fr-unit == auto { auto } else {
+    h / 1fr * opts.fr-unit
+  }
+}
+
 /// Render one peer segment (produced by splitting a subtree at breaks).
 /// `base` styles (already applied around it, see `render`) are skipped.
 #let render_segment(items, seg, opts, ends: (:), n: none, base: 0) = {
@@ -474,14 +497,32 @@
     if owners.len() > 0 { rubric_leaders(owner.address, owners, opts.rubric.position) }
   }
 
+  let segment(height, above) = block(width: 100%, inset: (left: seg.indent), height: height, sticky: seg.sticky, above: above, {
+    // A pagebreak buried inside an opaque chunk cannot break out of this
+    // block; degrade it to a column break like the old implementation.
+    show pagebreak: it => colbreak(weak: it.weak)
+    set enum(numbering: enum_numbering(opts.numbering, owner.level))
+    body
+  })
+  let unit = opts.fr-unit
   apply_styles(
-    block(width: 100%, inset: (left: seg.indent), height: height, sticky: seg.sticky, above: above, {
-      // A pagebreak buried inside an opaque chunk cannot break out of this
-      // block; degrade it to a column break like the old implementation.
-      show pagebreak: it => colbreak(weak: it.weak)
-      set enum(numbering: enum_numbering(opts.numbering, owner.level))
-      body
-    }),
+    if type(height) != fraction or unit == none {
+      segment(height, above)
+    } else if unit == auto {
+      // Where a share of the page comes to nothing (see `exam_options`): as
+      // tall as what it holds, its `fr` boxes nothing, so that what follows
+      // them (a badge at the `"end"`) stays in the flow.
+      segment(auto, above)
+    } else {
+      // Each `1fr` as `unit` (see `exam_options`): what the segment holds
+      // besides its `fr` boxes, which come to nothing measured, and `unit`
+      // times its `fr`s on top, which its `fr` boxes share, so that a box of
+      // `height: 2fr` is `2 * unit` tall.
+      block(width: 100%, sticky: seg.sticky, above: above, layout(size => {
+        let rest = measure(segment(auto, auto), width: size.width).height
+        segment(rest + height / 1fr * unit, auto)
+      }))
+    },
     own_styles,
   )
 }
@@ -616,10 +657,13 @@
       // holds planned and rendered inside it, so that `fr` answer boxes in
       // it share its height.
       let inner = frame_plan(items, instr.division, labels: instr.labels, rubrics: instr.at("rubrics", default: ()))
-      block(width: 100%, height: items_of(items).at(instr.division).fields.height, breakable: false, render(
+      let height = fr_height(items_of(items).at(instr.division).fields.height, opts)
+      // In a block of fixed height, `fr` heights are shares of it again.
+      let inner_opts = if height == auto { opts } else { (..opts, fr-unit: none) }
+      block(width: 100%, height: height, breakable: false, render(
         items,
         inner,
-        opts: opts,
+        opts: inner_opts,
         root: instr.division,
         base: depth,
       ))

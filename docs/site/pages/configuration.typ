@@ -21,9 +21,10 @@ only.
 
 The options that decide how questions are numbered and laid out are read once, where the exam
 starts, and hold for all of its questions: `numbering`, `numbering-full`, `strings`,
-`points-format`, `points-position`, `points-show-totals`, `show-rubrics`, and the `rubric-`
-options. Give them to the exam, or set them in a rule above `#show: exam`. A rule inside the exam
-that sets one of them around some of its questions is an error, since it would change nothing.
+`points-format`, `bonus-points-format`, `points-position`, `points-show-totals`, `show-rubrics`, and
+the `rubric-` options. Give them to the exam, or set them in a rule above `#show: exam`. A rule
+inside the exam that sets one of them around some of its questions is an error, since it would
+change nothing.
 
 #example(
   ```typ
@@ -89,6 +90,7 @@ To check whether solutions are shown, use #api("show-solutions") instead (see
     page: "points.html",
     options: (
       "points-format",
+      "bonus-points-format",
       "strings",
       "points-position",
       "points-show-totals",

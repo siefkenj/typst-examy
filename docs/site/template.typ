@@ -98,6 +98,9 @@
   },
 )
 
+/// A warning set apart from the text: a note of the warning kind.
+#let warning(body) = note(kind: "warning", body)
+
 /// One of the package's screenshots, from examples/images/ (published with
 /// the site by site.typ).
 #let screenshot(name, alt, caption: none) = _either(
@@ -558,13 +561,34 @@
 /// A link from the current page to another, by its path from the root.
 #let _href(current, path) = _root(current) + path
 
-/// The guide's pages, headed "Guide": in the sidebar, and in the menu on a
-/// small screen.
+/// The playground (pages/playground.typ), a page of its own, outside the
+/// guide: by its path from the site's root.
+#let PLAYGROUND = "playground.html"
+
+/// A link to the playground, which opens it in a tab of its own. In the
+/// guide's list, an edit icon follows it (see style.css), to set it apart from
+/// the pages.
+#let _playground_link(current) = html.elem(
+  "a",
+  attrs: (
+    class: "playground-link",
+    href: _href(current, PLAYGROUND),
+    target: "_blank",
+    title: "Write an exam in the browser (opens in a new tab)",
+  ),
+  [Playground],
+)
+
+/// The guide's pages, headed "Guide", and the playground: in the sidebar, and
+/// in the menu on a small screen.
 #let _guide_list(current) = {
   let here(path) = if path == current.path { (aria-current: "page") } else { (:) }
   html.elem("p", attrs: (class: "sidebar-title"), [Guide])
-  html.elem("ul", for p in PAGES.filter(p => p.path != "reference.html") {
-    html.elem("li", html.elem("a", attrs: (href: _href(current, p.path), ..here(p.path)), p.title))
+  html.elem("ul", {
+    for p in PAGES.filter(p => p.path != "reference.html") {
+      html.elem("li", html.elem("a", attrs: (href: _href(current, p.path), ..here(p.path)), p.title))
+    }
+    html.elem("li", _playground_link(current))
   })
 }
 
@@ -608,21 +632,28 @@
   })
 }
 
+/// A page's head, titled `title`: the stylesheet, the icon, and the live
+/// editor, when the site is built with it (see site.typ).
+#let _head(current, title) = html.head({
+  let to(path) = _href(current, path)
+  html.meta(charset: "utf-8")
+  html.meta(name: "viewport", content: "width=device-width, initial-scale=1")
+  html.title(title)
+  html.link(rel: "stylesheet", href: to("style.css"))
+  html.link(rel: "icon", href: to("favicon.svg"), type: "image/svg+xml")
+  if sys.inputs.at("live-files", default: none) != none {
+    html.elem("script", attrs: (type: "module", src: to("live.js")))
+  }
+})
+
 /// A whole page of the site: `current` is its entry in `ALL_PAGES`, and
 /// `heading` what its heading shows, if not its title.
 #let layout(current, body, heading: auto) = html.html(lang: "en", {
   let to(path) = _href(current, path)
-  html.head({
-    html.meta(charset: "utf-8")
-    html.meta(name: "viewport", content: "width=device-width, initial-scale=1")
-    html.title(if current.path == "index.html" [examy — exams, quizzes and homework in Typst] else [#current.title — examy])
-    html.link(rel: "stylesheet", href: to("style.css"))
-    html.link(rel: "icon", href: to("favicon.svg"), type: "image/svg+xml")
-    // The live editor, when the site is built with it (see site.typ).
-    if sys.inputs.at("live-files", default: none) != none {
-      html.elem("script", attrs: (type: "module", src: to("live.js")))
-    }
-  })
+  let title = if current.path == "index.html" {
+    [examy — exams, quizzes and homework in Typst]
+  } else [#current.title — examy]
+  _head(current, title)
   html.body({
     html.elem("header", attrs: (class: "topbar"), {
       html.elem("a", attrs: (class: "brand", href: to("index.html")), [examy])
@@ -645,6 +676,7 @@
         html.elem("nav", attrs: (class: "toplinks", aria-label: "Links"), {
           html.elem("a", attrs: (href: to("index.html")), [Guide])
           html.elem("a", attrs: (href: to("reference.html")), [Reference])
+          _playground_link(current)
           html.elem("a", attrs: (href: to(MANUAL_PDF), download: ""), [PDF])
           html.elem("a", attrs: (href: "https://typst.app/universe/package/examy"), [Typst Universe])
           html.elem("a", attrs: (href: REPOSITORY), [GitHub])
@@ -664,5 +696,27 @@
       examy #VERSION · Generated from the package source with Typst's HTML export. ·
       #link(REPOSITORY)[Source]
     ])
+  })
+})
+
+/// The playground's page (see pages/playground.typ): `body` fills the window
+/// under a top bar of its own, which links back to the guide and the
+/// reference.
+#let playground_layout(body) = html.html(lang: "en", {
+  let current = (path: PLAYGROUND, title: "Playground")
+  _head(current, [Playground — examy])
+  html.elem("body", attrs: (class: "playground-page"), {
+    html.elem("header", attrs: (class: "topbar"), {
+      html.elem("a", attrs: (class: "brand", href: "index.html"), [examy])
+      html.elem("span", attrs: (class: "version"), [v#VERSION])
+      html.elem("span", attrs: (class: "topbar-title"), [Playground])
+      html.elem("nav", attrs: (class: "toplinks", aria-label: "Links"), {
+        html.elem("a", attrs: (href: "index.html"), [Guide])
+        html.elem("a", attrs: (href: "reference.html"), [Reference])
+        // Not on a narrow screen, where the bar has room for two.
+        html.elem("a", attrs: (class: "toplink-wide", href: REPOSITORY), [GitHub])
+      })
+    })
+    body
   })
 })

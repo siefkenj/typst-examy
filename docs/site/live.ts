@@ -1,25 +1,17 @@
 // The live editor: an "Edit" button on every example, which turns its code
 // into a code editor (editor.ts) and recompiles the example as it is edited,
-// in the browser, with typst.ts (https://github.com/Myriad-Dreamin/typst.ts).
+// in the browser, with typst.ts (see compiler.ts).
 //
 // The site works without it: every example is rendered when the site is
-// built. The compiler (about 11 MB, compressed) is only downloaded once an
-// example is first edited. It compiles live-main.typ, which renders the
-// edited code with the same render.typ the site is built with, from the
-// package's own source (live/files.json, written by site.typ). elembic is
-// fetched from packages.typst.org, and the fonts from typst-assets on
-// jsDelivr, by typst.ts itself.
+// built. The compiler is only downloaded once an example is first edited. It
+// compiles live-main.typ, which renders the edited code with the same
+// render.typ the site is built with, from the package's own source.
 //
-// Bundled by Vite (see vite.config.ts) into live.js; typst.ts 0.8 is the
-// first to bundle Typst 0.15, which examy needs.
+// Bundled by Vite (see vite.config.ts) into live.js, which also starts the
+// playground on the page that has one (see playground.ts).
 
-/// <reference types="vite/client" />
-import compilerWasm from "@myriaddreamin/typst-ts-web-compiler/pkg/typst_ts_web_compiler_bg.wasm?url";
-import rendererWasm from "@myriaddreamin/typst-ts-renderer/pkg/typst_ts_renderer_bg.wasm?url";
-
+import { describe, element, isLoaded, loadCompiler, withSource, type Typst } from "./compiler";
 import type { Editor } from "./editor";
-
-type Typst = typeof import("@myriaddreamin/typst.ts/contrib/snippet").$typst;
 
 /** The inputs live-main.typ reads: see the `data-` attributes of `example`. */
 type Inputs = Record<"solutions" | "wrap" | "width" | "height" | "inset", string>;
@@ -27,57 +19,9 @@ type Inputs = Record<"solutions" | "wrap" | "width" | "height" | "inset", string
 /** The editor's state, also as `data-live` on the example's figure. */
 type State = "loading" | "compiling" | "ready" | "error";
 
-/**
- * The package's files (see site.typ), beside live.js at the site's root:
- * found from the page's script tag, so that a page in a folder, such as the
- * reference's, finds them too.
- */
-const FILES = new URL(
-  "live/files.json",
-  document.querySelector<HTMLScriptElement>('script[src$="live.js"]')?.src ?? document.baseURI,
-).href;
-
-/** The compiler, loaded once, with the package's files in place. */
-let compiler: Promise<Typst> | null = null;
-/** Whether the compiler has finished loading. */
-let loaded = false;
-
-function loadCompiler(): Promise<Typst> {
-  if (compiler) return compiler;
-  const loading = (async () => {
-    const [files, { $typst }] = await Promise.all([
-      fetch(FILES).then((r) => {
-        if (!r.ok) throw new Error(`${FILES}: ${r.status}`);
-        return r.json() as Promise<Record<string, string>>;
-      }),
-      import("@myriaddreamin/typst.ts/contrib/snippet"),
-    ]);
-    $typst.setCompilerInitOptions({ getModule: () => compilerWasm });
-    $typst.setRendererInitOptions({ getModule: () => rendererWasm });
-    for (const [path, text] of Object.entries(files)) {
-      await $typst.addSource(path, text);
-    }
-    loaded = true;
-    return $typst;
-  })();
-  compiler = loading;
-  // A failed load can be retried.
-  loading.catch(() => {
-    if (compiler === loading) compiler = null;
-  });
-  return loading;
-}
-
-/** One compilation at a time: the compiler has a single /example.typ. */
-let queue: Promise<unknown> = Promise.resolve();
+/** Compile `source` as the example, /example.typ, with `job`. */
 function withExample<T>(source: string, job: (typst: Typst) => Promise<T>): Promise<T> {
-  const run = queue.then(async () => {
-    const $typst = await loadCompiler();
-    await $typst.addSource("/example.typ", source);
-    return job($typst);
-  });
-  queue = run.catch(() => {});
-  return run;
+  return withSource("/example.typ", source, job);
 }
 
 /** One view of an example (see live-main.typ). */
@@ -107,25 +51,6 @@ function fullDocument(source: string, wrap: string): Promise<string> {
     if (typeof value !== "string") throw new Error("could not write the whole document");
     return value;
   });
-}
-
-/** A compiler error as text. typst.ts reports diagnostics in several shapes. */
-function describe(error: unknown): string {
-  if (Array.isArray(error)) return error.map(describe).join("\n");
-  const text = error instanceof Object && "message" in error ? String(error.message) : String(error);
-  // Diagnostics arrive as Rust's debug output of `SourceDiagnostic`s: keep
-  // just their messages.
-  const messages = [...text.matchAll(/message: "((?:[^"\\]|\\.)*)"/g)].map((m) =>
-    m[1].replace(/\\(.)/g, "$1").replace(/^assertion failed: /, ""),
-  );
-  return messages.length ? messages.join("\n") : text;
-}
-
-function element<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  props: Partial<HTMLElementTagNameMap[K]> = {},
-): HTMLElementTagNameMap[K] {
-  return Object.assign(document.createElement(tag), props);
 }
 
 function enhance(figure: HTMLElement): void {
@@ -180,7 +105,7 @@ function enhance(figure: HTMLElement): void {
   let generation = 0;
   async function update(): Promise<void> {
     const mine = ++generation;
-    setState("compiling", loaded ? "Compiling…" : "Loading the Typst compiler…");
+    setState("compiling", isLoaded() ? "Compiling…" : "Loading the Typst compiler…");
     try {
       const svgs: string[] = [];
       for (const paper of papers) {
@@ -261,7 +186,7 @@ function enhance(figure: HTMLElement): void {
       },
       (e: unknown) => showError(`Could not load the editor: ${describe(e)}`),
     );
-    if (!loaded) setState("loading", "Loading the Typst compiler…");
+    if (!isLoaded()) setState("loading", "Loading the Typst compiler…");
     loadCompiler().then(
       () => {
         if (figure.dataset.live === "loading") setState("ready", "");
@@ -289,7 +214,7 @@ function enhance(figure: HTMLElement): void {
       if (toFull) {
         shortText = code;
         try {
-          if (code !== original) setState("compiling", loaded ? "Writing the whole document…" : "Loading the Typst compiler…");
+          if (code !== original) setState("compiling", isLoaded() ? "Writing the whole document…" : "Loading the Typst compiler…");
           fullWritten = code === original ? originalFull : await fullDocument(code, figure.dataset.wrap ?? "auto");
         } catch (e) {
           showError(describe(e));
@@ -315,3 +240,7 @@ function enhance(figure: HTMLElement): void {
 }
 
 document.querySelectorAll<HTMLElement>("figure.example").forEach(enhance);
+
+// The playground (pages/playground.typ), loaded only where there is one.
+const playground = document.querySelector<HTMLElement>(".playground");
+if (playground) void import("./playground").then(({ mount }) => mount(playground));

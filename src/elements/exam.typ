@@ -187,7 +187,7 @@
   opts.rubric.present = present
   opts.rubric.drawn = present and opts.rubric.shown
   opts.rubric.traced = opts.rubric.drawn and opts.rubric.trace
-  let data = compute_points_data(items, numbering: opts.numbering)
+  let data = compute_points_data(items, numbering: opts.numbering, full: opts.numbering-full)
   // Each exam keeps its own data, and marks where it starts and ends, so
   // that a reader can tell which exam it is about (see `exam_points_data`).
   EXAMS_STARTED.step()

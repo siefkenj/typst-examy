@@ -1,27 +1,15 @@
 #import "../template.typ": *
 
-Giving any question/part/subpart a value with `points: x` will cause an "(x points)" annotation to
-show next to the question/part/subpart. Related to points are:
-
-- #api("points-table", body: raw("#points-table()")) renders a scoring table.
-- #api("num-points", body: raw("#num-points")) and #api("num-questions", body: raw(
+Supplying a question/part/subpart with `points: x` will cause an "(x points)" annotation to be shown
+next to the question/part/subpart. Points defined this way will show up in the #api(
+  "points-table",
+  body: raw("#points-table()"),
+) as well as related functions like #api("num-points", body: raw("#num-points")), #api(
+  "num-questions",
+  body: raw(
     "#num-questions",
-  )) give the total number of points and questions, and #api(
-    "num-bonus-points",
-    body: raw("#num-bonus-points"),
-  ) the total number of bonus points.
-- `intent: "bonus"` marks bonus points, which are tracked separately and excluded from the regular
-  totals.
-- #api("num-points-page", body: raw("#num-points-page")) gives the number of points on the current
-  page, and #api("page-score-box", body: raw("#page-score-box()")) draws a score box for a page
-  footer.
-- Each count is also a number, to compute or test with: #api("get-num-points", body: raw(
-    "get-num-points()",
-  )), #api("get-num-questions", body: raw("get-num-questions()")), #api(
-    "get-num-bonus-points",
-    body: raw("get-num-bonus-points()"),
-  ), and #api("get-num-points-page", body: raw("get-num-points-page()")). They need `context`:
-  `#context calc.ceil(get-num-points() * .6)` is a pass mark of 60%.
+  ),
+), etc..
 
 #example(
   ```typ
@@ -47,54 +35,65 @@ show next to the question/part/subpart. Related to points are:
   ```,
 )
 
-The totals can be used anywhere in the document, even before the first question. A part's points
-are added to its question's total, and points marked `intent: "practice"` are left out of every
-total.
+== The "points" marker <points-badge>
 
-== Where the badge goes <points-badge>
+A question/part/subpart with a value for `points: ...` will display the number of points for that
+question. The display can be customized in several ways.
+
+=== Customizing the position of "points"
 
 The global #api("config")'s `points-position` option sets where the points badge is placed:
 
-- `"start"` (the default): before the first word of the question.
-- `"margin-left"` or `"margin-right"`: in the page margin, level with the question's first line. The
-  margin must be wide enough to fit it.
-- `"end"`: flush right, at the end of the question's own text (answer boxes included) and before its
-  first part.
+/ `"start"`: (default) Directly after the question number.
+/ `"margin-left"` or `"margin-right"`: In the page margin, level with the question number.
+/ `"end"`: Flush right, at the end of the question (including any answer boxes), but before any
+  part/subparts.
 
-The badge itself is drawn by `points-format`, a function of the number of points. Use it to change
-the badge's wording, or to translate it:
 
 #example(
   ```typ
   #show: exam.with(
     points-position: "end",
-    points-format: p => [[#p]],
   )
 
   #question(points: 2)[What is $2 + 2$?]
-  #question(points: 1)[
-    Name a prime number.
+  #question[
+    #part(points: 1)[
+      Name a prime number.  
+      #answer-box(height:1fr)[]
+    ]
     #part(points: 3)[Prove there are infinitely many.]
   ]
   ```,
 )
 
+=== Customizing the display and spelling of "points"
+
+The display of points can be fully customized by setting the `points-format` and
+`bonus-points-format` config options.
+
 #example(
   ```typ
   #show: exam.with(
     points-format: p => [(#p #if p == 1 [Punkt] else [Punkte])],
+    bonus-points-format: p => [
+      (#p #if p == 1 [Bonuspunkt] else [Bonuspunkte])
+    ],
   )
 
   #question(points: 1)[Ein Punkt.]
-  #question(points: 2)[Zwei Punkte.]
+  #question(points: 2)[
+    Zwei Punkte.
+    #part(points: 1, intent: "bonus")[Ein Bonuspunkt.]
+  ]
   ```,
 )
 
-== Totals on questions
+=== Question totals
 
-With `points-show-totals: true`, a question whose parts have points shows the total of its parts,
-and each part still shows its own points. The total is for display only; it is not counted again in
-#api("num-points") or the points table.
+With `points-show-totals: true`, a question/part/subpart will show subtotals with the cumulative
+number of points of all descendants. These additional subtotals are for display only and do not show
+up in #api("num-points") or the points table.
 
 #example(
   ```typ
@@ -103,25 +102,28 @@ and each part still shows its own points. The total is for display only; it is n
   #question[
     A question whose parts have points.
     #part(points: 2)[Two points.]
-    #part(points: 2)[Two more.]
+    #part[
+      #subpart(points: 1)[My subpart]
+      #subpart(points: 1)[My other subpart]
+    ]
   ]
   #question(points: 4)[
-    A question with points of its own *and* on its parts has no
+    A question with points *and* points on its parts has no
     single total.
     #part(points: 1)[One point.]
   ]
   ```,
 )
 
-A question with points of its own _and_ points on its parts, like the second one above, shows a
-warning in red instead of its badge. Give the points to one or the other. Bonus and practice parts
-don't count, so a `question(points: 4)` with a bonus part still shows "(4 points)".
+A question with `points` that also has a part declaring `points` is an error. A red warning is shown
+in this case.
 
-== Points table layouts
+== Points tables
 
-#api("points-table") takes its layout as arguments. Each one left out is the global #api("config")'s
-option of the same name, `points-table-..`, so all of a document's tables can be set at once, e.g.
-`#show: exam.with(points-table-direction: "vertical")`:
+A #api("points-table", body: raw("#points-table()")) displays point totals for each question.
+Multiple points tables can be included in an exam, and a points table can be customized via the
+`points-table-..` options on the global #api("config") or by passing arguments directly to
+#api("points-table", body: raw("#points-table()"))
 
 #example(
   ```typ
@@ -146,16 +148,110 @@ option of the same name, `points-table-..`, so all of a document's tables can be
   width: 9cm,
 )
 
-`by: "page"` totals the points per page instead of per question, and `max-columns: 8` splits a
-long horizontal table into several tables, one below the other.
+By default, a points table has a column per question. Specifying `by:` as `"part"` or `subpart` will
+create columns for each part or subpart instead.
 
-== Points per page
+#example(
+  ```typ
+  #show: exam
 
-#api("num-points-page") shows the number of points on the current page, where each
-question/part/subpart counts toward the page it starts on. #api("get-num-points-page") gives it as a
-number, which needs `context`, to test it (or to count another page, or the bonus points), e.g. to
-leave pages without points out. #api("page-score-box") is a ready-made "Score: \_\_\_\_ / 7" box
-for a footer, and draws nothing on pages without points:
+  #points-table(by: "part")
+
+  #question(points: 2)[What is $2 + 2$?]
+  #question[
+    #part(points: 3)[Factor $x^2 - 1$.]
+  ]
+  #question(points: 4)[
+    Solve $x^2 = 4$.
+    #part(points: 5)[Check both answers.]
+  ]
+  ```,
+)
+
+=== Localizing the points table
+
+Examy includes some fixed strings which can be localized via the `strings` option in the global
+#api("config"), including those that show up in the points table.
+
+#example(```typ
+#show: exam.with(
+  strings: (
+    question: [Aufgabe],
+    points: [Punkte],
+    total: [Summe],
+  ),
+  points-format: p => [(#p #if p == 1 [Punkt] else [Punkte])],
+)
+
+#points-table()
+
+#question(points: 2)[What is $2 + 2$?]
+#question(points: 3)[Factor $x^2 - 1$.]
+```)
+
+#note[
+  _Note._ The `points` string affects the word "Points" as displayed in the points table. To change
+  the display of "points" in a question, use `points-format`
+]
+
+== Computing with points
+
+The globally accessible variables #api("num-points", body: raw("#num-points")), #api(
+  "num-bonus-points",
+  body: raw("#num-bonus-points"),
+) and #api(
+  "num-points-page",
+  body: raw("#num-points-page"),
+) can be used to show point totals anywhere in an exam. However, because these return content
+wrapped in `context {...}`, you cannot do computations with them.
+
+
+To compute with or test a points value, use the `get-*` versions of these functions (#api(
+  "get-num-points",
+  body: raw("get-num-points()"),
+), #api("get-num-bonus-points", body: raw("get-num-bonus-points()")), and #api(
+  "get-num-points-page",
+  body: raw("get-num-points-page()"),
+)). These functions must be called inside of a Typst `context[...]`.
+
+#example(
+  ```typ
+  #show: exam
+
+  #context [
+    This exam is worth #get-num-points() points over
+    #get-num-questions() questions. 
+    
+    You have 50 minutes: about
+    #calc.round(50 / get-num-points(), digits: 1) minutes per point.
+
+    A pass is #calc.ceil(get-num-points() * .6) points or more.
+
+    #if get-num-bonus-points() > 0 [
+      There are also #get-num-bonus-points() bonus points.
+    ]
+  ]
+
+  #question(points: 4)[Differentiate $x^3 sin x$.]
+  #question(points: 6)[
+    Find $integral_0^1 x e^x dif x$.
+    #part(points: 2, intent: "bonus")[
+      *Bonus:* find $integral_0^1 x^2 e^x dif x$.
+    ]
+  ]
+  ```,
+)
+
+=== Showing points per page
+
+You can use #api("num-points-page", body: raw("#num-points-page")) or #api(
+  "get-num-points-page",
+  body: `#get-num-points-page()`,
+) in a page header or footer (or anywhere else on the page) to shows the number of points on the
+current page, subtotalling each question/part/subpart appearing on that page.
+
+This can be used to achieve effects like adding a "Score: \_\_\_\_ / 7" box on the footer of each
+page.
 
 ```typ
 #set page(footer: align(right, page-score-box()))
@@ -167,19 +263,3 @@ for a footer, and draws nothing on pages without points:
   out of #num-points-page
 ])
 ```
-
-== Localization
-
-Examy includes some fixed strings which can be localized via the `strings` option in the global
-#api("config").
-
-```typ
-#show: e.set_(config, strings: (
-  question: [Aufgabe],
-  points: [Punkte],
-  total: [Summe],
-))
-```
-
-The words in a points badge, "(2 points)", are drawn by `points-format` instead (see
-#link(<points-badge>)[Where the badge goes]).

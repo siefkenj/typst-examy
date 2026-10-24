@@ -14,6 +14,8 @@
 
 #import "site/template.typ": PAGES, REFERENCE_PAGES, entry_heading, entry_page, layout, output_css, paged_documents
 #import "site/pages/rubrics.typ": PAGED_EXAMPLES as RUBRIC_EXAMPLES
+#import "site/pages/playground.typ": playground-page
+#import "api.typ": EXPORTS, entry, page_path, summary
 #import "logo/logo.typ": examy-logo
 
 #for p in PAGES {
@@ -24,6 +26,10 @@
 #for p in REFERENCE_PAGES {
   document(p.path, title: p.title, layout(p, entry_page(p.entry), heading: entry_heading(p.entry)))
 }
+
+// The playground: a page of its own, outside the guide, which the guide's
+// pages open in a new tab.
+#document("playground.html", title: "Playground", playground-page())
 
 // The examples shown as images of a paged rendering, rather than in HTML
 // frames, which do not keep where things are (see `example`'s `paged-name`).
@@ -54,6 +60,25 @@
 #if LIVE_FILES != none {
   let paths = LIVE_FILES.split(",").filter(p => p != "") + ("typst.toml", "docs/site/render.typ", "docs/site/live-main.typ", "docs/site/live-full.typ")
   asset("live/files.json", json.encode(paths.map(p => ("/" + p, read("/" + p))).to-dict(), pretty: false))
+
+  // What the playground's editor completes (see completions.ts): every
+  // export, with its summary and the arguments it takes by name, from the
+  // reference's own data, and its page there. `options` is whether it also
+  // takes `config`'s options by name (as `exam` does). Arguments kept only
+  // under an old name are left out.
+  let export(x) = {
+    let target = if x.alias-of != none { EXPORTS.find(y => y.name == x.alias-of) } else { x }
+    let args = target.args.filter(a => a.named and not a.variadic and not a.doc.starts-with("Deprecated"))
+    (
+      name: x.name,
+      kind: x.kind,
+      summary: if x.desc != none { summary(x.desc) },
+      page: page_path(entry(x.name)),
+      args: args.map(a => (name: a.name, type: a.type, default: a.default, doc: a.doc)),
+      options: target.args.any(a => a.named and a.variadic),
+    )
+  }
+  asset("live/completions.json", json.encode(EXPORTS.map(export), pretty: false))
 }
 
 // The screenshots of whole documents, which an inline example cannot show

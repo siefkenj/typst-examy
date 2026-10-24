@@ -131,20 +131,129 @@
   (header.join("\n"), setup.trim(), rule, code.trim()).filter(b => b != none and b != "").join("\n\n")
 }
 
+/// A label's name, as Typst reads one in `<name>` or `@name`: not ending in
+/// the `.` or `:` that may follow a reference in text.
+#let _NAME = "[\\p{L}_](?:[\\p{L}\\p{N}_\\-:.]*[\\p{L}\\p{N}_\\-])?"
+
+/// `src` with each of its labels (`<name>`, `label("name")`) and each
+/// reference to one (`@name`) renamed with `suffix`, so that another copy of
+/// the same example in the document, an answer key or another page of it,
+/// or another example using the same names, has labels of its own: Typst
+/// allows a label only once where something refers to it. Raw text (in
+/// backticks) is left as it is, as Typst shows it as it is. Approximate: a
+/// `@` after a letter, a quote, or a backslash, as in an email address, a
+/// package's name, or an escaped `\@`, is left alone.
+#let _relabel(src, suffix) = {
+  let renamed(s) = (
+    s
+      .replace(regex("<(" + _NAME + ")>"), m => "<" + m.captures.first() + suffix + ">")
+      .replace(regex("label\\(\"([^\"]+)\"\\)"), m => "label(\"" + m.captures.first() + suffix + "\")")
+      .replace(regex("(^|[^\\p{L}\\p{N}_\"\\\\])@(" + _NAME + ")"), m => m.captures.at(0) + "@" + m.captures.at(1) + suffix)
+  )
+  // The raw spans (three backticks or one) kept, what is between them
+  // renamed.
+  let out = ""
+  let at = 0
+  for m in src.matches(regex("```[\\s\\S]*?```|`[^`]*`")) {
+    out += renamed(src.slice(at, m.start)) + m.text
+    at = m.end
+  }
+  out + renamed(src.slice(at))
+}
+
+/// How many pages an example's code makes: one more than it has page breaks.
+#let _pages(src) = src.matches(regex("\\bpagebreak\\(")).len() + 1
+
+/// A page's label, above it in an example of several pages.
+#let _page_label(n) = text(font: "DejaVu Sans", size: 7pt, tracking: .06em, fill: luma(125), upper[Page #n])
+
+/// `body(i)`, an example of `pages` pages (its copy for the page `i`, from
+/// 0; see `render`), each `width` wide and `height` high
+/// (`auto`: as high as the highest), one above the other, each labelled with
+/// its number, a dashed rule between them. A page cannot break inside the
+/// box an example is drawn in, so the example is laid out as that many
+/// columns instead, its page breaks breaking the column, and each page shows
+/// its own column, with the `inset` around it, through a window onto them.
+/// The example is drawn once per page, as it is once per view (the exam and
+/// its answer key) anyway.
+#let _stacked(body, pages, width, height, inset) = context {
+  // Each side as Typst's insets give it: by name, by axis, or `rest`.
+  let side(name, axis) = inset.at(name, default: inset.at(axis, default: inset.at("rest", default: 0pt)))
+  let (left, right, top, bottom) = (side("left", "x"), side("right", "x"), side("top", "y"), side("bottom", "y"))
+  // Room for what one page draws outside it, clear of the next page.
+  let gap = left + right + 1em
+  let all(i) = {
+    show pagebreak: it => colbreak(weak: it.weak)
+    columns(pages, gutter: gap, body(i))
+  }
+  let total = pages * width + (pages - 1) * gap
+  // As high as the highest page: the pages break only where the code does.
+  let height = if height == auto { measure(block(width: total, all(0))).height } else { height }
+  let page(i) = block(
+    width: left + width + right,
+    height: top + height + bottom,
+    clip: true,
+    place(dx: left - i * (width + gap), dy: top, block(width: total, height: height, all(i))),
+  )
+  let rule = line(length: left + width + right, stroke: (paint: luma(185), thickness: .6pt, dash: "dashed"))
+  stack(
+    spacing: .9em,
+    ..range(pages).map(i => (
+      ..if i > 0 { (rule,) },
+      stack(spacing: .5em, pad(left: left, _page_label(i + 1)), page(i)),
+    )).flatten(),
+  )
+}
+
+/// `render`, for the example numbered `n` in the document.
+#let render-numbered(src, n, solutions: false, wrap: auto, width: 12cm, height: none, inset: 0pt) = {
+  show: e.prepare()
+  show: e.set_(lib.config, show-solutions: solutions)
+  set text(size: 11pt)
+  // In an example of no fixed height, an `fr` height (an answer box's, a
+  // question's) would come to nothing: each `1fr` is laid out as 1cm.
+  show: if height == none { e.set_(lib.config, _fr-unit: 1cm) } else { it => it }
+  let height = if height == none { auto } else { height }
+  let inset = if type(inset) == dictionary { inset } else { (left: inset) }
+  // The copy of the example for page `i` (from 0), its labels its own on
+  // the answer key and on every page after the first (see `_relabel`).
+  let body(i) = {
+    let suffix = "--ex" + str(n) + (if solutions { "--key" } else { "" }) + if i > 0 { "--page" + str(i + 1) } else { "" }
+    eval(_relabel(compiled_source(src, wrap: wrap), suffix), mode: "markup", scope: dictionary(lib))
+  }
+  let pages = _pages(src)
+  if pages == 1 {
+    block(inset: (bottom: .3em, ..inset), block(width: width, height: height, body(0)))
+  } else {
+    // The room below the last line kept inside each page's window.
+    let bottom = inset.at("bottom", default: inset.at("y", default: inset.at("rest", default: 0pt)))
+    _stacked(body, pages, width, height, (..inset, bottom: bottom + .3em))
+  }
+}
+
+/// Counts the examples rendered, so that each has labels of its own (see
+/// `render`).
+#let _EXAMPLES = counter("examy-docs/examples")
+
 /// An example compiled as the exam (`solutions: false`) or as its answer key,
 /// on a page `width` wide and `height` high (`none`: as high as it is), with
 /// `inset` around it for what is drawn outside the page's text, such as a
 /// label run out into the margin: a length for the left side, or a
 /// dictionary of sides. A little room is kept below the last line in any
-/// case, for its descenders.
+/// case, for its descenders. Code with page breaks is drawn as one page more
+/// than it has breaks, one above the other (see `_stacked`).
 #let render(src, solutions: false, wrap: auto, width: 12cm, height: none, inset: 0pt) = {
-  show: e.prepare()
-  show: e.set_(lib.config, show-solutions: solutions)
-  set text(size: 11pt)
-  let height = if height == none { auto } else { height }
-  let inset = if type(inset) == dictionary { inset } else { (left: inset) }
-  block(
-    inset: (bottom: .3em, ..inset),
-    block(width: width, height: height, eval(compiled_source(src, wrap: wrap), mode: "markup", scope: dictionary(lib))),
+  _EXAMPLES.step()
+  // Each example's labels are its own, numbered after it (see `_relabel`):
+  // two examples using the same label would otherwise put it twice in the
+  // document, which Typst does not allow.
+  context render-numbered(
+    src,
+    _EXAMPLES.get().first(),
+    solutions: solutions,
+    wrap: wrap,
+    width: width,
+    height: height,
+    inset: inset,
   )
 }

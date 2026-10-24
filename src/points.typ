@@ -1,16 +1,16 @@
 /// Point totals, the scoring table, and the points on each page. The exam
-/// element computes the per-question data once from the parsed item tree
+/// element computes the per-division data once from the parsed item tree
 /// and stores it in a state; the functions here read the final value, so
 /// they work anywhere in the document (even before the exam). Points by page
 /// come from markers the exam leaves where each division's points are drawn.
 
 #import "prelude.typ": *
 #import "config.typ": config, DEFAULT_NUMBERING
-#import "refs.typ": format_component
+#import "refs.typ": reference_body
 #import "signature.typ": declare_function, define
 
-/// The per-question point data of every exam in the document, one array per
-/// exam, in order. A document can hold several exams (a bundle export of
+/// The per-division point data of every exam in the document, one array per
+/// exam, in order (see `compute_points_data`). A document can hold several exams (a bundle export of
 /// the exam and its key, or a page of examples), so each reader picks its
 /// own exam (see `exam_points_data`).
 #let points_data_state = state(PREFIX + "/points-data", ())
@@ -23,13 +23,22 @@
 /// in; else the next exam, as a points table on a cover page is about the
 /// exam that follows; else the last one, as a total at the end of a document
 /// is. `none` if there is no exam. Needs context.
-#let exam_points_data() = {
+/// `(index, rows)`: the index of that exam among the document's (from 0),
+/// and its rows, one per division; `none` if there is no exam.
+#let _exam_rows() = {
   let all = points_data_state.final()
   if all.len() == 0 { return none }
   let started = EXAMS_STARTED.get().first()
   let ended = EXAMS_ENDED.get().first()
   let i = if started > ended { started - 1 } else { calc.min(started, all.len() - 1) }
-  all.at(i)
+  (i, all.at(i))
+}
+
+/// The point data of the exam a reader at `here()` is about (see
+/// `_exam_rows`): a row per question. Needs context.
+#let exam_points_data() = {
+  let found = _exam_rows()
+  if found == none { none } else { found.last().filter(r => r.level == 1) }
 }
 
 /// The label of the marker each division with points leaves at its start
@@ -40,22 +49,80 @@
 /// `get-num-points-page` and the table by page count. Invisible.
 #let points_marker(points, intent) = [#metadata((points: points, intent: intent))#POINTS_MARKER]
 
-/// How a question is labelled in the points table: its number as a reference
-/// would show it (without a trailing "."), or a dash for an unnumbered one.
-#let _question_label(number, numbering) = {
-  if number == none { sym.dash.en } else { format_component(0, number, numbering: numbering) }
+/// The label of the marker every division leaves at its start, with its
+/// address, for the points table to link to (see `division_marker`).
+#let DIVISION_MARKER = label(PREFIX + "/division")
+
+/// The marker a division leaves where it starts. Invisible.
+#let division_marker(address) = [#metadata(address)#DIVISION_MARKER]
+
+/// How a division is labelled in the points table: exactly as a reference
+/// to it reads from outside its exam ("2 (a)"; "2(a)" with `full`), an
+/// unnumbered division and those in it included ("??", "?? (a)").
+#let _division_label(d, numbering, full) = reference_body(d.address, (), numbering: numbering, full: full)
+
+/// The point data of an exam, from its parsed items: a row per division, in
+/// order, with its `level`, `address`, `number`, and `label` (see
+/// `_division_label`); its own regular and bonus points, `own` and
+/// `own-bonus`; and its `total_points` and `total_bonus_points`, its own
+/// with all of its parts' (see `assign_points`).
+#let compute_points_data(items, numbering: DEFAULT_NUMBERING, full: false) = {
+  items
+    .filter(it => it.kind == "division")
+    .map(d => {
+      let p = if d.fields.points == none { 0 } else { d.fields.points }
+      (
+        level: d.level,
+        address: d.address,
+        number: d.number,
+        label: _division_label(d, numbering, full),
+        own: if d.fields.intent == none { p } else { 0 },
+        own-bonus: if d.fields.intent == "bonus" { p } else { 0 },
+        total_points: d.total_points,
+        total_bonus_points: d.total_bonus_points,
+      )
+    })
 }
 
-/// Extract the per-question point data from parsed items.
-#let compute_points_data(items, numbering: DEFAULT_NUMBERING) = {
-  items
-    .filter(it => it.kind == "division" and it.level == 1)
-    .map(q => (
-      number: q.number,
-      label: _question_label(q.number, numbering),
-      total_points: q.total_points,
-      total_bonus_points: q.total_bonus_points,
-    ))
+/// The columns of a points table of `rows` (see `compute_points_data`) by
+/// `level` (1 for questions, 2 for parts, 3 for subparts): `(label, points,
+/// bonus, address)` each, in order. Pure.
+///
+/// A division at `level` has a column of its points and all of its parts',
+/// if they come to anything; one above `level`, a column of its own points,
+/// if it has any, its parts' being in columns of their own. A question none
+/// of whose divisions has a column has one of its own, so that every
+/// question is in the table. Each point is in exactly one column, so the
+/// total is the same at every level.
+#let table_columns(rows, level) = {
+  let column(r, points, bonus) = (
+    label: r.label,
+    points: points,
+    bonus: if bonus == none or bonus == 0 { none } else { bonus },
+    address: r.address,
+  )
+  let out = ()
+  // The columns of the current question's divisions, and the question.
+  let held = ()
+  let question = none
+  for r in rows + ((level: 1, end: true),) {
+    if r.level == 1 {
+      if question != none {
+        out += if held == () { (column(question, question.total_points, question.total_bonus_points),) } else { held }
+      }
+      if r.at("end", default: false) { break }
+      question = r
+      held = ()
+    }
+    if r.level == level {
+      if r.total_points > 0 or r.total_bonus_points != none {
+        held.push(column(r, r.total_points, r.total_bonus_points))
+      }
+    } else if r.level < level and (r.own > 0 or r.own-bonus > 0) {
+      held.push(column(r, r.own, r.own-bonus))
+    }
+  }
+  out
 }
 
 /// The singular and plural names of the divisions at a level, for the
@@ -64,8 +131,10 @@
 
 /// Decide the points badge of every division, given `config`'s
 /// `points-show-totals` and `points-position`. Pure. Each division gets
-/// - `badge`: `none`; `(kind: "points", points: n, total: bool)`, the number
-///   to show, and whether it is the total of the division's parts; or
+/// - `badge`: `none`; `(kind: "points", points: n, total: bool, bonus:
+///   bool)`, the number to show, whether it is the total of the division's
+///   parts, and whether they are bonus points (drawn by
+///   `bonus-points-format`); or
 ///   `(kind: "conflict", own: n, parts: m)` when, showing totals, a division
 ///   has points of its own as well as regular points on its parts, so that
 ///   neither is its total;
@@ -83,17 +152,18 @@
   items.map(it => {
     if it.kind != "division" { return it }
     let own = it.fields.points
+    let bonus = it.fields.intent == "bonus"
     let badge = if not show-totals {
-      if own == none { none } else { (kind: "points", points: own, total: false) }
+      if own == none { none } else { (kind: "points", points: own, total: false, bonus: bonus) }
     } else {
       let own_regular = if own != none and it.fields.intent == none { own } else { 0 }
       let parts = it.total_points - own_regular
       if own != none and parts > 0 {
         (kind: "conflict", own: own, parts: parts, level: it.level)
       } else if own != none {
-        (kind: "points", points: own, total: false)
+        (kind: "points", points: own, total: false, bonus: bonus)
       } else if parts > 0 {
-        (kind: "points", points: parts, total: true)
+        (kind: "points", points: parts, total: true, bonus: false)
       } else {
         none
       }
@@ -294,8 +364,8 @@
     ),
     e.field(
       "by",
-      e.types.union(auto, "question", "page"),
-      doc: "Whether to total the points by question or by page; by page, a page without points is left out. `auto`: `config`'s `points-table-by`.",
+      e.types.union(auto, "question", "part", "subpart", "page"),
+      doc: "What to total the points by: `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"`. By part, each part has a column of its points and its subparts'; a question with points of its own has a column of them too, before its parts', and one with no parts with points has a column of its points. By subpart likewise, each part or question with points of its own having a column of them. Every point is in one column, so the total is the same either way. A column is labelled as a reference to its question or part reads, and links to it. By page, a page without points is left out. `auto`: `config`'s `points-table-by`.",
       default: auto,
     ),
     e.field(
@@ -342,10 +412,21 @@
       strings.page,
     )
   } else {
-    let data = exam_points_data()
+    let found = _exam_rows()
     (
-      if data == none { () } else {
-        data.map(q => (label: q.label, points: q.total_points, bonus: q.total_bonus_points))
+      if found == none { () } else {
+        let (i, rows) = found
+        let level = ("question", "part", "subpart").position(x => x == o.by) + 1
+        // Where each division of that exam starts, by its address, to link
+        // its label to: the markers after its start, before the next's.
+        let starts = (:)
+        for m in query(DIVISION_MARKER) {
+          if EXAMS_STARTED.at(m.location()).first() == i + 1 { starts.insert(repr(m.value), m.location()) }
+        }
+        table_columns(rows, level).map(c => {
+          let at = starts.at(repr(c.address), default: none)
+          (..c, label: if at == none { c.label } else { link(at, c.label) })
+        })
       },
       strings.question,
     )

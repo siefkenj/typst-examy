@@ -54,14 +54,25 @@
 /// A label without its trailing "." (a function's result is kept as is).
 #let _strip(s) = if type(s) == str and s.ends-with(".") { s.slice(0, -1) } else { s }
 
+/// Whether `s`, a level's own label, is a number in digits alone, but for a
+/// trailing "." or ",".
+#let _numeric(s) = {
+  if type(s) != str { return false }
+  let digits = if s.ends-with(".") or s.ends-with(",") { s.slice(0, -1) } else { s }
+  digits != "" and digits.clusters().all(c => c in "0123456789")
+}
+
 /// The number of the division at `address` (root first: 0-based ints for
 /// numbered levels, content for custom numbers), as displayed in the gutter
 /// (trailing dot kept); `none` for an unnumbered one. With `full`, it is
 /// numbered with every level's number, as `enum`'s `full` does, when they
 /// are all counted. An array's entry for the level with fewer counting
 /// symbols than levels (the default's `"(a)"`) would repeat its last one
-/// for each, so then it is the full number of the level above, without its
-/// trailing ".", followed by the level's own: "2(b)ii.".
+/// for each, so then it is the full number of the level above followed by
+/// the level's own. When every level's own label is a number in digits,
+/// the full number above keeps its punctuation, and is followed by the
+/// level's own directly when it ends in "." or ",": "2.1.3.". Otherwise it
+/// drops a trailing "." or ",", and a thin space parts them: "2 (b) ii.".
 #let display_number(address, numbering: DEFAULT_NUMBERING, full: false) = {
   let number = address.last()
   if number == none { return none }
@@ -73,7 +84,12 @@
     if type(entry) == function { return entry(..numbers) }
     if type(numbering) == str or _pattern(entry).pieces.len() >= level { return std.numbering(entry, ..numbers) }
     let above = display_number(address.slice(0, -1), numbering: numbering, full: true)
-    return _strip(above) + _level_label(level, number + 1, numbering)
+    let own = _level_label(level, number + 1, numbering)
+    let numeric = range(level).all(i => _numeric(_level_label(i + 1, address.at(i) + 1, numbering)))
+    let ends = type(above) == str and (above.ends-with(".") or above.ends-with(","))
+    if numeric and ends { return above + own }
+    let trimmed = if ends { above.slice(0, -1) } else { above }
+    return trimmed + str(sym.space.thin) + own
   }
   _level_label(level, number + 1, numbering)
 }

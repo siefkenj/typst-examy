@@ -48,8 +48,39 @@
 )
 
 /// The points badge when `points-format` is not configured: "(1 point)",
-/// "(2 points)".
-#let default_points_format(points) = [(#points #if points == 1 [point] else [points])]
+/// "(2 points)"; with `bonus`, the badge when `bonus-points-format` is not
+/// configured: "(1 bonus point)", "(2 bonus points)".
+#let default_points_format(points, bonus: false) = {
+  let word = if points == 1 [point] else [points]
+  if bonus [(#points bonus #word)] else [(#points #word)]
+}
+
+/// The options that draw words, which `strings` takes too, though it is
+/// not documented, as an author easily puts them there: `strings:
+/// (points: [Punkte], points-format: p => ..)`. The option of the same name
+/// wins over it (see `exam_options`).
+#let _STRINGS_FORMATS = ("points-format", "bonus-points-format")
+
+/// `strings`' type: a dictionary of content, as documented, which takes the
+/// functions of `_STRINGS_FORMATS` too, named and failing as it would
+/// without them.
+#let _STRINGS_TYPE = {
+  let base = e.types.dict(content)
+  let formats(d) = d.keys().filter(k => k in _STRINGS_FORMATS and type(d.at(k)) == function)
+  let words(d) = {
+    for k in formats(d) { let _ = d.remove(k) }
+    d
+  }
+  e.types.wrap(
+    base,
+    check: _ => d => e.types.cast(words(d), base).first(),
+    cast: _ => d => e.types.cast(words(d), base).last() + formats(d).map(k => (k, d.at(k))).to-dict(),
+    // Still a dictionary, folded as before: a rule's keys over the last's.
+    output: prev => prev,
+    fold: prev => prev,
+    error: _ => d => e.types.cast(words(d), base).last(),
+  )
+}
 
 #let config = e.element.declare(
   "config",
@@ -174,19 +205,25 @@
     e.field(
       "numbering-full",
       bool,
-      doc: "Whether a part or subpart is numbered with the numbers of the divisions it is in, as `enum`'s `full` does: `\"1.a.\"` numbers part (a) of question 1 \"1.a.\", and a function is given every level's number, `(1, 1)`. With an array of `numbering`s, a level's entry numbers it so if it has a counting symbol for each level (`(\"1.\", \"1.a.\")`); otherwise it is the number above it, without its trailing `.`, followed by its own: \"1(a)\". A reference then reads as the full number too, \"1.a\", and a question whose body starts with a part shows only the part's number on their shared line, which holds its own. A level whose numbers are not all counted (a division given `number: [..]` or `none`, or one inside it) is numbered on its own",
+      doc: "Whether a part or subpart is numbered with the numbers of the divisions it is in, as `enum`'s `full` does: `\"1.a.\"` numbers part (a) of question 1 \"1.a.\", and a function is given every level's number, `(1, 1)`. With an array of `numbering`s, a level's entry numbers it so if it has a counting symbol for each level (`(\"1.\", \"1.a.\")`); otherwise it is the number above it followed by its own, after a thin space and without the trailing `.` or `,` of the one above (\"1 (a)\"), unless every level is a number in digits, which keep their punctuation (\"1.1.\"). A reference then reads as the full number too, \"1.a\", and a question whose body starts with a part shows only the part's number on their shared line, which holds its own. A level whose numbers are not all counted (a division given `number: [..]` or `none`, or one inside it) is numbered on its own",
       default: false,
     ),
     e.field(
       "strings",
-      e.types.dict(content),
-      doc: "The words examy prints itself, keyed by `question`, `page`, `points`, `bonus`, `score`, and `total`. Only the keys given are replaced, e.g. `strings: (total: [Gesamt])`. The points badge's words are set by `points-format`",
+      _STRINGS_TYPE,
+      doc: "The words examy prints itself, keyed by `question`, `page`, `points`, `bonus`, `score`, and `total`. Only the keys given are replaced, e.g. `strings: (total: [Gesamt])`. The points badge's words are set by `points-format` and `bonus-points-format`",
       default: DEFAULT_STRINGS,
     ),
     e.field(
       "points-format",
       e.types.union(auto, function),
-      doc: "How the points badge of a question, part, or subpart is drawn: a function taking the number of points and returning content, e.g. `p => [[#p]]` or `p => [(#p Punkte)]`. `auto` is \"(1 point)\", \"(2 points)\"",
+      doc: "How the points badge of a question, part, or subpart is drawn: a function taking the number of points and returning content, e.g. `p => [[#p]]` or `p => [(#p Punkte)]`. `auto` is \"(1 point)\", \"(2 points)\". Bonus points are drawn by `bonus-points-format`",
+      default: auto,
+    ),
+    e.field(
+      "bonus-points-format",
+      e.types.union(auto, function),
+      doc: "How the points badge of a question, part, or subpart with `intent: \"bonus\"` is drawn, as `points-format` draws the others: a function taking the number of points and returning content, e.g. `p => [[#p bonus]]` or `p => [(#p Bonuspunkte)]`. `auto` is \"(1 bonus point)\", \"(2 bonus points)\"",
       default: auto,
     ),
     e.field(
@@ -209,8 +246,8 @@
     ),
     e.field(
       "points-table-by",
-      e.types.union("question", "page"),
-      doc: "Whether `points-table` totals the points by question or by page, unless it is given `by`; by page, a page without points is left out",
+      e.types.union("question", "part", "subpart", "page"),
+      doc: "What `points-table` totals the points by, unless it is given `by`: `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"` (see `points-table`)",
       default: "question",
     ),
     e.field(
@@ -248,6 +285,15 @@
       bool,
       doc: "Whether to lay out as the exam, whatever `show-solutions` and the command line say.",
       default: false,
+      internal: true,
+    ),
+    // Internal: set by the documentation's examples, which are laid out in
+    // blocks of no fixed height, where `fr` heights would come to nothing.
+    e.field(
+      "_fr-unit",
+      e.types.option(length),
+      doc: "The length an exam lays out each `1fr` of its own heights as (a segment's of `fr` answer boxes, a division's `height`), instead of a share of the page: `none` for a share, as usual.",
+      default: none,
       internal: true,
     ),
   ),
@@ -310,9 +356,20 @@
     numbering-full: cfg.numbering-full,
     // Folded onto its default by elembic: a partial `strings` keeps the rest.
     strings: cfg.strings,
-    points-format: if cfg.points-format == auto { default_points_format } else { cfg.points-format },
+    // The option, else one put in `strings` (see `_STRINGS_FORMATS`).
+    points-format: if cfg.points-format != auto { cfg.points-format } else {
+      cfg.strings.at("points-format", default: default_points_format)
+    },
+    bonus-points-format: if cfg.bonus-points-format != auto { cfg.bonus-points-format } else {
+      cfg.strings.at("bonus-points-format", default: p => default_points_format(p, bonus: true))
+    },
     points-position: cfg.points-position,
     points-show-totals: cfg.points-show-totals,
+    // How the exam lays out its own `fr` heights (see `fr_height` in
+    // render.typ): as a share of the page (`none`), as `_fr-unit` each, or,
+    // on a page of no fixed height, where a share comes to nothing, as tall
+    // as what they hold (`auto`).
+    fr-unit: if cfg._fr-unit != none { cfg._fr-unit } else if page.height == auto { auto } else { none },
     // `shown` is resolved by the exam, which knows whether solutions are shown
     // (see `show_rubrics`), and `present`, whether it has rubrics at all, and
     // so `drawn`, whether they are drawn, and `traced`, whether their leaders
@@ -338,8 +395,10 @@
   "numbering-full",
   "strings",
   "points-format",
+  "bonus-points-format",
   "points-position",
   "points-show-totals",
+  "_fr-unit",
   "show-rubrics",
   "rubric-position",
   "rubric-trace",
@@ -390,7 +449,9 @@
   numbering-full: false,
   strings: DEFAULT_STRINGS,
   points-format: default_points_format,
+  bonus-points-format: p => default_points_format(p, bonus: true),
   points-position: "start",
   points-show-totals: false,
+  fr-unit: none,
   rubric: (shown: false, present: false, drawn: false, traced: false, position: "margin-right", trace: true, width: auto),
 )

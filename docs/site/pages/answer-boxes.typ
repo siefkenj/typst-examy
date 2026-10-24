@@ -83,7 +83,7 @@ grow to hold its solutions, give it a height, which can be `auto`:
 A solution only counts as blank when it is written directly in the box. Wrapped in another element,
 as in `#align(center)[#solution[...]]`, it counts as content, and the box grows to fit it.
 
-#note(kind: "warning")[
+#warning[
   *Changed in 1.0.0.* In examy 0.4.0 and earlier, a box with no height (or with `height: auto`) was
   always `default_height` tall, whatever it held. Now a box holding a prompt, such as
   `#answer-box(width: 100%)[Explain your reasoning:]`, shrinks to fit the prompt and leaves no room
@@ -162,7 +162,7 @@ Any of a box's fields, such as its `stroke`, can also be set with a set rule on 
 A box's own arguments win over a set rule on `answer-box`, and a set rule wins over the exam's
 options. A box given `height: none` keeps it, even when `answer-box-height` is set.
 
-#note(kind: "warning")[
+#warning[
   _Warning._ Inside an exam, the exam draws its answer boxes itself. It applies only the `e.set_`,
   `e.apply`, and `e.reset` rules on answer boxes and on the `answer-box-` options. Elembic's other
   rules on them (`e.show_`, `e.cond-set`, `e.filtered`, `e.select`, and an `e.revoke` of a rule that

@@ -27,8 +27,15 @@
 /// messages write it: `auto | length | none`, with `none` last.
 #let describe_type(ti) = {
   let kind = ti.at("type-kind", default: none)
-  if kind == "union" {
-    let parts = ti.data.map(describe_type)
+  if kind == "wrapped" {
+    // A type that takes more than it says (`e.types.wrap`), as the type
+    // inside it.
+    describe_type(ti.data.base)
+  } else if kind == "union" {
+    // A label is never a value to give, but what a field holds when it is
+    // not given (see answer-box.typ's `_UNSET`): left out.
+    let shown = ti.data.filter(t => not (t.at("type-kind", default: none) == "literal" and type(t.data.value) == label))
+    let parts = shown.map(describe_type)
     let rest = parts.filter(p => p != "none")
     let nones = parts.filter(p => p == "none")
     (rest + nones).dedup().join(" | ")

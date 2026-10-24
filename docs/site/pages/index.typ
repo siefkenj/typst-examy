@@ -29,17 +29,19 @@ typst init @preview/examy
 == A first exam
 
 A basic document is built out of an #api("exam", body: raw("#exam[...]")) (alternatively
-`#show: exam`). Inside are questions, created with the command
+`#show: exam`). Inside are questions, created with
 #api("question", body: raw("#question[...]")) (see
-#page-link("questions.html")[Questions and numbering]); boxes for students to write in, created with
-#api("answer-box", body: raw("#answer-box[...]")) (see #page-link("answer-boxes.html")[Answer
-boxes]); and solutions, created with #api("solution", body: raw("#solution[...]")) (see
-#page-link("solutions.html")[Solutions]). A #api("name-block", body: raw("#name-block()")) gives
+#page-link("questions.html")[Questions and numbering]) along with #api("answer-box", body: raw("#answer-box[...]"))s (see #page-link("answer-boxes.html")[Answer
+boxes]) for students to write in and #api("solution", body: raw("#solution[...]"))s (see
+#page-link("solutions.html")[Solutions]) whose visibility can be toggled to create regular/key versions of a test. 
+
+Additionally, examy comes with helpers like  #api("name-block", body: raw("#name-block()"))
+to give
 students a place to write their name (see #page-link("cover-pages.html")[Cover pages and name
 blocks]).
 
-Solutions are only shown when the `show-solutions` #page-link("configuration.html")[config option]
-is `true`. It can be given to the exam directly, as in `#show: exam.with(show-solutions: false)`.
+// Solutions are only shown when the `show-solutions` #page-link("configuration.html")[config option]
+// is `true`. It can be given to the exam directly, as in `#show: exam.with(show-solutions: false)`.
 
 #example(
   ```typ
@@ -71,14 +73,13 @@ is `true`. It can be given to the exam directly, as in `#show: exam.with(show-so
   height: 12cm,
 )
 
-#note[
-  _Note._ `#show: exam` makes everything after it part of the exam, including a cover page before
-  the first question. It also sets up the #link(
-    "https://typst.app/universe/package/elembic",
-  )[elembic] environment that cross-references need (`#show: e.prepare()`). If you use
-  `#exam[...]` around just the questions instead, and refer to them from outside it, add
-  `#show: e.prepare()` at the top of the document yourself.
-]
+// #note[
+//   _Note._ `#show: exam` makes everything after it part of the exam and is needed before defining any `#question[...]` blocks. Under the hood, it sets up an #link(
+//     "https://typst.app/universe/package/elembic",
+//   )[elembic] environment that cross-references need (`#show: e.prepare()`). If you use
+//   `#exam[...]` around just the questions instead, and refer to them from outside it, add
+//   `#show: e.prepare()` at the top of the document yourself.
+// ]
 
 == Basic Features
 

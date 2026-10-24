@@ -131,7 +131,7 @@ off in the margins too.
   ```,
 )
 
-#note(kind: "warning")[
+#warning[
   _Warning._ A rubric in the margin does not break across pages, so one that is too tall for the
   space left on its page runs off the page. Give its question a page of its own, or give the rubric
   more width.

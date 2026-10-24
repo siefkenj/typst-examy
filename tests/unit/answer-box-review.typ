@@ -129,22 +129,29 @@
 
 // --- `numbering-full` with an array of `numbering`s: an entry with a
 // counting symbol for each level numbers them all; one with fewer follows
-// the number above it, rather than repeating its symbol for every level ---
+// the number above it, rather than repeating its symbol for every level:
+// after a thin space, the number above without its trailing "." or ",",
+// unless every level is a number in digits (thin spaces shown as spaces) ---
 #pagebreak()
 #rule[`numbering-full` with the default numbering, and with a mixed array.]
 #let FULL = (
   (auto, (1,), "2."),
-  (auto, (1, 1), "2(b)"),
-  (auto, (1, 1, 1), "2(b)ii."),
+  (auto, (1, 1), "2 (b)"),
+  (auto, (1, 1, 1), "2 (b) ii."),
   (("1.", "1.a.", "(i)"), (1, 1), "2.b."),
-  (("1.", "1.a.", "(i)"), (1, 1, 1), "2.b(ii)"),
+  (("1.", "1.a.", "(i)"), (1, 1, 1), "2.b (ii)"),
   ("1.a.i.", (1, 1, 1), "2.b.ii."),
+  // Every level a number in digits: their punctuation kept, and no space
+  // after a "." or ",", but a thin one otherwise.
+  (("1.", "1.", "1."), (1, 0, 2), "2.1.3."),
+  (("1,", "1,"), (1, 0), "2,1,"),
+  (("1", "1"), (1, 0), "2 1"),
 )
 #for (numbering, address, expected) in FULL {
   let got = if numbering == auto { display_number(address, full: true) } else {
     display_number(address, numbering: numbering, full: true)
   }
-  assert.eq(got, expected, message: repr((numbering, address)))
+  assert.eq(if type(got) == str { got.replace(sym.space.thin, " ") } else { got }, expected, message: repr((numbering, address)))
 }
 #data(FULL.map(((n, a, x)) => (n, a, x)))
 #exam(numbering-full: true)[
