@@ -12,8 +12,10 @@
 #import "@preview/bullseye:0.1.0": html, match-target
 #import "/src/lib.typ"
 #import "/src/prelude.typ": e
-#import "/docs/api.typ": ENTRIES, IMPORT, VERSION, alias_code, arg_name, entry, page_path, signatures, summary
-#import "render.typ": full_source, has_key, render
+#import "/docs/api.typ": (
+  ENTRIES, IMPORT, VERSION, alias_code, arg_name, entry, page_path, signatures, summary,
+)
+#import "render.typ": full_source, has_key, render, rendered_width
 
 #let REPOSITORY = toml("/typst.toml").package.repository
 
@@ -41,11 +43,12 @@
   (path: "choices.html", title: "Multiple choice", file: "pages/choices.typ"),
   (path: "solutions.html", title: "Solutions", file: "pages/solutions.typ"),
   (path: "rubrics.html", title: "Rubrics", file: "pages/rubrics.typ"),
-  (path: "cover-pages.html", title: "Cover pages and name blocks", file: "pages/cover-pages.typ"),
+  (path: "cover-pages.html", title: "Cover pages", file: "pages/cover-pages.typ"),
   (path: "configuration.html", title: "Configuration", file: "pages/configuration.typ"),
   (path: "technical-details.html", title: "Technical details", file: "pages/technical-details.typ"),
-  (path: "changelog.html", title: "Changelog", file: "pages/changelog.typ"),
   (path: "reference.html", title: "Reference", file: "pages/reference.typ"),
+  // Last, after the reference (see `ALL_PAGES`).
+  (path: "changelog.html", title: "Changelog", file: "pages/changelog.typ"),
 )
 
 /// The reference's pages, one per export (or group of exports that take the
@@ -53,8 +56,12 @@
 /// package's declarations: `(path, title, entry)`.
 #let REFERENCE_PAGES = ENTRIES.map(x => (path: page_path(x), title: x.names.join(", "), entry: x))
 
-/// Every page, in reading order (for the links to the previous and next).
-#let ALL_PAGES = PAGES + REFERENCE_PAGES
+/// Every page, in reading order (for the links to the previous and next): the
+/// reference's pages after its index, and the changelog last.
+#let ALL_PAGES = {
+  let changelog = PAGES.filter(p => p.path == "changelog.html")
+  PAGES.filter(p => p.path != "changelog.html") + REFERENCE_PAGES + changelog
+}
 
 /// `for-html` on the site, `for-paged` in the PDF: each a function making
 /// the content, so that the site's HTML elements are only made for the site.
@@ -68,16 +75,30 @@
 #let page_label(path) = label("page-" + path)
 
 /// A link to the reference page of the export `name`, shown as its name in
-/// code; with `arg`, to that argument of it, shown as the argument's name as
-/// written in a call (`..options` for `exam`'s options). A label, so that
-/// Typst works out the link from wherever it is.
-#let api(name, arg: none, body: auto) = {
+/// code. With `arg`, shown as a call to it in markup, `#name` followed by
+/// `arg`: `arg: "[...]"` shows `#name[...]`, and `arg: ""` shows `#name`.
+/// With `field`, a link to that argument of it instead, shown as the
+/// argument's name as written in a call (`..options` for `exam`'s options).
+/// `body` shows what it is given instead. A label, so that Typst works out
+/// the link from wherever it is.
+#let api(name, arg: none, field: none, body: auto) = {
   let x = ENTRIES.find(x => name in x.names)
   assert(x != none, message: "api: `" + name + "` is not an export of examy")
-  let a = if arg != none { x.args.find(a => a.name == arg) }
-  assert(arg == none or a != none, message: "api: `" + name + "` has no argument `" + repr(arg) + "`")
-  let shown = if body != auto { body } else if arg != none { raw(arg_name(a)) } else { raw(name) }
-  link(_anchor(if arg == none { name } else { x.names.first() }, arg: arg), shown)
+  assert(
+    arg == none or type(arg) == str,
+    message: "api: `arg` must be a string, such as \"[...]\" or \"\", got " + repr(arg),
+  )
+  let a = if field != none { x.args.find(a => a.name == field) }
+  assert(
+    field == none or a != none,
+    message: "api: `" + name + "` has no argument `" + repr(field) + "`",
+  )
+  let shown = if body != auto { body } else if field != none { raw(arg_name(a)) } else if (
+    arg != none
+  ) {
+    raw("#" + name + arg)
+  } else { raw(name) }
+  link(_anchor(if field == none { name } else { x.names.first() }, arg: field), shown)
 }
 
 /// A link to another page of the guide, by its path.
@@ -85,6 +106,10 @@
   assert(PAGES.any(p => p.path == path), message: "page-link: no page " + path)
   _either(() => link(path, body), () => link(page_label(path), body))
 }
+
+/// A link to Typst's own documentation, by its path under typst.app/docs/,
+/// e.g. `typst-link("reference/model/numbering/")[numbering pattern]`.
+#let typst-link(path, body) = link("https://typst.app/docs/" + path, body)
 
 /// A note set apart from the text.
 #let note(kind: "note", body) = _either(
@@ -94,7 +119,13 @@
     // Its emphasis and bold text in its own color, as on the site.
     show emph: set text(fill: color)
     show strong: set text(fill: color)
-    block(width: 100%, inset: (x: 1em, y: .8em), fill: color.lighten(92%), stroke: (left: 2pt + color), body)
+    block(
+      width: 100%,
+      inset: (x: 1em, y: .8em),
+      fill: color.lighten(92%),
+      stroke: (left: 2pt + color),
+      body,
+    )
   },
 )
 
@@ -102,14 +133,15 @@
 #let warning(body) = note(kind: "warning", body)
 
 /// One of the package's screenshots, from examples/images/ (published with
-/// the site by site.typ).
-#let screenshot(name, alt, caption: none) = _either(
+/// the site by site.typ). `pdf-height` is its height in the PDF, where it
+/// is otherwise the width of the text: for one too tall to share its page.
+#let screenshot(name, alt, caption: none, pdf-height: auto) = _either(
   () => html.elem("figure", attrs: (class: "screenshot"), {
     html.elem("img", attrs: (src: "images/" + name, alt: alt, loading: "lazy"))
     if caption != none { html.elem("figcaption", caption) }
   }),
   () => figure(
-    box(stroke: .5pt + luma(200), image("/examples/images/" + name, alt: alt)),
+    box(stroke: .5pt + luma(200), image("/examples/images/" + name, alt: alt, height: pdf-height)),
     caption: caption,
     numbering: none,
   ),
@@ -118,7 +150,8 @@
 /// Several screenshots side by side.
 #let screenshots(..figures) = _either(
   () => html.elem("div", attrs: (class: "screenshots"), figures.pos().join()),
-  () => grid(columns: (1fr,) * figures.pos().len(), gutter: 1em, align: center + horizon, ..figures.pos()),
+  () => grid(columns: (1fr,) * figures.pos().len(), gutter: 1em, align: center
+      + horizon, ..figures.pos()),
 )
 
 /// Links to guide pages, as cards on the site: `(path, title, text)` each.
@@ -129,7 +162,9 @@
       html.elem("span", text)
     })
   }),
-  () => terms(..cards.pos().map(((path, title, text)) => terms.item(link(page_label(path), strong(title)), text))),
+  () => terms(..cards
+    .pos()
+    .map(((path, title, text)) => terms.item(link(page_label(path), strong(title)), text))),
 )
 
 // ---------------------------------------------------------------------------
@@ -159,16 +194,17 @@
 )
 
 /// The points of the wave down from `(x, y0)` to `(x, y1)`, starting with a
-/// move there.
-#let _wave(x, y0, y1) = {
+/// move there; with `across`, of the wave across from `(y0, x)` to `(y1, x)`.
+#let _wave(x, y0, y1, across: false) = {
   let (amp, step) = (OUTPUT.amp, OUTPUT.step)
   let n = calc.max(1, int((y1 - y0) / step))
   let s = (y1 - y0) / n
+  let at(p) = if across { (p.at(1), p.at(0)) } else { p }
   (
-    curve.move((x, y0)),
+    curve.move(at((x, y0))),
     ..range(n).map(i => curve.quad(
-      (x + if calc.even(i) { amp } else { -amp }, y0 + (i + .5) * s),
-      (x, y0 + (i + 1) * s),
+      at((x + if calc.even(i) { amp } else { -amp }, y0 + (i + .5) * s)),
+      at((x, y0 + (i + 1) * s)),
     )),
   )
 }
@@ -186,12 +222,58 @@
 /// An example's output in the PDF: `papers` are one or two
 /// `(content, label)`, each laid out on a white sheet, scaled down to its
 /// share of the width if it is wider, and, two, centered on each other
-/// vertically, with their labels above them on one baseline.
-#let _paged_output(papers, gutter: 2.6em) = layout(size => {
+/// vertically, with their labels above them on one baseline. With
+/// `stacked`, two are one above the other instead, each the full width, the
+/// shades meeting along a wavy line across between them; `wide` is then how
+/// wide the papers' content is (see `rendered_width`), so that it need not be
+/// measured: measured, a rubric drawn past the bottom of the example (see
+/// `_overhang` in render.typ) does not settle.
+#let _paged_output(papers, gutter: 2.6em, stacked: false, wide: none) = layout(size => {
   let w = size.width
   let two = papers.len() == 2
+  if two and stacked {
+    let inset = (x: 1.1em, top: .8em, bottom: 1.1em)
+    let column = w - 2 * inset.x.to-absolute()
+    let sheet(body) = {
+      let sheet = box(fill: white, stroke: .6pt + OUTPUT.paper-edge, radius: 2pt, inset: .7em, body)
+      let wide = if wide == none { measure(sheet).width } else { (wide + 1.4em).to-absolute() }
+      if wide <= column { sheet } else { scale(column / wide * 100%, reflow: true, sheet) }
+    }
+    let half((body, label), shade, inset) = block(
+      width: w,
+      fill: shade,
+      inset: inset,
+      below: 0pt,
+      align(
+        center,
+        stack(spacing: .5em, _paper_label(label), sheet(body)),
+      ),
+    )
+    // Between the halves, a band the shades meet across along the wave, so
+    // that neither half needs measuring to find where it ends.
+    let g = gutter.to-absolute()
+    let band = block(width: w, height: g, above: 0pt, below: 0pt, {
+      place(rect(width: w, height: g, fill: OUTPUT.key-shade))
+      place(curve(
+        fill: OUTPUT.exam-shade,
+        curve.move((0pt, 0pt)),
+        curve.line((0pt, g / 2)),
+        .._wave(g / 2, 0pt, w, across: true).slice(1),
+        curve.line((w, 0pt)),
+        curve.close(),
+      ))
+      place(curve(stroke: OUTPUT.line-width + OUTPUT.line, .._wave(g / 2, 0pt, w, across: true)))
+    })
+    return box(width: w, radius: 5pt, clip: true, stroke: .6pt + OUTPUT.outline, {
+      half(papers.at(0), OUTPUT.exam-shade, (x: inset.x, top: inset.top))
+      band
+      half(papers.at(1), OUTPUT.key-shade, (x: inset.x, bottom: inset.bottom))
+    })
+  }
   let inset = (x: 1.1em, top: .8em, bottom: 1.1em)
-  let column = (w - 2 * inset.x.to-absolute() - if two { gutter.to-absolute() } else { 0pt }) / papers.len()
+  let column = (
+    (w - 2 * inset.x.to-absolute() - if two { gutter.to-absolute() } else { 0pt }) / papers.len()
+  )
   let sheet(body) = {
     let sheet = box(fill: white, stroke: .6pt + OUTPUT.paper-edge, radius: 2pt, inset: .7em, body)
     let wide = measure(sheet).width
@@ -202,7 +284,9 @@
   let body = block(width: w, inset: inset, grid(
     columns: if two { (1fr, gutter, 1fr) } else { (1fr,) },
     row-gutter: .5em,
-    align: (_, y) => if y == 0 and labels.any(l => l != []) { center + bottom } else { center + horizon },
+    align: (_, y) => if y == 0 and labels.any(l => l != []) { center + bottom } else {
+      center + horizon
+    },
     ..if labels.any(l => l != []) { if two { (labels.at(0), [], labels.at(1)) } else { labels } },
     ..if two { (sheets.at(0), [], sheets.at(1)) } else { sheets },
   ))
@@ -234,45 +318,156 @@
   let (w, h) = (16pt, 2 * step)
   let x = w / 2
   // One period of the wave: out to one side, then the other.
-  let wave = "Q" + pt(x + amp) + " " + pt(step / 2) + " " + pt(x) + " " + pt(step) + "Q" + pt(x - amp) + " " + pt(1.5 * step) + " " + pt(x) + " " + pt(h)
+  let wave = (
+    "Q"
+      + pt(x + amp)
+      + " "
+      + pt(step / 2)
+      + " "
+      + pt(x)
+      + " "
+      + pt(step)
+      + "Q"
+      + pt(x - amp)
+      + " "
+      + pt(1.5 * step)
+      + " "
+      + pt(x)
+      + " "
+      + pt(h)
+  )
   let svg = (
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + pt(w) + " " + pt(h) + "'>"
-      + "<path fill='" + OUTPUT.key-shade.to-hex() + "' d='M0 0H" + pt(w) + "V" + pt(h) + "H0Z'/>"
-      + "<path fill='" + OUTPUT.exam-shade.to-hex() + "' d='M0 0H" + pt(x) + wave + "H0Z'/>"
-      + "<path fill='none' stroke='" + OUTPUT.line.to-hex() + "' stroke-width='" + pt(OUTPUT.line-width) + "' d='M" + pt(x) + " 0" + wave + "'/>"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 "
+      + pt(w)
+      + " "
+      + pt(h)
+      + "'>"
+      + "<path fill='"
+      + OUTPUT.key-shade.to-hex()
+      + "' d='M0 0H"
+      + pt(w)
+      + "V"
+      + pt(h)
+      + "H0Z'/>"
+      + "<path fill='"
+      + OUTPUT.exam-shade.to-hex()
+      + "' d='M0 0H"
+      + pt(x)
+      + wave
+      + "H0Z'/>"
+      + "<path fill='none' stroke='"
+      + OUTPUT.line.to-hex()
+      + "' stroke-width='"
+      + pt(OUTPUT.line-width)
+      + "' d='M"
+      + pt(x)
+      + " 0"
+      + wave
+      + "'/>"
       + "</svg>"
   )
   // The same wave across, for papers one above the other: the exam's shade
   // above it and the key's below.
   let (xw, xh) = (2 * step, 16pt)
   let y = xh / 2
-  let across = "Q" + pt(step / 2) + " " + pt(y + amp) + " " + pt(step) + " " + pt(y) + "Q" + pt(1.5 * step) + " " + pt(y - amp) + " " + pt(xw) + " " + pt(y)
+  let across = (
+    "Q"
+      + pt(step / 2)
+      + " "
+      + pt(y + amp)
+      + " "
+      + pt(step)
+      + " "
+      + pt(y)
+      + "Q"
+      + pt(1.5 * step)
+      + " "
+      + pt(y - amp)
+      + " "
+      + pt(xw)
+      + " "
+      + pt(y)
+  )
   let svg-x = (
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 " + pt(xw) + " " + pt(xh) + "'>"
-      + "<path fill='" + OUTPUT.exam-shade.to-hex() + "' d='M0 0H" + pt(xw) + "V" + pt(xh) + "H0Z'/>"
-      + "<path fill='" + OUTPUT.key-shade.to-hex() + "' d='M0 " + pt(y) + across + "V" + pt(xh) + "H0Z'/>"
-      + "<path fill='none' stroke='" + OUTPUT.line.to-hex() + "' stroke-width='" + pt(OUTPUT.line-width) + "' d='M0 " + pt(y) + across + "'/>"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 "
+      + pt(xw)
+      + " "
+      + pt(xh)
+      + "'>"
+      + "<path fill='"
+      + OUTPUT.exam-shade.to-hex()
+      + "' d='M0 0H"
+      + pt(xw)
+      + "V"
+      + pt(xh)
+      + "H0Z'/>"
+      + "<path fill='"
+      + OUTPUT.key-shade.to-hex()
+      + "' d='M0 "
+      + pt(y)
+      + across
+      + "V"
+      + pt(xh)
+      + "H0Z'/>"
+      + "<path fill='none' stroke='"
+      + OUTPUT.line.to-hex()
+      + "' stroke-width='"
+      + pt(OUTPUT.line-width)
+      + "' d='M0 "
+      + pt(y)
+      + across
+      + "'/>"
       + "</svg>"
   )
-  let url(svg) = "url(\"data:image/svg+xml," + svg.replace("#", "%23").replace("<", "%3C").replace(">", "%3E") + "\")"
+  let url(svg) = (
+    "url(\"data:image/svg+xml,"
+      + svg.replace("#", "%23").replace("<", "%3C").replace(">", "%3E")
+      + "\")"
+  )
   (
     "/* Generated from OUTPUT in docs/site/template.typ. */\n:root {\n"
-      + "  --output-exam-shade: " + OUTPUT.exam-shade.to-hex() + ";\n"
-      + "  --output-key-shade: " + OUTPUT.key-shade.to-hex() + ";\n"
-      + "  --output-paper-edge: " + OUTPUT.paper-edge.to-hex() + ";\n"
-      + "  --output-label: " + OUTPUT.label.to-hex() + ";\n"
-      + "  --output-label-font: \"" + OUTPUT.label-font + "\";\n"
-      + "  --output-wave: " + url(svg) + ";\n"
-      + "  --output-wave-size: " + pt(w) + "pt " + pt(h) + "pt;\n"
-      + "  --output-wave-x: " + url(svg-x) + ";\n"
-      + "  --output-wave-x-size: " + pt(xw) + "pt " + pt(xh) + "pt;\n"
-      + "  --output-wave-x-size-h: " + pt(xh) + "pt;\n"
+      + "  --output-exam-shade: "
+      + OUTPUT.exam-shade.to-hex()
+      + ";\n"
+      + "  --output-key-shade: "
+      + OUTPUT.key-shade.to-hex()
+      + ";\n"
+      + "  --output-paper-edge: "
+      + OUTPUT.paper-edge.to-hex()
+      + ";\n"
+      + "  --output-label: "
+      + OUTPUT.label.to-hex()
+      + ";\n"
+      + "  --output-label-font: \""
+      + OUTPUT.label-font
+      + "\";\n"
+      + "  --output-wave: "
+      + url(svg)
+      + ";\n"
+      + "  --output-wave-size: "
+      + pt(w)
+      + "pt "
+      + pt(h)
+      + "pt;\n"
+      + "  --output-wave-x: "
+      + url(svg-x)
+      + ";\n"
+      + "  --output-wave-x-size: "
+      + pt(xw)
+      + "pt "
+      + pt(xh)
+      + "pt;\n"
+      + "  --output-wave-x-size-h: "
+      + pt(xh)
+      + "pt;\n"
       + "}\n"
   )
 }
 
 /// Where the image of a view of an example shown `paged-name` is published.
-#let _paged_path(name, solutions) = "examples/" + name + if solutions { "-key" } else { "-exam" } + ".svg"
+#let _paged_path(name, solutions) = (
+  "examples/" + name + if solutions { "-key" } else { "-exam" } + ".svg"
+)
 
 /// The documents an example shown `paged-name` is drawn from on the site (see
 /// `example`): an SVG of each of its views, laid out as a page of its own.
@@ -292,9 +487,40 @@
         width: ex.at("width", default: 12cm),
         height: ex.at("height", default: none),
         inset: ex.at("inset", default: 0pt),
+        margin: ex.at("margin", default: none),
+        overhang: true,
       )
     })
   }
+}
+
+/// The arguments of each example in `src`, a page's source, shown
+/// `paged-name` (see `example`), for site.typ to make their images from with
+/// `paged_documents`: a page cannot make documents itself, as it is part of
+/// one. Each `#example(..)` call is found in the source and evaluated with
+/// an `example` that returns its arguments, so they must be written out in
+/// it, not taken from the page's own variables.
+#let paged_examples(src) = {
+  // A raw block, a string, or a parenthesis: those in the first two are
+  // not the call's.
+  let tokens = regex("```[\\s\\S]*?```|`[^`\\n]*`|\"(?:[^\"\\\\]|\\\\.)*\"|[()]")
+  let found = ()
+  for m in src.matches("#example(") {
+    let depth = 1
+    let end = none
+    for t in src.slice(m.end).matches(tokens) {
+      if t.text == "(" { depth += 1 } else if t.text == ")" { depth -= 1 }
+      if depth == 0 {
+        end = m.end + t.end
+        break
+      }
+    }
+    if end == none { continue }
+    let call = src.slice(m.start + 1, end)
+    if not call.contains("paged-name") { continue }
+    found.push(eval(call, scope: (example: (code, ..args) => (code: code, ..args.named()))))
+  }
+  found
 }
 
 /// A code example, shown with what it renders to, rendered by the package
@@ -313,11 +539,24 @@
 ///   `height` gives `fr` answer boxes a page to fill.
 /// - `inset`: room around the page, for what is drawn outside it, as
 ///   `render` takes it.
+/// - `margin`: room for the page's margin, as `render` takes it, with a thin
+///   gray line where the margin starts: for an example that draws in it (a
+///   rubric).
+/// - `pdf-height`: the `height` in the PDF only, for an example the site
+///   grows to fit a rubric past its page's bottom (see `render`'s
+///   `overhang`), which the PDF cannot: there, too many examples doing so
+///   keep the document's layout from settling. A length, or an array of two,
+///   the exam's and the answer key's: `(auto, 3cm)` leaves the exam as tall
+///   as it is. `none` or `auto` is `height`.
+/// - `stacked`: whether the exam and its answer key are shown one above the
+///   other, each the full width, rather than side by side: for an example
+///   too wide to read at half the width.
 /// - `paged-name`: on the site, show what it renders to as images of a paged
 ///   rendering, named after this (see `paged_documents`), rather than in an
 ///   HTML frame: for output that needs to know where things are on the page,
 ///   which Typst's HTML export does not keep inside a frame (a rubric's
-///   dotted lines). site.typ makes the images, from a list the page exports.
+///   dotted lines). site.typ makes the images, finding the example in the
+///   page's source (see `paged_examples`).
 ///
 /// On the site, the example is also shown as a whole document, which compiles
 /// as it is in a document of its own (see `full_source`), in a second code
@@ -326,7 +565,18 @@
 /// the page as `data-` attributes too, for the live editor (live.ts) to pick
 /// up. In the PDF, the code is followed by what it renders to, scaled down to
 /// fit the page if it must be.
-#let example(code, key: auto, wrap: auto, width: 12cm, height: none, inset: 0pt, paged-name: none) = {
+#let example(
+  code,
+  key: auto,
+  wrap: auto,
+  width: 12cm,
+  height: none,
+  inset: 0pt,
+  margin: none,
+  pdf-height: none,
+  stacked: false,
+  paged-name: none,
+) = {
   // An import line shows the version this site documents, whatever the page
   // says, so that a new version needs no change to the pages.
   let src = code.text.replace(regex("@preview/examy:\d+\.\d+\.\d+"), "@preview/examy:" + VERSION)
@@ -342,15 +592,33 @@
     let view(solutions) = {
       set par(justify: false)
       set align(start + top)
-      render(src, solutions: solutions, wrap: wrap, width: width, height: height, inset: inset)
+      let h = if type(pdf-height) == array { pdf-height.at(if solutions { 1 } else { 0 }) } else {
+        pdf-height
+      }
+      let height = if h in (none, auto) { height } else { h }
+      render(
+        src,
+        solutions: solutions,
+        wrap: wrap,
+        width: width,
+        height: height,
+        inset: inset,
+        margin: margin,
+      )
     }
-    block(breakable: false, _paged_output(views.map(((solutions, label)) => (view(solutions), label))))
+    block(breakable: false, _paged_output(
+      views.map(((solutions, label)) => (view(solutions), label)),
+      stacked: stacked,
+      wide: rendered_width(width, inset, margin),
+    ))
   }
   _either(
     () => html.elem(
       "figure",
       attrs: (
-        class: "example" + if key { " with-key" } else { "" },
+        class: "example"
+          + if key { " with-key" } else { "" }
+          + if stacked { " stacked" } else { "" },
         data-source: src,
         // Only where the whole document says more than the example does.
         ..if full != src { (data-full: full) },
@@ -358,12 +626,17 @@
         data-width: repr(width),
         data-height: repr(height),
         data-inset: repr(inset),
+        data-margin: repr(margin),
       ),
       {
         html.elem("div", attrs: (class: "example-code"), {
           html.elem("div", attrs: (class: "code-short"), raw(src, lang: "typ", block: true))
           if full != src {
-            html.elem("div", attrs: (class: "code-full", hidden: ""), raw(full, lang: "typ", block: true))
+            html.elem("div", attrs: (class: "code-full", hidden: ""), raw(
+              full,
+              lang: "typ",
+              block: true,
+            ))
           }
         })
         // The labels first, a row of their own above the papers (see
@@ -377,9 +650,20 @@
               "div",
               attrs: (class: "paper", data-solutions: repr(solutions)),
               if paged-name == none {
-                html.frame(render(src, solutions: solutions, wrap: wrap, width: width, height: height, inset: inset))
+                html.frame(render(
+                  src,
+                  solutions: solutions,
+                  wrap: wrap,
+                  width: width,
+                  height: height,
+                  inset: inset,
+                  margin: margin,
+                ))
               } else {
-                html.elem("img", attrs: (src: _paged_path(paged-name, solutions), alt: if solutions { "Answer key" } else { "Exam" }))
+                html.elem("img", attrs: (
+                  src: _paged_path(paged-name, solutions),
+                  alt: if solutions { "Answer key" } else { "Exam" },
+                ))
               },
             )
           }
@@ -393,22 +677,48 @@
 // ---------------------------------------------------------------------------
 // The reference
 
+/// Inline code that names no language (`` `..` ``) highlighted as Typst:
+/// as markup when it starts with `#`, as code otherwise, which is what most of
+/// it is (an option, a value, a call). Inline code in another language names
+/// it (```` ```sh --input ..``` ````), and code blocks are left as they are.
+/// Applied to every page, on the site (see `layout`) and in the PDF.
+#let inline_code(body) = {
+  show raw.where(block: false, lang: none): it => raw(
+    it.text,
+    lang: if it.text.starts-with("#") { "typ" } else { "typc" },
+  )
+  body
+}
+
+/// The language of inline code quoted in Markdown (the package's docs, the
+/// changelog), which cannot name it: a command line's (`--input ..`,
+/// `typst ..`), Typst markup for a reference or a label (`@name`,
+/// `<name>`), and otherwise none, for `inline_code` to choose.
+#let markdown_code_lang(code) = {
+  if code.starts-with("--") or code.starts-with("typst ") { "sh" } else if (
+    code.starts-with("@") or code.starts-with("<")
+  ) { "typ" } else { none }
+}
+
 /// The pieces of a description from the package's docs, which are plain text
 /// with `code` and Markdown links (the README shows them as Markdown).
 #let _PIECE = regex("`([^`]*)`|\[([^\]]+)\]\(([^)\s]+)\)")
 
 /// A description from the package's docs, as content: `code` in code, links
-/// as links, and everything else as plain text, never read as markup. The
-/// code is not highlighted: what is quoted is as often a bit of output (a
-/// number such as `1.`) or a name as it is Typst code.
+/// as links (their text read the same way, so that a link can be code, as
+/// in [`box`'s `stroke`](..)), and everything else as plain text, never read
+/// as markup. The code is highlighted as `inline_code` and
+/// `markdown_code_lang` say.
 #let doc(s) = {
   let inline(s) = {
     let out = ()
     let at = 0
     for m in s.matches(_PIECE) {
       out.push(s.slice(at, m.start))
-      out.push(if m.captures.at(0) != none { raw(m.captures.at(0)) } else {
-        link(m.captures.at(2), m.captures.at(1))
+      out.push(if m.captures.at(0) != none {
+        raw(m.captures.at(0), lang: markdown_code_lang(m.captures.at(0)))
+      } else {
+        link(m.captures.at(2), inline(m.captures.at(1)))
       })
       at = m.end
     }
@@ -419,7 +729,7 @@
   s.split(regex("\n\s*\n")).map(p => inline(p.trim())).join(parbreak())
 }
 
-/// One argument of a reference entry, with the anchor `api(.., arg:)` links
+/// One argument of a reference entry, with the anchor `api(.., field:)` links
 /// to.
 #let _arg(owner, a) = {
   [#metadata(a.name)#_anchor(owner, arg: a.name)]
@@ -468,7 +778,10 @@
   let current = ""
   for c in args.clusters() {
     if c in ("(", "[") { depth += 1 } else if c in (")", "]") { depth -= 1 }
-    if c == "," and depth == 0 { parts.push(current.trim()); current = "" } else { current += c }
+    if c == "," and depth == 0 {
+      parts.push(current.trim())
+      current = ""
+    } else { current += c }
   }
   parts.push(current.trim())
   sig.slice(0, open) + "(\n" + parts.map(p => "  " + p + ",").join("\n") + "\n)"
@@ -507,7 +820,10 @@
   }
   if x.args.len() > 0 {
     let title = if x.kind == "element" and not x.show-signature [Fields] else [Arguments]
-    _either(() => html.elem("h2", title), () => heading(level: 3, numbering: none, outlined: false, title))
+    _either(
+      () => html.elem("h2", title),
+      () => heading(level: 3, numbering: none, outlined: false, title),
+    )
     x.args.map(a => _arg(x.names.first(), a)).join()
   }
 }
@@ -535,20 +851,37 @@
 /// The names of `config`'s options, in the order it declares them.
 #let CONFIG_OPTIONS = entry("config").args.map(a => a.name)
 
+/// The label of the record each `config-options` table leaves of the options
+/// it lists (see `config-options-check`).
+#let _CONFIG_OPTIONS_LISTED = <docs-config-options-listed>
+
 /// A table of some of `config`'s options, each a link to its reference, with
-/// the first sentence of its description.
+/// its description.
 #let config-options(..names) = {
   let args = entry("config").args
   let t = table(
+    stroke: none,
     columns: (auto, 1fr),
-    table.header[*Option*][*What it sets*],
-    ..names.pos().map(n => {
-      let a = args.find(a => a.name == n)
-      assert(a != none, message: "config-options: `config` has no option `" + n + "`")
-      (api("config", arg: n), doc(summary(a.doc)))
-    }).flatten(),
+    // table.header[*Option*][*Description*],
+    ..names
+      .pos()
+      .map(n => {
+        let a = args.find(a => a.name == n)
+        assert(a != none, message: "config-options: `config` has no option `" + n + "`")
+        (api("config", field: n), doc(a.doc))
+      })
+      .flatten(),
   )
   _either(() => html.elem("div", attrs: (class: "config-options"), t), () => t)
+  [#metadata(names.pos())#_CONFIG_OPTIONS_LISTED]
+}
+
+/// Fails the build if one of `config`'s options is in no `config-options`
+/// table, so that a new option cannot be left out of them.
+#let config-options-check() = context {
+  let listed = query(_CONFIG_OPTIONS_LISTED).map(m => m.value).flatten()
+  let missing = CONFIG_OPTIONS.filter(o => o not in listed)
+  assert(missing.len() == 0, message: "config-options: no table lists " + missing.join(", "))
 }
 
 // ---------------------------------------------------------------------------
@@ -586,7 +919,11 @@
   html.elem("p", attrs: (class: "sidebar-title"), [Guide])
   html.elem("ul", {
     for p in PAGES.filter(p => p.path != "reference.html") {
-      html.elem("li", html.elem("a", attrs: (href: _href(current, p.path), ..here(p.path)), p.title))
+      html.elem("li", html.elem(
+        "a",
+        attrs: (href: _href(current, p.path), ..here(p.path)),
+        p.title,
+      ))
     }
     html.elem("li", _playground_link(current))
   })
@@ -604,7 +941,9 @@
   // Every name, in alphabetical order, each a link to its page; a group's
   // later names (`part`, `subpart`) to their anchors on its page.
   let names = REFERENCE_PAGES.map(p => p.entry.names.map(n => (name: n, page: p))).flatten()
-  html.elem("ul", attrs: (class: "sidebar-api"), for (name: n, page: p) in names.sorted(key: x => x.name) {
+  html.elem("ul", attrs: (class: "sidebar-api"), for (name: n, page: p) in names.sorted(key: x => {
+    x.name
+  }) {
     let first = n == p.entry.names.first()
     html.elem("li", html.elem(
       "a",
@@ -612,6 +951,21 @@
         href: _href(current, p.path) + if first { "" } else { "#api-" + n },
         ..if first { here(p.path) },
       ),
+      html.elem("code", n),
+    ))
+  })
+  // Every option of `config`, in alphabetical order, each a link to its
+  // argument on `config`'s page.
+  html.elem("p", attrs: (class: "sidebar-title"), html.elem(
+    "a",
+    attrs: (href: _href(current, "configuration.html")),
+    [Config options],
+  ))
+  let config = entry("config")
+  html.elem("ul", attrs: (class: "sidebar-api"), for n in CONFIG_OPTIONS.sorted() {
+    html.elem("li", html.elem(
+      "a",
+      attrs: (href: _href(current, page_path(config)) + "#config." + n),
       html.elem("code", n),
     ))
   })
@@ -649,6 +1003,7 @@
 /// A whole page of the site: `current` is its entry in `ALL_PAGES`, and
 /// `heading` what its heading shows, if not its title.
 #let layout(current, body, heading: auto) = html.html(lang: "en", {
+  show: inline_code
   let to(path) = _href(current, path)
   let title = if current.path == "index.html" {
     [examy — exams, quizzes and homework in Typst]
@@ -678,7 +1033,8 @@
           html.elem("a", attrs: (href: to("reference.html")), [Reference])
           _playground_link(current)
           html.elem("a", attrs: (href: to(MANUAL_PDF), download: ""), [PDF])
-          html.elem("a", attrs: (href: "https://typst.app/universe/package/examy"), [Typst Universe])
+          html.elem("a", attrs: (href: "https://typst.app/universe/package/examy"), [Typst
+            Universe])
           html.elem("a", attrs: (href: REPOSITORY), [GitHub])
         })
         html.elem("nav", attrs: (class: "menu-guide", aria-label: "Guide"), _guide_list(current))

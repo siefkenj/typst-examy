@@ -11,7 +11,7 @@
 )
 #import "/src/markers.typ": begin_marker, end_marker, height_hint
 #import "/src/divisions.typ": part, question
-#import "/src/lib.typ": config, e, rubric
+#import "/src/lib.typ": config, e, rubric, solution
 #import "/tests/record.typ": cases, rule
 
 #set page(width: 6.5in, height: auto, margin: .5in)
@@ -24,6 +24,7 @@
   question: question,
   part: part,
   rubric: rubric,
+  solution: solution,
   e: e,
   config: config,
 )
@@ -76,6 +77,8 @@
   ("a #pagebreak() b", true),
   ("a b", false),
   ("#block[#colbreak()]", true),
+  // Before a rule spliced into the same sequence (see `RUBRIC_CASES`).
+  ("#([a #pagebreak()] + { show: e.set_(config, indent: 1em); [b] })", true),
 ))
 
 #let SCAN_FR = check("scan(..).fr", c => scan(c).fr, (
@@ -153,8 +156,25 @@
   ("#rubric(points: 1)[A]", 1),
   ("a #box[#rubric(points: 1)[A]] b #rubric(points: 2)[B]", 2),
   ("#show: e.set_(config, show-rubrics: true)\nb #rubric(points: 1)[A]", 1),
+  // A rule joined to content before it is spliced into the same sequence,
+  // which ends in the rule's tag but is not the rule: what comes before it
+  // is found too.
+  ("#([#rubric(points: 1)[A] ] + { show: e.set_(config, indent: 1em); [b #rubric(points: 2)[B]] })", 2),
 )
 #let RUBRIC_MARKERS = check("rubric_markers(..).len()", c => rubric_markers(c).len(), RUBRIC_CASES)
+
+// With `kept`, rubrics are found in the fields of elements, which elembic
+// keeps in metadata: in a solution, which a hidden one leaves in its place,
+// each once, also behind a set rule.
+#let KEPT_CASES = (
+  ("#solution[x #rubric(points: 1)[A]]", 0, 1),
+  ("#{ show: e.set_(solution, boxed: false); solution[x #rubric(points: 1)[A]] }", 0, 1),
+  ("#solution[x #rubric(points: 1)[A]] #parbreak() #solution[y #rubric(points: 2)[B]]", 0, 2),
+)
+#for (src, default, kept) in KEPT_CASES {
+  assert.eq(rubric_markers(ev(src)).len(), default, message: "rubric_markers(" + src + ")")
+  assert.eq(rubric_markers(ev(src), kept: true).len(), kept, message: "rubric_markers(" + src + ", kept: true)")
+}
 #let HAS_RUBRIC = check(
   "has_rubric",
   has_rubric,
@@ -182,6 +202,15 @@
 #record([`scan(..).fr`: the fr height a chunk negotiates with.], c => scan(c).fr, SCAN_FR)
 #record([`rubric_markers(..).len()`: how many rubrics are inside.], c => rubric_markers(c).len(), RUBRIC_MARKERS)
 #record([`has_rubric`: a rubric anywhere inside.], has_rubric, HAS_RUBRIC)
+#rule[`rubric_markers(.., kept: true)`: also in the fields elembic keeps, each once]
+#cases(
+  ([Source], [Default], [Kept]),
+  ..KEPT_CASES.map(((src, ..)) => (
+    raw(src, lang: "typ"),
+    raw(repr(rubric_markers(ev(src)).len())),
+    raw(repr(rubric_markers(ev(src), kept: true).len())),
+  )),
+)
 #record([`starts_inline`: whether a body begins inline (`none`: invisible).], starts_inline, STARTS_INLINE)
 #record([`trim_leading_space`: the body with its leading space removed.], c => repr(trim_leading_space(c)), TRIM, fmt: x => x)
 #record([`is_whitespace_content`: nothing visible.], is_whitespace_content, WHITESPACE)

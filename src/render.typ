@@ -3,11 +3,14 @@
 #import "prelude.typ": *
 #import "scan.typ": _find, glue_rubrics, has_any_rubric, is_whitespace_content, leading, rubric_markers
 #import "tokenize.typ": apply_styles, stack_of
-#import "plan.typ": cumulative_indent, frame_plan, hold, items_of
-#import "config.typ": DEFAULT_EXAM_OPTIONS
+#import "plan.typ": cumulative_indent, frame_plan, hold, indent_of, items_of
+#import "config.typ": DEFAULT_EXAM_OPTIONS, default_points_format
 #import "points.typ": conflict_warning, division_marker, points_marker
-#import "refs.typ": display_number, division_anchor, enum_numbering, reference_body, update_current_address
+#import "refs.typ": (
+  display_number, division_anchor, enum_numbering, level_numberings, reference_body, update_current_address,
+)
 #import "rubric.typ": owner_update, rubric_area, rubric_end_area, rubric_head, rubric_leaders, stacked_badges
+#import "signature.typ": UNSET
 
 /// Half-em gap between a gutter label and the body text.
 #let LABEL_GAP = .5em
@@ -24,12 +27,79 @@
 /// The badge a division shows (see `assign_badges`).
 #let _badge(d) = d.badge
 
+/// The items with what each division takes for itself resolved (see
+/// `DIVISION_OPTIONS`): its `indent`, `opts`' where it gives none; and in
+/// `own`, the options it, or a division it is in, gives of its own, which
+/// `opts_of` lays it out with. A division giving none, in one giving none,
+/// has no `own`. With a `numbering` in `own`, `numberings` holds that of
+/// each level of its address, `auto` for the exam's (see
+/// `level_numberings`).
+///
+/// The `config` rules inside the exam around a division (its `_scoped`
+/// field, see `tokenize`) give it options too, which it takes over its
+/// parent's when they were set nearer, inside the parent; its own arguments
+/// win over both. Their `indent` is that of every division in their scope
+/// not given one.
+#let localize(items, opts) = {
+  for (i, it) in items.enumerate() {
+    if it.kind != "division" { continue }
+    let f = it.fields
+    let scoped = f.at("_scoped", default: (:))
+    if f.indent == auto { items.at(i).fields.indent = scoped.at("indent", default: opts.indent) }
+    let parent = if it.parent != none { items.at(it.parent) }
+    let own = if parent == none { (:) } else { parent.at("own", default: (:)) }
+    // The rules around the parent are around it too: only those inside the
+    // parent, which set something else, are nearer than the parent's own.
+    let around = if parent == none { (:) } else { parent.fields.at("_scoped", default: (:)) }
+    for (key, value) in scoped {
+      if key == "indent" or (key in around and around.at(key) == value) { continue }
+      // `auto` formats are the default ones, as the exam reads them.
+      if value == auto and key == "points-format" { value = default_points_format }
+      if value == auto and key == "bonus-points-format" { value = p => default_points_format(p, bonus: true) }
+      own.insert(key, value)
+    }
+    for (key, unset) in (numbering: auto, rubric-position: auto, rubric-trace: UNSET, rubric-width: UNSET) {
+      let value = f.at(key, default: unset)
+      if value != unset { own.insert(key, value) }
+    }
+    if "numbering" in own {
+      // Its parent's, if it has them: `own` starts as the parent's.
+      let above = own.at("numberings", default: (auto,) * (it.level - 1))
+      own.insert("numberings", above + (own.numbering,))
+    }
+    if own.len() > 0 { items.at(i).insert("own", own) }
+  }
+  items
+}
+
+/// `opts`, the exam's, as division `d` is laid out with: with the options
+/// it, or a division it is in, gives of its own (see `localize`) in place
+/// of the exam's. Always given the exam's, not another division's.
+#let opts_of(d, opts) = {
+  let own = d.at("own", default: none)
+  if own == none { return opts }
+  if "numbering" in own { opts.numbering = own.numbering }
+  for key in ("points-format", "bonus-points-format", "points-position", "points-show-totals") {
+    if key in own { opts.insert(key, own.at(key)) }
+  }
+  let r = opts.rubric
+  r.position = own.at("rubric-position", default: r.position)
+  r.width = own.at("rubric-width", default: r.width)
+  // `auto` traces them in the margins and not at the `"end"`, of its own
+  // position too.
+  let trace = own.at("rubric-trace", default: r.trace-given)
+  r.trace = if trace == auto { r.position != "end" } else { trace }
+  r.traced = r.drawn and r.trace
+  opts.rubric = r
+  opts
+}
+
 /// Where a division's badge is drawn: `none` when it has none, otherwise
-/// `config`'s `points-position`, except that a conflict warning is always
-/// drawn at the start, in the flow, where it is seen.
+/// its `points-position` (see `opts_of`), except that a conflict warning is
+/// always drawn at the start, in the flow, where it is seen.
 #let _badge_position(d, opts) = {
   let badge = _badge(d)
-  if badge == none { none } else if badge.kind == "conflict" { "start" } else { opts.points-position }
+  if badge == none { none } else if badge.kind == "conflict" { "start" } else { opts_of(d, opts).points-position }
 }
 
 /// The points badge of a division, as drawn by `points-format` (or
@@ -46,8 +116,18 @@
   let badge = _badge(d)
   if badge == none { return none }
   if badge.kind == "conflict" { return conflict_warning(badge) }
+  let opts = opts_of(d, opts)
   let format = if badge.bonus { opts.bonus-points-format } else { opts.points-format }
   box(format(badge.points))
+}
+
+/// The margin the badges of `d_idxs` (divisions sharing a first line,
+/// outermost first) are drawn in: the innermost's that has its badge in one,
+/// as each division may have a `points-position` of its own (see `opts_of`);
+/// `none` if none has.
+#let _margin_side(items, d_idxs, opts) = {
+  let sides = d_idxs.map(i => _badge_position(items_of(items).at(i), opts)).filter(p => p in ("margin-left", "margin-right"))
+  sides.at(-1, default: none)
 }
 
 /// The badges of `d_idxs` that go in the margin, as they are drawn there
@@ -64,16 +144,18 @@
     .filter(i => i == innermost or not _badge(items_of(items).at(i)).total)
     .map(i => _badge_body(items_of(items).at(i), opts))
   if badges.len() == 0 { return none }
-  let side = if opts.points-position == "margin-right" { left } else { right }
+  let side = if _margin_side(items, d_idxs, opts) == "margin-right" { left } else { right }
   // Set against the text in a box wider than any badge, so that it neither
   // wraps nor needs measuring (a `context` here would break the paragraph
   // the badge is placed in).
   box(width: _OVERFLOW, align(side, stack(dir: ltr, spacing: .5em, ..badges)))
 }
 
-/// Whether points badges in the margin are stacked with the rubrics drawn in
-/// the same margin (see `stacked_badges`).
-#let _badges_stacked(opts) = opts.rubric.drawn and opts.points-position == opts.rubric.position
+/// Whether points badges in the margin on `side` are stacked with the
+/// rubrics drawn in the same margin (see `stacked_badges`): when any
+/// division of the exam draws its rubric there, whatever the position of the
+/// badge's own.
+#let _badges_stacked(opts, side) = opts.rubric.drawn and side in opts.rubric.positions
 
 /// The badges of `d_idxs` that go in the margin (see `_margin_badge_body`),
 /// placed in the margin level with the top of the block they are drawn in,
@@ -82,20 +164,16 @@
 #let _margin_badges(items, d_idxs, indent, opts, dy: 0pt) = {
   let body = _margin_badge_body(items, d_idxs, opts)
   if body == none { return none }
-  let in_right = opts.points-position == "margin-right"
-  let placed(dy) = if in_right {
-    place(top + right, dx: MARGIN_GAP + _OVERFLOW, dy: dy, body)
-  } else {
-    place(top + left, dx: -indent - MARGIN_GAP - _OVERFLOW, dy: dy, body)
-  }
-  if _badges_stacked(opts) { return stacked_badges(body, opts.points-position, placed, dy: dy) }
+  let side = _margin_side(items, d_idxs, opts)
+  let stacked = _badges_stacked(opts, side)
   // Anchored to the block, not to the line: since Typst 0.15 a `place`
   // with no alignment inside a paragraph anchors at the line's baseline.
-  if in_right {
+  let placed(dy) = if side == "margin-right" {
     place(top + right, dx: MARGIN_GAP + _OVERFLOW, dy: dy, body)
   } else {
     place(top + left, dx: -indent - MARGIN_GAP - _OVERFLOW, dy: dy, body)
   }
+  if stacked { stacked_badges(body, side, placed, dy: dy) } else { placed(dy) }
 }
 
 /// A badge drawn at the `"end"`: flush right after the text before it, on
@@ -128,7 +206,12 @@
 /// (The zero-width trick assumes LTR text.)
 #let _gutter_label(items, d_idx, indent, width, opts, inline: false, dy: 0pt) = {
   let d = items_of(items).at(d_idx)
-  let disp = display_number(d.address, numbering: opts.numbering, full: opts.numbering-full)
+  let disp = display_number(
+    d.address,
+    numbering: opts_of(d, opts).numbering,
+    full: opts.numbering-full,
+    levels: level_numberings(d, opts.numbering),
+  )
   if disp == none { return none }
   // Right-aligned in a box ending `LABEL_GAP` short of the text, and wider
   // than the gutter, so that a label too long for it (`"Problem 1."`) runs
@@ -179,6 +262,18 @@
   _body_starts_with_division(items, it.children) and _badge_position(it, opts) not in ("start", "end")
 }
 
+/// Division `idx` and those it shares its first line with, outermost first
+/// (see `_shares_first_line`).
+#let _first_line(items, idx, opts) = {
+  let line = (idx,)
+  let cur = idx
+  while _shares_first_line(items, cur, opts) {
+    cur = items_of(items).at(cur).children.find(i => items_of(items).at(i).kind == "division")
+    line.push(cur)
+  }
+  line
+}
+
 /// How the first line of a run of chunks (item indices, in order) sits, for
 /// a gutter label: `inline`, whether the label rides that line's baseline;
 /// and otherwise `dy`, how far below the top of the run the line starts (see
@@ -213,7 +308,8 @@
   let anchor = division_anchor(
     label_name: d.fields.label,
     full_address: d.address,
-    numbering: opts.numbering,
+    numbering: opts_of(d, opts).numbering,
+    levels: level_numberings(d, opts.numbering),
     full: opts.numbering-full,
     label: d.fields.label,
   )
@@ -283,7 +379,8 @@
 /// Join a run of chunk items back into content, re-applying recorded styles.
 /// Consecutive chunks with the same style stack are joined first so spacing
 /// is preserved, then wrapped once. `base` styles (already applied by an
-/// enclosing block) are skipped.
+/// enclosing block) are skipped. `opts` are those of the division they are
+/// in (see `opts_of`).
 #let render_chunks(items, idxs, opts, base: 0) = {
   let groups = ()
   // The division of those holding rubrics (all are its), if any do.
@@ -310,10 +407,12 @@
 /// What division `d`'s rubric is headed by, and its points (or its parts'),
 /// for the export (see `rubric_area`).
 #let rubric_info(d, opts) = {
+  let levels = level_numberings(d, opts.numbering)
+  let opts = opts_of(d, opts)
   let weight = if d.fields.points != none { d.fields.points } else if d.total_points > 0 { d.total_points }
   (
     heading: (
-      title: [#opts.strings.question #reference_body(d.address, (), numbering: opts.numbering, full: opts.numbering-full)],
+      title: [#opts.strings.question #reference_body(d.address, (), numbering: opts.numbering, full: opts.numbering-full, levels: levels)],
       points: if weight == none { none } else if d.fields.points != none and d.fields.intent == "bonus" {
         (opts.bonus-points-format)(weight)
       } else {
@@ -330,7 +429,7 @@
 /// Division `d`'s rubric in the margin, at the start of its block (see
 /// `rubric_area`). Only for a division with a rubric drawn there.
 #let _rubric_margin(d, opts, indent, dy) = {
-  rubric_area(d.address, d.fields.rubric, rubric_info(d, opts), opts, indent: indent, dy: dy)
+  rubric_area(d.address, d.fields.rubric, rubric_info(d, opts), opts_of(d, opts), indent: indent, dy: dy)
 }
 
 /// Division `d`'s rubric at its `"end"` (see `rubric_end_area`). Only for a
@@ -345,7 +444,9 @@
 /// it (see `_rubric_ends`).
 #let render_nested(items, idx, opts, base_styles: 0, carry: (), end: true) = {
   let it = items_of(items).at(idx)
-  let indent = it.fields.indent
+  let indent = indent_of(it)
+  // Its own options; the exam's go to the divisions in it (see `opts_of`).
+  let o = opts_of(it, opts)
   let it_styles = stack_of(it.styles)
   let own_styles = it_styles.slice(calc.min(base_styles, it_styles.len()))
 
@@ -356,40 +457,26 @@
   // in the margin drawn by the part, with the part's own.
   let shares_line = _shares_first_line(items, idx, opts)
   // Whether it has rubrics written in its own text, whose leaders it draws.
-  let traced = opts.rubric.traced and it.at("rubric_text", default: false)
-  let margin = opts.rubric.position != "end" and _drawn(it, opts)
+  let traced = o.rubric.traced and it.at("rubric_text", default: false)
+  let margin = o.rubric.position != "end" and _drawn(it, opts)
+  // The divisions on its first line, outermost first.
+  let line = carry + _first_line(items, idx, opts)
   let body = {
     // First, before the paragraph it is level with: a `place` aligned to the
     // block in the middle of a paragraph would break it in two.
-    if _badges_stacked(opts) {
+    if _badges_stacked(opts, _margin_side(items, line, opts)) {
       // Stacked with the rubrics, the badges of a first line come before
       // them all: drawn by the outermost division whose number is on it,
       // for those of the divisions it shares it with.
-      if carry.len() == 0 {
-        let line = (idx,)
-        let cur = idx
-        while _shares_first_line(items, cur, opts) {
-          cur = items_of(items).at(cur).children.find(i => items_of(items).at(i).kind == "division")
-          line.push(cur)
-        }
-        _margin_badges(items, line, cumulative_indent(items, idx), opts, dy: dy)
-      }
+      if carry.len() == 0 { _margin_badges(items, line, cumulative_indent(items, idx), opts, dy: dy) }
     } else if not shares_line {
-      _margin_badges(items, carry + (idx,), cumulative_indent(items, idx), opts, dy: dy)
+      _margin_badges(items, line, cumulative_indent(items, idx), opts, dy: dy)
     }
     if traced { rubric_head(it.address) }
     if margin { _rubric_margin(it, opts, cumulative_indent(items, idx), dy) }
     // Numbered in full, the parts it shares its first line with show its
     // number (see `_covered`).
-    let covered = if opts.numbering-full and shares_line {
-      let line = (idx,)
-      let cur = idx
-      while _shares_first_line(items, cur, opts) {
-        cur = items_of(items).at(cur).children.find(i => items_of(items).at(i).kind == "division")
-        line.push(cur)
-      }
-      _covered(items, idx, line, opts)
-    } else { false }
+    let covered = shares_line and _covered(items, idx, line, opts)
     if not covered { _gutter_label(items, idx, indent, indent, opts, inline: inline_label, dy: dy) }
     _division_head(items, idx, opts, inline: inline_label)
     let carry = if shares_line { carry + (idx,) } else { () }
@@ -403,7 +490,7 @@
       if child.kind == "chunk" {
         chunk_run.push(c_idx)
       } else {
-        render_chunks(items, chunk_run, opts, base: it_styles.len())
+        render_chunks(items, chunk_run, o, base: it_styles.len())
         end_badge
         end_badge = none
         chunk_run = ()
@@ -411,15 +498,15 @@
         carry = ()
       }
     }
-    render_chunks(items, chunk_run, opts, base: it_styles.len())
+    render_chunks(items, chunk_run, o, base: it_styles.len())
     end_badge
-    if end and opts.rubric.position == "end" and _drawn(it, opts) { _rubric_end(it, opts) }
-    if traced { rubric_leaders(it.address, (it.address,), opts.rubric.position) }
+    if end and o.rubric.position == "end" and _drawn(it, opts) { _rubric_end(it, opts) }
+    if traced { rubric_leaders(it.address, (it.address,), o.rubric.position) }
   }
 
   apply_styles(
     block(width: 100%, inset: (left: indent), {
-      set enum(numbering: enum_numbering(opts.numbering, it.level))
+      set enum(numbering: enum_numbering(o.numbering, it.level))
       body
     }),
     own_styles,
@@ -439,6 +526,8 @@
 /// `base` styles (already applied around it, see `render`) are skipped.
 #let render_segment(items, seg, opts, ends: (:), n: none, base: 0) = {
   let owner = items_of(items).at(seg.division)
+  // Its owner's options (see `opts_of`).
+  let o = opts_of(owner, opts)
   let height = if seg.has_inner_break or seg.fr == none { auto } else { seg.fr }
   let owner_styles = stack_of(owner.styles)
   let own_styles = owner_styles.slice(calc.min(base, owner_styles.len()))
@@ -452,7 +541,7 @@
   // and the divisions of those in it, whose leaders it draws.
   let carried = seg.at("rubrics", default: ()).map(i => items_of(items).at(i))
   let owners = ()
-  if opts.rubric.traced {
+  if o.rubric.traced {
     for i in seg.items {
       if items_of(items).at(i).at("rubric", default: false) { owners.push(owner.address) }
     }
@@ -464,9 +553,10 @@
     // First, before the paragraph it is level with (see `render_nested`).
     if seg.label_divisions.len() > 0 { _margin_badges(items, seg.label_divisions, seg.indent, opts, dy: dy) }
     if owners.len() > 0 { rubric_head(owner.address) }
-    if opts.rubric.drawn and opts.rubric.position != "end" {
+    if opts.rubric.drawn {
       for d_idx in seg.label_divisions {
-        if _drawn(items_of(items).at(d_idx), opts) { _rubric_margin(items_of(items).at(d_idx), opts, seg.indent, dy) }
+        let d = items_of(items).at(d_idx)
+        if _drawn(d, opts) and opts_of(d, opts).rubric.position != "end" { _rubric_margin(d, opts, seg.indent, dy) }
       }
     }
     // Gutter labels: possibly several divisions share this segment's first
@@ -492,16 +582,16 @@
       update_current_address(owner.address)
     }
     if carried.len() > 0 { _carried_rubrics(carried) }
-    render_chunks(items, seg.items, opts, base: owner_styles.len())
+    render_chunks(items, seg.items, o, base: owner_styles.len())
     if ends.at(str(seg.division), default: none) == n { _end_badge(owner, opts) }
-    if owners.len() > 0 { rubric_leaders(owner.address, owners, opts.rubric.position) }
+    if owners.len() > 0 { rubric_leaders(owner.address, owners, o.rubric.position) }
   }
 
   let segment(height, above) = block(width: 100%, inset: (left: seg.indent), height: height, sticky: seg.sticky, above: above, {
     // A pagebreak buried inside an opaque chunk cannot break out of this
     // block; degrade it to a column break like the old implementation.
     show pagebreak: it => colbreak(weak: it.weak)
-    set enum(numbering: enum_numbering(opts.numbering, owner.level))
+    set enum(numbering: enum_numbering(o.numbering, owner.level))
     body
   })
   let unit = opts.fr-unit
@@ -579,7 +669,10 @@
       (instr.division, ..instr.label_divisions)
     } else if instr.kind == "frame" { (instr.division, ..instr.labels) } else { () }
     for d in ds {
-      if within(d) and _drawn(items_of(items).at(d), opts) { drawn.insert(str(d), true) }
+      let item = items_of(items).at(d)
+      if within(d) and _drawn(item, opts) and opts_of(item, opts).rubric.position == "end" {
+        drawn.insert(str(d), true)
+      }
     }
   }
   let last = (:)
@@ -628,7 +721,7 @@
 #let render(items, instructions, opts: DEFAULT_EXAM_OPTIONS, root: none, base: 0) = {
   let items = hold(items)
   let ends = _end_segments(items, instructions, opts)
-  let rubric_ends = if opts.rubric.drawn and opts.rubric.position == "end" {
+  let rubric_ends = if opts.rubric.drawn and "end" in opts.rubric.positions {
     _rubric_ends(items, instructions, opts, root: root)
   } else { (:) }
   // Instruction `n`, drawn inside styles `depth` deep.

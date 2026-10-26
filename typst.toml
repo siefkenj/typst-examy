@@ -10,12 +10,9 @@ categories = ["office", "layout"]
 license = "MIT OR Apache-2.0"
 description = "Template for writing exams, quizzes, and homework with automatic numbering, points, and cross-references"
 keywords = ["exam", "homework", "quiz", "assignment"]
-exclude = ["test", "examples"]
+exclude = ["tests", "examples"]
 
 [template]
 path = "template"
 entrypoint = "main.typ"
 thumbnail = "thumbnail.png"
-
-[tool.typst-test]
-tests = "test/unit"

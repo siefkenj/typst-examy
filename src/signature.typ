@@ -239,3 +239,15 @@
 /// A function taking the arguments `spec` declares, which calls `impl` with
 /// a dictionary of their values.
 #let define(spec, impl) = (..args) => impl(check_args(spec, args))
+
+/// What an argument holds when it is not given, where every value it takes
+/// means something (`auto` and `none` included), so that `config`'s option
+/// stands in for it. Neither the API reference nor an error message shows it
+/// (see `describe_type`); a field defaulting to it gives the `default-shown`
+/// of its `meta` instead. (`answer-box`, an element, has one of its own,
+/// which folds as a set rule needs.)
+#let UNSET = <examy-unset>
+
+/// The type of an argument taking `types` (see `e.types.union`), or `UNSET`
+/// when it is not given.
+#let unset_or(..types) = e.types.union(e.types.literal(UNSET), ..types)

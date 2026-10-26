@@ -121,3 +121,47 @@
 #swatch([`solution-color: maroon`.], color_only)
 #swatch([`solution-background-color: maroon.lighten(90%)`.], bg_only)
 #swatch([A neutral background stays neutral.], from_gray)
+
+// --- a solution's own `color` and `background-color` ---
+// Each stands in for its `config` option where it is given, as if that option
+// were set around the solution: the other half is still the configured one,
+// or derived from it when that is `auto`.
+#e.get(get => {
+  let colors = solution_colors(get, color: maroon)
+  assert.eq(colors.color, maroon, message: "a solution's color is used as given")
+  assert.eq(colors.background, maroon.lighten(90%), message: "and the background follows it")
+  let colors = solution_colors(get, background: aqua)
+  assert.eq(colors.background, aqua, message: "a solution's background is used as given")
+  assert.eq(colors.color, resolve_solution_colors(auto, aqua).color, message: "and the color follows it")
+})
+#[
+  #show: e.set_(config, solution-color: olive)
+  #e.get(get => {
+    let colors = solution_colors(get, background: aqua)
+    assert.eq(colors.color, olive, message: "the configured color stays with a solution's own background")
+    assert.eq(colors.background, aqua)
+    assert.eq(solution_colors(get, color: maroon).color, maroon, message: "a solution's color wins over config")
+  })
+]
+
+// A visual record of a solution given its own colors.
+#let rendered(desc, body) = {
+  block(above: 12pt, below: 6pt, line(length: 100%, stroke: .5pt + gray))
+  align(right, emph(desc))
+  block(body)
+}
+#rendered([`solution(color: maroon)`: a maroon wash behind maroon text.], solution(color: maroon)[solution text])
+#rendered([`solution(background-color: red)`: a red background, the text derived from it.], solution(
+  background-color: red,
+)[solution text])
+#rendered([`solution-color: olive` in `config`, `solution(background-color: aqua)`: olive on aqua.], {
+  show: e.set_(config, solution-color: olive)
+  solution(background-color: aqua)[solution text]
+})
+#rendered([`e.set_(solution, color: maroon)`: a set rule gives it too.], {
+  show: e.set_(solution, color: maroon)
+  solution[solution text]
+})
+#rendered([In an `answer-box(width: 100%)`, `solution(background-color: red)`.], answer-box(width: 100%)[
+  #solution(background-color: red)[Can you read me?]
+])

@@ -8,9 +8,9 @@
 // has a paged form too (see `_either` in site/template.typ).
 
 #import "site/template.typ": (
-  OUTPUT, PAGES, REFERENCE_PAGES, REPOSITORY, entry_heading, entry_page, page_label,
+  OUTPUT, PAGES, REFERENCE_PAGES, REPOSITORY, _anchor, entry_heading, entry_page, inline_code, page_label,
 )
-#import "api.typ": VERSION
+#import "api.typ": VERSION, entry
 #import "logo/logo.typ": NAVY, examy-logo
 #import "/src/elements/bubble.typ": check_mark
 
@@ -36,6 +36,8 @@
   v(.6em)
 }
 #show heading: set block(above: 1.6em, below: .9em)
+// Inline code as Typst (see `inline_code`).
+#show: inline_code
 #show raw.where(block: true): set text(size: .9em)
 #show raw.where(block: true): set par(justify: false)
 // Code on the same gray as the panel behind an example's exam, outlined as
@@ -139,6 +141,36 @@
 // outline's own title would sit in the first column).
 #heading(numbering: none, outlined: false)[Contents]
 #columns(2, gutter: 2.5em, outline(title: none, depth: 2))
+
+// Every option of `config`, in alphabetical order, each with the page of its
+// entry in the reference. Options are arguments there, not headings, so the
+// outline above can't list them; each line is drawn as one of its entries.
+#heading(level: 2, numbering: none, outlined: false)[Configuration options]
+#{
+  let item(a) = context {
+    let at = locate(_anchor("config", arg: a.name))
+    let page = numbering(at.page-numbering(), ..counter(page).at(at))
+    // A link to the location, not the label, so that it is not colored as
+    // the manual's other links are (see `show link` above), as in the outline.
+    link(at, {
+      raw(a.name)
+      if a.doc.starts-with("Deprecated") { h(.5em); text(size: .7em, fill: luma(90))[deprecated] }
+      [ ]
+      box(width: 1fr, repeat(gap: .15em)[.])
+      [ #page]
+    })
+  }
+  // In reading order down the first column, then the second, the two halves
+  // even (a page's `columns` would fill the first before the second), spaced
+  // as the outline's entries are (by the default `par.leading`).
+  let options = entry("config").args.sorted(key: a => a.name)
+  let half = calc.ceil(options.len() / 2)
+  grid(
+    columns: (1fr, 1fr),
+    column-gutter: 2.5em,
+    ..(options.slice(0, half), options.slice(half)).map(col => stack(spacing: .65em, ..col.map(item))),
+  )
+}
 
 #for p in PAGES {
   [#heading(level: 1, p.title)#page_label(p.path)]

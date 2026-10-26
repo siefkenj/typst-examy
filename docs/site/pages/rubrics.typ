@@ -1,17 +1,32 @@
 #import "../template.typ": *
 
-// The examples with a rubric in the margin, whose dotted lines need to know
-// where things are on the page: on the site, they are shown as images of a
-// paged rendering (see `example`'s `paged-name`), which site.typ makes from
-// this list.
-#let PAGED_EXAMPLES = (
-  margin: (
-    paged-name: "rubrics-margin",
-    code: ```typ
-  #show: exam.with(show-rubrics: auto, rubric-width: 4.4cm)
+Rubrics indicate how points should be awarded when grading a question, and examy provides a #api(
+  "rubric",
+  arg: "(points: ..)[..]",
+) for that purpose. Rubrics don't take up any space inside an exam, can be nested in groups, and are
+shown in the margin. They can be authored anywhere in an exam and will point back to the specific
+location where they are authored.
+
+All rubric items in a particular question/part/subpart are grouped together and shown in a single
+box in the margin. Rubric items set in the `rubric: ...` option of a question/part/subpart will not
+have a traceback line.
+
+// Shown as images of a paged rendering (`paged-name`), as a rubric's dotted
+// lines need to know where things are on the page.
+#example(
+  ```typ
+  #show: exam.with(show-rubrics: auto, rubric-width: 4.8cm)
+
+  #question(points: 1, rubric: [
+    #rubric(points: 1)[Name]
+    Make sure it is correctly spelled.
+  ])[
+    Spell your name.
+  ]
 
   #question(points: 3, rubric: [
-    #rubric(points: 0)[Blank, or no derivative]
+    #rubric(points: 0)[Not a derivative]
+    #rubric(points: 0)[Blank]
   ])[
     Compute $f'(x)$ for $f(x) = x^2 e^x$.
     #solution[
@@ -20,19 +35,51 @@
     ]
   ]
   ```,
-    // As tall as the rubric, which is taller than the question.
-    height: 2.4cm,
-    inset: (right: 5cm),
-  ),
-  groups: (
-    paged-name: "rubrics-groups",
-    code: ```typ
-  #show: exam.with(show-rubrics: auto, rubric-width: 4.4cm)
+  margin: (right: 5.5cm),
+  // The rubrics are taller than the questions, which the site makes room for.
+  pdf-height: (auto, 3.75cm),
+  stacked: true,
+  paged-name: "rubrics-margin",
+)
+
+
+An rubric item's `points` can be positive or negative. No accounting/checking is done by examy, and
+it is the author's responsibility to make sure that rubric points add up to the correct total.
+
+== Visibility
+
+Rubrics are hidden by default and can be shown by setting `show-rubrics` on the global #api(
+  "config",
+).
+
+/ `show-rubrics: false`: (default) Rubrics are hidden.
+/ `show-rubrics: true`: Rubrics are shown.
+/ `show-rubrics: auto`: Rubrics are shown whenever solutions are shown.
+
+As with solutions, a command line setting can be used to override the exam's settings.
+
+```bash
+# the answer key, with its rubric, for the graders
+typst compile --input show-solutions=true --input show-rubrics=true exam.typ
+```
+
+== Groups
+
+A #api("rubric", arg: "[...]") that contains other #api("rubric", arg: "[...]")s creates a group.
+Its first paragraph is the group's title and the `#rubric`s inside are items. Any other non-rubric
+text will show up as a note.
+
+A rubric's `annotation` argument supplies a short note for the grader, useful for instructions like
+`annotation: [pick one]` on a group of mutually exclusive rubric items.
+
+#example(
+  ```typ
+  #show: exam.with(show-rubrics: auto, rubric-width: 4.8cm)
 
   #question(points: 4, rubric: [
     #rubric[*Deductions*
       #rubric(points: -1)[Never says "lowest terms"]
-      #rubric(pick: "one")[Logic
+      #rubric(annotation: [pick one])[Logic
         #rubric(points: -2)[Circular]
         #rubric(points: -1)[A step not justified]
       ]
@@ -40,7 +87,7 @@
   ])[
     Prove that $sqrt(2)$ is irrational.
     #solution[
-      #rubric(pick: "one")[Setup
+      #rubric(annotation: [pick one])[Setup
         #rubric(points: 2)[Assumes $sqrt(2) = p/q$ in lowest terms]
         #rubric(points: 1)[Assumes $sqrt(2) = p/q$]
       ]Suppose $sqrt(2) = p/q$ with $p$ and $q$ coprime. Then
@@ -49,73 +96,24 @@
     ]
   ]
   ```,
-    height: 5.8cm,
-    inset: (right: 5cm),
-  ),
+  margin: (right: 5.5cm),
+  // The rubric is taller than the question, which the site makes room for.
+  pdf-height: (auto, 5.0cm),
+  stacked: true,
+  paged-name: "rubrics-groups",
 )
-#let paged-example(ex) = example(ex.code, height: ex.height, inset: ex.inset, paged-name: ex.paged-name)
 
-A rubric describes how a question is graded: what earns points and what loses them. Write rubric
-items with the question using #api("rubric", body: raw("#rubric(points: ..)[..]")), and examy draws
-them in the margin of the graders' copy. Items written inside a solution get a dotted line to the
-spot they refer to. Rubrics are hidden unless turned on, and they take up no space, so the exam is
-laid out the same with or without them.
+== Customizing the position of rubrics
 
-#paged-example(PAGED_EXAMPLES.margin)
+The `rubric-position` option sets where each rubric is placed.
 
-A question/part/subpart's rubric is made of the `#rubric` items in its body, in order, followed by
-those in its `rubric:` argument. Put an item in the body (for example, in the solution) right where
-the thing it gives points for appears, and the dotted line will show the grader where to look. Items
-that aren't tied to a particular place, such as "Blank", go in the `rubric:` argument, along with
-any notes for the grader, which are shown between the items.
+/ `"margin-right"`: (default) Place the rubric in the right margin.
+/ `"margin-left"`: Place the rubric in the left margin.
+/ `"end"`: Place the rubric at the end of the question/part/subpart where the rubric is placed.
 
-An item's `points` are how much it changes the score: positive for credit, negative for a
-deduction, and `0` for feedback only. Rubric points are not added to any total; only the question's
-`points` are.
-
-== Groups
-
-A `#rubric` that contains other `#rubric`s is a group. Its first paragraph is the group's title, any
-further text before the first item is a note, and the `#rubric`s inside are its items. With
-`pick: "one"`, at most one of its items applies, and they are drawn as sections of a single box.
-Groups can be nested.
-
-#paged-example(PAGED_EXAMPLES.groups)
-
-== Showing rubrics
-
-Rubrics are turned on with the global #api("config")'s `show-rubrics` option: `true`, `false` (the
-default), or `auto`, which shows them whenever solutions are shown. As with solutions, the command
-line overrides the document:
-
-```bash
-# the answer key, with its rubric, for the graders
-typst compile --input show-solutions=true --input show-rubrics=true exam.typ
-```
-
-== Where they go
-
-The `rubric-position` option puts each rubric in the right margin (`"margin-right"`, the default),
-in the left margin (`"margin-left"`), or at the `"end"` of its question/part/subpart, after its
-parts. In a margin, a rubric lines up with the first line of its question/part/subpart, and moves
-down if it would overlap the one before it. The margin needs to be wide enough to read it in.
-`rubric-width` sets the rubric's width, which by default is the margin's width less a small gap on
-each side.
-
-To make room without changing the exam's layout, widen the page rather than the text. Keep the text
-the same width, and add the rubric's space to the page and its margin, for the graders' copy only.
-
-```typ
-#let graders = sys.inputs.at("show-rubrics", default: "false") == "true"
-#set page(
-  width: 8.5in + if graders { 2in } else { 0in },
-  margin: (left: .75in, right: .75in + if graders { 2in } else { 0in }, y: .75in),
-)
-```
-
-At the `"end"`, a rubric takes up space, so the exam is laid out differently with it. There, the
-dotted lines are left out unless `rubric-trace: true` is set, and `rubric-trace: false` turns them
-off in the margins too.
+When set in the margins, a rubric takes up no additional space. When `rubric-position: "end"` is
+set, the rubrics will take up space on the page, so a rubric vs. no-rubric rendering will have
+different spacings.
 
 #example(
   ```typ
@@ -126,43 +124,74 @@ off in the margins too.
     #rubric(points: 1)[States the conclusion]
   ])[
     State the Mean Value Theorem.
-    #answer-box(width: 100%, height: 2cm)[]
+    #answer-box(width: 100%, height: 1cm)[#solution[Let $f:[a,b] -> RR$ ...]]
   ]
+  #question(points: 1, rubric: rubric(points: 1)[Anything drawn])[
+    Draw a picture.
+  ]
+  ```,
+  stacked: true,
+)
+
+== Listing and exporting rubrics
+
+To display all rubrics in a list, use the #api("rubric-list", arg: "()") command. The #api(
+  "rubric-list",
+  arg: "()",
+) command always displays the rubrics regardless of whether `show-rubrics` is set.
+
+#example(
+  ```typ
+  #show: exam
+
+  #question(points: 2, rubric: [
+    #rubric(points: 1)[Uses $A = pi r^2$]
+    #rubric(points: 1)[Gets $9 pi$]
+  ])[What is the area of a circle of radius 3?]
+  #question(points: 3, rubric: [
+    #rubric(points: 2)[Uses the chain rule]
+    #rubric(points: 1)[Simplifies]
+    #rubric(points: -1, annotation: [once only])[Sign error]
+  ])[Differentiate $sin(x^2)$.]
+
+  *Grading guide*
+  #rubric-list()
   ```,
 )
 
-#warning[
-  _Warning._ A rubric in the margin does not break across pages, so one that is too tall for the
-  space left on its page runs off the page. Give its question a page of its own, or give the rubric
-  more width.
-]
-
-== The rubrics on their own
-
-#api("rubric-list", body: raw("#rubric-list()")) lays out every rubric in the exam, one after another,
-as a grading guide of its own. Put it after the exam, or in a separate document that includes the
-exam. It works regardless of `show-rubrics`.
-
-== The rubrics as data
-
-Every exam with rubrics also stores them in the document as invisible data, regardless of
-`show-rubrics`. Read them out as JSON from the command line:
+Rubrics can also be exported as JSON data.
 
 ```bash
 typst eval --in exam.typ --pretty 'query(<examy-rubric>).first().value' > rubric.json
 ```
+The `.first().value` is used to retrieve the rubric from the first exam in the document (if your
+document only has one exam, then the first exam will be your exam), and `.at(1)`, `.at(2)`, etc. can
+be used to retrieve rubrics from other exams.
 
-There is one entry per exam, in order. `exam` is the exam's number, starting from 1, and
-`questions` lists each question/part/subpart that has a rubric, in order. Each one has a `number`
-(`"2.1"` for 2 (a)), a `title` as shown on its card, its `points` (its parts' total if it has none
-of its own), and its `rubric`, nested as written:
+Rubric text is converted to Markdown and math is written as LaTeX between ```txt $``` (or
+```txt $$``` for display math).
 
-```json
-{ "type": "item", "points": 2, "description": "Uses the product rule" }
-{ "type": "group", "title": "Setup", "note": null, "pick": "one", "items": [..] }
-{ "type": "note", "text": "Accept any equivalent form." }
-```
+#example(
+  ```typ
+  #show: exam
+  #set text(size: 0.8em)
 
-Text is Markdown. Bold, italic, and lists are kept, and math is written in LaTeX between `$` (or
-`$$` for display math). From there, a script (or an AI agent) can convert the rubrics into whatever
-format a grading service needs, such as Gradescope's rubric upload.
+  #question(points: 2, rubric: [
+    #rubric(points: 1)[Uses $A = pi r^2$]
+    #rubric(points: 1)[Gets $9 pi$]
+  ])[What is the area of a circle of radius 3?]
+  #question(points: 3, rubric: [
+    #rubric(points: 2)[Uses the chain rule]
+    #rubric(points: 1)[Simplifies]
+    #rubric(points: -1, annotation: [once only])[Sign error]
+  ])[Differentiate $sin(x^2)$.]
+
+  *Rubric as JSON*
+  #context {
+    // Get the rubric data as JSON
+    let data = query(<examy-rubric>).first().value
+    raw(json.encode(data), lang: "json", block: true)
+  }
+  ```,
+)
+

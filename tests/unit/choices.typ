@@ -786,6 +786,14 @@
     n => ("N", "E", "S", "W").at(n - 1),
     ("N", "E", "S", "W"),
   ),
+  ("array", [An array, one label per choice: `("N", "E", "S", "W")`], ("N", "E", "S", "W"), ("N", "E", "S", "W")),
+  (
+    "array-long",
+    [An array longer than the choices, its extra labels unused: `("w", "x", "y", "z", "q")`],
+    ("w", "x", "y", "z", "q"),
+    ("w", "x", "y", "z"),
+  ),
+  ("array-content", [An array of content: `([α], [β], "c", [δ])`], ([α], [β], "c", [δ]), ("α", "β", "c", "δ")),
 )
 #for (name, desc, setting, _) in ENUMERATE_CASES {
   case(desc, labels_drawn(name, choices(enumerate: setting, inline: true, EMPTY)))

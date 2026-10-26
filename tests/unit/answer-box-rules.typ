@@ -80,12 +80,21 @@
     ],
   ),
   (
+    "fr from config for a box in a block of fixed height, which draws itself: the fr is the block's",
+    way => exam(..if way == "set" { (answer-box-height: 1fr) })[
+      #question[Text. #block(width: 100%, height: 2cm, stroke: .3pt + gray)[
+        #answer-box(width: 50%, ..if way == "call" { (height: 1fr) })[]
+      ] #mark(6, way, 1)]
+      #question[After. #mark(6, way, 2)]
+    ],
+  ),
+  (
     "a box outside any exam, drawing itself",
     way => {
       show: e.set_(answer-box, ..if way == "set" { (width: 100%, default-height: 1.5cm) })
-      [Name: #answer-box(width: 4cm, ..if way == "call" { (default-height: 1.5cm) })[] #mark(6, way, 1)]
+      [Name: #answer-box(width: 4cm, ..if way == "call" { (default-height: 1.5cm) })[] #mark(7, way, 1)]
       answer-box(..if way == "call" { (width: 100%, default-height: 1.5cm) })[]
-      mark(6, way, 2)
+      mark(7, way, 2)
     },
   ),
 )

@@ -9,7 +9,7 @@
 #import "prelude.typ": e
 #import "markers.typ": begin_marker, end_marker, outside_check
 #import "constants.typ": DEBUG_PANIC
-#import "signature.typ": declare_function, define
+#import "signature.typ": UNSET, declare_function, define, unset_or
 
 /// The arguments of a question, part, or subpart, which take identical ones.
 #let _DIVISION_FIELDS = (
@@ -51,9 +51,35 @@
   ),
   e.field(
     "indent",
-    length,
-    doc: "Indentation of the body relative to the parent.",
-    default: 1.5em,
+    e.types.smart(length),
+    doc: "How far the body is indented from the question or part it is in. `auto` is `config`'s `indent`, which is `1.5em` unless it is set.",
+    default: auto,
+  ),
+  e.field(
+    "numbering",
+    e.types.union(auto, str, function, e.types.array(e.types.union(str, function))),
+    doc: "How it is numbered, and the parts and subparts in it, as `config`'s `numbering` takes it, whose levels count from the question: `question(numbering: (\"Bonus 1.\", \"(i)\"))` numbers the question \"Bonus 1.\" and its parts \"(i)\", \"(ii)\". A reference to it, or to a part in it, is numbered so too. `auto` is that of the question or part it is in, or `config`'s.",
+    default: auto,
+  ),
+  e.field(
+    "rubric-position",
+    e.types.union(auto, "margin-right", "margin-left", "end"),
+    doc: "Where its rubric is drawn, and those of the parts and subparts in it, as `config`'s `rubric-position` says. `auto` is as the question or part it is in has them, or as `config` says.",
+    default: auto,
+  ),
+  e.field(
+    "rubric-trace",
+    unset_or(auto, bool),
+    doc: "Whether the rubrics written in its body, and in those of its parts and subparts, are traced to their items, as `config`'s `rubric-trace` says. Left out, it is as the question or part it is in has it, or as `config` says.",
+    default: UNSET,
+    meta: (default-shown: "auto"),
+  ),
+  e.field(
+    "rubric-width",
+    unset_or(auto, length),
+    doc: "The width of its rubric in the margin, and those of its parts and subparts, as `config`'s `rubric-width` says. Left out, it is as the question or part it is in has it, or as `config` says.",
+    default: UNSET,
+    meta: (default-shown: "auto"),
   ),
   e.field(
     "label",
@@ -91,6 +117,10 @@
     number: it.number,
     height: it.height,
     indent: it.indent,
+    numbering: it.numbering,
+    rubric-position: it.rubric-position,
+    rubric-trace: it.rubric-trace,
+    rubric-width: it.rubric-width,
     label: it.label,
     name: spec.name,
   ))

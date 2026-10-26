@@ -5,6 +5,8 @@
 
 #import "/src/lib.typ"
 #import "/src/prelude.typ": e
+#import "/src/rubric.typ": AREA
+#import "/src/points.typ": EXAMS_STARTED
 
 /// Lines an example may start with that set the document up rather than
 /// belong to the exam: they stay outside the `exam[..]` an example is wrapped
@@ -135,6 +137,11 @@
 /// the `.` or `:` that may follow a reference in text.
 #let _NAME = "[\\p{L}_](?:[\\p{L}\\p{N}_\\-:.]*[\\p{L}\\p{N}_\\-])?"
 
+/// The labels examy itself puts in a document, which an example's code may
+/// query: not renamed (see `_relabel`), as they are not the example's own.
+/// A query of one is narrowed to the example instead (see `_own_queries`).
+#let _PACKAGE_LABELS = ("examy-rubric", "examy-warning")
+
 /// `src` with each of its labels (`<name>`, `label("name")`) and each
 /// reference to one (`@name`) renamed with `suffix`, so that another copy of
 /// the same example in the document, an answer key or another page of it,
@@ -146,7 +153,9 @@
 #let _relabel(src, suffix) = {
   let renamed(s) = (
     s
-      .replace(regex("<(" + _NAME + ")>"), m => "<" + m.captures.first() + suffix + ">")
+      .replace(regex("<(" + _NAME + ")>"), m => if m.captures.first() in _PACKAGE_LABELS { m.text } else {
+        "<" + m.captures.first() + suffix + ">"
+      })
       .replace(regex("label\\(\"([^\"]+)\"\\)"), m => "label(\"" + m.captures.first() + suffix + "\")")
       .replace(regex("(^|[^\\p{L}\\p{N}_\"\\\\])@(" + _NAME + ")"), m => m.captures.at(0) + "@" + m.captures.at(1) + suffix)
   )
@@ -159,6 +168,40 @@
     at = m.end
   }
   out + renamed(src.slice(at))
+}
+
+/// `query(target)` as the example between the markers labelled `start` and
+/// `end` would have it in a document of its own: only what it draws, and,
+/// for `<examy-rubric>`, its exams numbered from 1, not among every example's
+/// on the page. The rubric data is given as `(value: ..)`, so that it is read
+/// as a query's result is (`.first().value`). In an example's scope as
+/// `_example_query` (see `_own_queries`).
+#let _example_query(target, start, end) = {
+  let found = query(selector(target).after(start).before(end))
+  if target != <examy-rubric> { return found }
+  // The exams begun before the example.
+  let before = EXAMS_STARTED.at(start).first()
+  found.map(m => (value: (..m.value, exam: m.value.exam - before)))
+}
+
+/// `src` with each query of examy's own labels (see `_PACKAGE_LABELS`) made
+/// as the example would make it in a document of its own (see
+/// `_example_query`), between the markers labelled `start` and `end`: every
+/// example on a page is in the same document, so `query(<examy-rubric>)` would
+/// otherwise find every example's exam, as it would every exam of a document
+/// of several. Any other use of one is narrowed to the example.
+#let _own_queries(src, start, end) = {
+  let (start, end) = (start, end).map(l => "label(\"" + str(l) + "\")")
+  let names = "(" + _PACKAGE_LABELS.join("|") + ")"
+  // A whole query, or else the label alone, in one pass.
+  src.replace(regex("\\bquery\\(\\s*<" + names + ">\\s*\\)|<" + names + ">"), m => {
+    let (queried, alone) = m.captures
+    if queried != none {
+      "_example_query(<" + queried + ">, " + start + ", " + end + ")"
+    } else {
+      "selector(<" + alone + ">).after(" + start + ").before(" + end + ")"
+    }
+  })
 }
 
 /// How many pages an example's code makes: one more than it has page breaks.
@@ -175,8 +218,9 @@
 /// columns instead, its page breaks breaking the column, and each page shows
 /// its own column, with the `inset` around it, through a window onto them.
 /// The example is drawn once per page, as it is once per view (the exam and
-/// its answer key) anyway.
-#let _stacked(body, pages, width, height, inset) = context {
+/// its answer key) anyway. `lines` outlines the sides of each page given a
+/// margin (see `render`).
+#let _stacked(body, pages, width, height, inset, lines: (:)) = context {
   // Each side as Typst's insets give it: by name, by axis, or `rest`.
   let side(name, axis) = inset.at(name, default: inset.at(axis, default: inset.at("rest", default: 0pt)))
   let (left, right, top, bottom) = (side("left", "x"), side("right", "x"), side("top", "y"), side("bottom", "y"))
@@ -193,7 +237,10 @@
     width: left + width + right,
     height: top + height + bottom,
     clip: true,
-    place(dx: left - i * (width + gap), dy: top, block(width: total, height: height, all(i))),
+    {
+      place(dx: left, dy: top, block(width: width, height: height, stroke: lines))
+      place(dx: left - i * (width + gap), dy: top, block(width: total, height: height, all(i)))
+    },
   )
   let rule = line(length: left + width + right, stroke: (paint: luma(185), thickness: .6pt, dash: "dashed"))
   stack(
@@ -205,9 +252,59 @@
   )
 }
 
+/// Room below an example's page, where it ends, for the rubrics drawn in
+/// its margin past the page's bottom, which take no room of their own and
+/// would otherwise be cut off with the page: down to the lowest of those
+/// between the markers labelled `start`, where the page begins, and `end`,
+/// where it ends (the room added after it moves this one). Needs the
+/// rubrics laid out, so takes a layout pass more; and their positions, so
+/// only for an example given a `margin`, which is shown as an image of a
+/// paged rendering (an HTML frame does not keep where things are), and only
+/// where it is laid out on its own (see `render`'s `overhang`).
+#let _overhang(start, end) = context {
+  let (from, to) = (query(start), query(end))
+  if from.len() == 0 or to.len() == 0 { return }
+  let p = to.first().location().position()
+  let areas = query(selector(AREA).after(from.first().location()).before(to.first().location()))
+    .map(m => m.value)
+    .filter(a => "top" in a and a.page == p.page and a.natural > 0pt)
+  if areas.len() == 0 { return }
+  let lowest = areas.sorted(key: a => a.top + a.h).last()
+  let bottom = lowest.top + lowest.h
+  // Positions are on the page, scaled as the example is: as much as the
+  // rubric's height on the page is of its own.
+  if bottom > p.y { v((bottom - p.y) / (lowest.h / lowest.natural)) }
+}
+
+/// How wide `render` draws an example given `width`, `inset` and `margin`:
+/// the page and the room on either side of it, which is known without
+/// laying the example out.
+#let rendered_width(width, inset, margin) = {
+  let inset = if type(inset) == dictionary { inset } else { (left: inset) }
+  let margin = if margin == none { (:) } else { margin }
+  let side(name) = (
+    inset.at(name, default: inset.at("x", default: inset.at("rest", default: 0pt))) + margin.at(name, default: 0pt)
+  )
+  width + side("left") + side("right")
+}
+
 /// `render`, for the example numbered `n` in the document.
-#let render-numbered(src, n, solutions: false, wrap: auto, width: 12cm, height: none, inset: 0pt) = {
+#let render-numbered(
+  src,
+  n,
+  solutions: false,
+  wrap: auto,
+  width: 12cm,
+  height: none,
+  inset: 0pt,
+  margin: none,
+  overhang: false,
+) = {
   show: e.prepare()
+  // Plain, as in a document of its own: the docs highlight their own inline
+  // code (`inline_code` in template.typ), which an example's must escape.
+  // Given a language, it no longer matches that rule.
+  show raw.where(block: false, lang: none): it => raw(it.text, lang: "")
   show: e.set_(lib.config, show-solutions: solutions)
   set text(size: 11pt)
   // In an example of no fixed height, an `fr` height (an answer box's, a
@@ -215,19 +312,50 @@
   show: if height == none { e.set_(lib.config, _fr-unit: 1cm) } else { it => it }
   let height = if height == none { auto } else { height }
   let inset = if type(inset) == dictionary { inset } else { (left: inset) }
+  // Each side as Typst's insets give it, by name, by axis, or `rest`, and
+  // the margin's room added on its sides, which are outlined.
+  let side(name, axis, default: 0pt) = inset.at(name, default: inset.at(axis, default: inset.at("rest", default: default)))
+  // On one page, the room below the last line is the bottom's, unless it
+  // is given.
+  let below = side("bottom", "y", default: .3em)
+  let inset = (left: side("left", "x"), right: side("right", "x"), top: side("top", "y"), bottom: side("bottom", "y"))
+  let margin = if margin == none { (:) } else { margin }
+  for (name, room) in margin { inset.at(name) += room }
+  let below = below + margin.at("bottom", default: 0pt)
+  let lines = margin.keys().map(name => (name, .5pt + luma(200))).to-dict()
   // The copy of the example for page `i` (from 0), its labels its own on
   // the answer key and on every page after the first (see `_relabel`).
   let body(i) = {
     let suffix = "--ex" + str(n) + (if solutions { "--key" } else { "" }) + if i > 0 { "--page" + str(i + 1) } else { "" }
-    eval(_relabel(compiled_source(src, wrap: wrap), suffix), mode: "markup", scope: dictionary(lib))
+    // Where this copy begins and ends, for its queries of examy's own labels.
+    let (start, end) = ("start", "end").map(k => label("examy-docs/example" + suffix + "-" + k))
+    let code = _own_queries(_relabel(compiled_source(src, wrap: wrap), suffix), start, end)
+    [#metadata(none)#start]
+    eval(code, mode: "markup", scope: (..dictionary(lib), _example_query: _example_query))
+    [#metadata(none)#end]
   }
   let pages = _pages(src)
-  if pages == 1 {
-    block(inset: (bottom: .3em, ..inset), block(width: width, height: height, body(0)))
+  // No `return` below: the show rules above apply only to what the
+  // function ends with.
+  if pages == 1 and not (overhang and margin.len() > 0) {
+    block(inset: (..inset, bottom: below), block(width: width, height: height, stroke: lines, body(0)))
+  } else if pages == 1 {
+    let (start, end) = ("start", "end").map(k => label("examy-docs/example-" + str(n) + "-" + k))
+    block(inset: (..inset, bottom: below), {
+      [#metadata(none)#start]
+      // Outlined with the room added below it, so the line along the
+      // margin runs down beside a rubric past the page's bottom.
+      block(width: width, stroke: lines, {
+        block(width: width, height: height, below: 0pt, body(0))
+        // In an empty block of its own: bare, it would be where what
+        // follows it starts, after the room it adds.
+        block(above: 0pt, below: 0pt, [#metadata(none)#end])
+        _overhang(start, end)
+      })
+    })
   } else {
     // The room below the last line kept inside each page's window.
-    let bottom = inset.at("bottom", default: inset.at("y", default: inset.at("rest", default: 0pt)))
-    _stacked(body, pages, width, height, (..inset, bottom: bottom + .3em))
+    _stacked(body, pages, width, height, (..inset, bottom: inset.bottom + .3em), lines: lines)
   }
 }
 
@@ -240,9 +368,15 @@
 /// `inset` around it for what is drawn outside the page's text, such as a
 /// label run out into the margin: a length for the left side, or a
 /// dictionary of sides. A little room is kept below the last line in any
-/// case, for its descenders. Code with page breaks is drawn as one page more
-/// than it has breaks, one above the other (see `_stacked`).
-#let render(src, solutions: false, wrap: auto, width: 12cm, height: none, inset: 0pt) = {
+/// case, for its descenders. `margin`, a dictionary of sides, is room for the
+/// page's margin on those sides, beyond `inset`, with a thin gray line along
+/// the page's edge there, so that what is drawn in the margin (a rubric) is
+/// seen to be in it. With `overhang`, the room below the page grows to show
+/// a rubric in the margin past the page's bottom (see `_overhang`): for an
+/// example laid out in a document of its own, as in a long one the layout
+/// passes it takes do not settle. Code with page breaks is drawn as one page
+/// more than it has breaks, one above the other (see `_stacked`).
+#let render(src, solutions: false, wrap: auto, width: 12cm, height: none, inset: 0pt, margin: none, overhang: false) = {
   _EXAMPLES.step()
   // Each example's labels are its own, numbered after it (see `_relabel`):
   // two examples using the same label would otherwise put it twice in the
@@ -255,5 +389,7 @@
     width: width,
     height: height,
     inset: inset,
+    margin: margin,
+    overhang: overhang,
   )
 }

@@ -15,7 +15,8 @@ solutions that can be toggled on and off. This package follows the spirit of the
 
 == Installation
 
-To use examy, import it and start the exam with a show rule:
+To use examy, import it and start the exam with a
+#typst-link("reference/styling/#show-rules")[show rule]:
 
 #raw(IMPORT + "\n\n#show: exam", lang: "typ", block: true)
 
@@ -28,17 +29,15 @@ typst init @preview/examy
 
 == A first exam
 
-A basic document is built out of an #api("exam", body: raw("#exam[...]")) (alternatively
-`#show: exam`). Inside are questions, created with
-#api("question", body: raw("#question[...]")) (see
-#page-link("questions.html")[Questions and numbering]) along with #api("answer-box", body: raw("#answer-box[...]"))s (see #page-link("answer-boxes.html")[Answer
-boxes]) for students to write in and #api("solution", body: raw("#solution[...]"))s (see
-#page-link("solutions.html")[Solutions]) whose visibility can be toggled to create regular/key versions of a test. 
+A basic document is built out of an #api("exam", arg: "[...]") (alternatively `#show: exam`). Inside
+are questions, created with #api("question", arg: "[...]") (see
+#page-link("questions.html")[Questions and numbering]) along with #api("answer-box", arg: "[...]")s
+(see #page-link("answer-boxes.html")[Answer boxes]) for students to write in and
+#api("solution", arg: "[...]")s (see #page-link("solutions.html")[Solutions]) whose visibility can
+be toggled to create regular/key versions of a test.
 
-Additionally, examy comes with helpers like  #api("name-block", body: raw("#name-block()"))
-to give
-students a place to write their name (see #page-link("cover-pages.html")[Cover pages and name
-blocks]).
+Additionally, examy comes with helpers like #api("name-block", arg: "()") to give students a place
+to write their name (see #page-link("cover-pages.html")[Cover pages]).
 
 // Solutions are only shown when the `show-solutions` #page-link("configuration.html")[config option]
 // is `true`. It can be given to the exam directly, as in `#show: exam.with(show-solutions: false)`.
@@ -97,7 +96,7 @@ blocks]).
   (
     "cross-references.html",
     [Cross-references],
-    [Use `@name` syntax reference to a question/part/subpart.],
+    [Use ```typ @name``` syntax reference to a question/part/subpart.],
   ),
   (
     "answer-boxes.html",

@@ -2,8 +2,10 @@
 // its questions. A set rule applies once to all it is around, as Typst
 // applies it to its scope: a `#set page(..)` there starts one run of pages,
 // not one per question or piece of text (see `render`). A `config` rule
-// there may not set an option the exam reads once for all its questions
-// (see `exam_wide_options_set`): it would change nothing, so it is an error.
+// there may set the options the exam applies to the questions in its scope
+// (`SCOPED_OPTIONS`, see tests/unit/scoped-config.typ), but not one the exam
+// reads once for all its questions (see `exam_wide_options_set`): it would
+// change nothing, so it is an error.
 // tests/run.sh compiles the documents in tests/fail/ for that error.
 #import "/src/lib.typ": *
 #import "/src/config.typ": exam_wide_options_set
@@ -14,10 +16,10 @@
 #set page(width: 6in, height: auto, margin: .4in)
 #set text(size: 10pt)
 
-// Which exam-wide options a rule sets.
+// Which exam-wide options a rule sets that it may not inside an exam.
 #let rule_of(c) = elembic_rule(c).rule
 #let SETS = (
-  ("set_(config, points-position: ..)", [#show: e.set_(config, points-position: "end"); x], ("points-position",)),
+  ("set_(config, points-position: ..)", [#show: e.set_(config, points-position: "end"); x], ()),
   (
     "set_(config, strings: .., numbering: ..)",
     [#show: e.set_(config, strings: (question: "Q"), numbering: ("1.", "(a)")); x],
@@ -26,8 +28,9 @@
   (
     "apply(set_(config, ..), set_(config, ..))",
     [#show: e.apply(e.set_(config, show-rubrics: true), e.set_(config, rubric-width: 3cm)); x],
-    ("show-rubrics", "rubric-width"),
+    ("show-rubrics",),
   ),
+  ("set_(config, numbering-full: ..)", [#show: e.set_(config, numbering-full: true); x], ("numbering-full",)),
   ("cond-set(config, points-format: ..)", [#show: e.cond-set(config, points-format: p => [#p]); x], ("points-format",)),
   ("set_(config, solution-color: ..)", [#show: e.set_(config, solution-color: red); x], ()),
   ("set_(config, show-solutions: ..)", [#show: e.set_(config, show-solutions: true); x], ()),
@@ -38,7 +41,7 @@
   assert.eq(exam_wide_rule_error(rule_of(c)) == none, names.len() == 0, message: desc)
 }
 
-#rule[A `config` rule's exam-wide options: an error around divisions if it sets any]
+#rule[A `config` rule's options read once per exam: an error around divisions if it sets any]
 #cases(
   ([Rule], [Exam-wide options it sets]),
   ..SETS.map(((desc, c, names)) => (raw(desc), if names.len() == 0 { [none] } else { names.map(raw).join[, ] })),

@@ -1,9 +1,10 @@
 #import "../prelude.typ": *
-#import "../config.typ": config
+#import "../config.typ": DEFAULT_BUBBLE_LABEL_FONT, DEFAULT_BUBBLE_STROKE, config
 #import "bubble.typ": (
-  bubble, check_enumerate, choice_label, draw_choice, enumerate_error, shape_error, shape_name, square_bubble,
+  bubble, check_enumerate, choice_label, draw_choice, enumerate_count_error, enumerate_error, shape_error, shape_name,
+  square_bubble,
 )
-#import "../signature.typ": declare_function, define
+#import "../signature.typ": UNSET, declare_function, define, unset_or
 #import "../markers.typ": excerpt
 
 /// The default space between two choices side by side, inline or in columns
@@ -201,9 +202,12 @@
 /// The choices in `body`, each as `(body: content, correct: bool)`: correct
 /// if it is a `+` item *or* named by `correct`, so the two ways of marking
 /// an answer can be mixed. `enumerate` is what labels the choices, for a
-/// `correct` naming them by label.
-#let resolve_choices(body, correct: none, enumerate: false) = {
+/// `correct` naming them by label; `source` is the function and option it
+/// came from, which an error about it names.
+#let resolve_choices(body, correct: none, enumerate: false, source: ("choices", "enumerate")) = {
   let choices = parse_choices(body)
+  let message = enumerate_count_error(enumerate, choices.len(), source.at(0), name: source.at(1))
+  if message != none { assert(false, message: message) }
   let indices = correct_indices(correct, choices.len(), enumerate: enumerate)
   choices.enumerate().map(((i, c)) => (body: c.body, correct: c.marked or i in indices))
 }
@@ -237,36 +241,65 @@
     ),
     e.field(
       "inline",
-      bool,
-      doc: "Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is kept whole: one longer than a line starts a line of its own, with its further lines hanging under its content. Cannot be combined with `columns`.",
-      default: false,
+      e.types.union(auto, bool),
+      doc: "Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is kept whole: one longer than a line starts a line of its own, with its further lines hanging under its content. Cannot be combined with `columns`.\n\nGiven `inline` or `columns`, the choices are laid out as they say, one per line unless one of them says otherwise. Given neither, they are laid out as `config`'s `choices-inline` and `choices-columns` say, one per line unless they are set.",
+      default: auto,
       meta: (hint: "write `true` or `false`"),
     ),
     e.field(
       "columns",
-      e.types.union(int, none),
-      doc: "Set the choices in this many equal columns, filled across each row in turn, rather than one per line. Cannot be combined with `inline`.",
-      default: none,
+      unset_or(int, none),
+      doc: "Set the choices in this many equal columns, filled across each row in turn, rather than one per line. Cannot be combined with `inline`. Left out, the layout is as `inline` says.",
+      default: UNSET,
       meta: (
         hint: "give a number of columns, such as `columns: 2`",
         check: v => if type(v) == int and v < 1 {
           "choices: `columns` must be a number of columns, such as `columns: 2`, got " + repr(v)
         },
+        default-shown: "none",
       ),
     ),
     e.field(
       "gap",
-      e.types.union(auto, length, fraction),
+      unset_or(auto, length, fraction),
       doc: "The space between two choices. One per line, it is the space between one choice and the next below it, and `auto` sets them as close as the lines of a paragraph. Side by side, inline or in `columns`, it is the space between them, and `auto` is "
         + repr(_SIDE_BY_SIDE_GAP)
-        + "; there, a fraction (`1fr`) spreads the choices across the line.",
+        + "; there, a fraction (`1fr`) spreads the choices across the line.\n\nLeft out, it is `config`'s `choices-gap`, which is `auto` unless it is set.",
+      default: UNSET,
+      meta: (hint: "give a length, such as `1em`", default-shown: "auto"),
+    ),
+    e.field(
+      "stroke",
+      e.types.smart(length),
+      doc: "The thickness of the bubbles' outlines, as `choice`'s `stroke`. `auto` is `config`'s `bubble-stroke`, which is `"
+        + repr(DEFAULT_BUBBLE_STROKE)
+        + "` unless it is set.",
       default: auto,
-      meta: (hint: "give a length, such as `1em`"),
+    ),
+    e.field(
+      "label-font",
+      e.types.union(auto, str, array),
+      doc: "The font the labels inside the bubbles (see `enumerate`) are set in: a font name, or a list of them to fall back through, as [`text`'s `font`](https://typst.app/docs/reference/text/text/#parameters-font) takes. `auto` is `config`'s `bubble-label-font`, which is "
+        + repr(DEFAULT_BUBBLE_LABEL_FONT)
+        + " unless it is set.",
+      default: auto,
+    ),
+    e.field(
+      "color",
+      e.types.union(auto, color),
+      doc: "The color the correct choices' bubbles are outlined and checked in, and their content set in, on the answer key. `auto` is `config`'s `solution-color`; when that is `auto` too, it is derived from `background-color`, as a solution's is.",
+      default: auto,
+    ),
+    e.field(
+      "background-color",
+      e.types.union(auto, color),
+      doc: "The fill of the correct choices' bubbles on the answer key. `auto` is `config`'s `solution-background-color`; when that is `auto` too, it is derived from `color` by lightening.",
+      default: auto,
     ),
     e.field(
       "enumerate",
-      e.types.union(auto, bool, str, function),
-      doc: "Labels inside the bubbles: `false` for none, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`\"a\"`, `\"1\"`, `\"(i)\"`). `auto` follows `config`'s `choices-enumerate`, which is `false` unless set.\n\nOn the answer key, a correct labelled bubble is filled in like any other, with its label, in the solution color, in place of the check mark, and a thin ring inside its outline.",
+      e.types.union(auto, bool, str, function, array),
+      doc: "Labels inside the bubbles: `false` for none, `true` for A, B, C, …, a numbering pattern or function, as [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering) takes (`\"a\"`, `\"1\"`, `\"(i)\"`), or an array of labels, one per choice in turn (`(\"x\", \"y\", \"z\")`). `auto` follows `config`'s `choices-enumerate`, which is `false` unless set.\n\nOn the answer key, a correct labelled bubble is filled in like any other, with its label, in the solution color, in place of the check mark, and a thin ring inside its outline.",
       default: auto,
       meta: (check: v => enumerate_error(v, "choices", allow-auto: true)),
     ),
@@ -294,30 +327,48 @@
 /// side by side; inline it is weak, so a choice that wraps to the start of a
 /// line is not indented by it.
 #let choices = define(_CHOICES, it => {
-  let (inline, columns, gap, enumerate) = (it.inline, it.columns, it.gap, it.enumerate)
-  assert(
-    not (inline and columns != none),
-    message: "choices: `inline` and `columns` are two different layouts; use one or the other",
-  )
-  assert(
-    type(gap) != fraction or inline or columns != none,
-    message: "choices: a fractional `gap` spreads choices across a line, so it needs `inline: true` or `columns`; one choice per line, give a length such as `1em`",
-  )
+  let enumerate = it.enumerate
   let shape = choices_shape(it.bubble)
-  let side_gap = if gap == auto { _SIDE_BY_SIDE_GAP } else { gap }
   // Every layout is a block — a paragraph of its own, so that choices
   // written on the line after a question start below it rather than running
   // on from its text, and one an answer box can see, so that it fits them
   // rather than taking them for a bare `context`.
   block(e.get(get => {
+    let cfg = get(config)
+    // The layout, as the call gives it, or else as `config` does: the two
+    // options together, as they cannot be combined.
+    let given = it.inline != auto or it.columns != UNSET
+    let (inline, columns) = if given {
+      (it.inline == true, if it.columns == UNSET { none } else { it.columns })
+    } else { (cfg.choices-inline, cfg.choices-columns) }
+    let layout = if given { "choices: `inline` and `columns`" } else { "config: `choices-inline` and `choices-columns`" }
+    assert(
+      not (inline and columns != none),
+      message: layout + " are two different layouts; use one or the other",
+    )
+    assert(
+      columns == none or columns >= 1,
+      message: "config: `choices-columns` must be a number of columns, such as `choices-columns: 2`, got "
+        + repr(columns),
+    )
+    let (gap, gap_name) = if it.gap == UNSET { (cfg.choices-gap, "config: a fractional `choices-gap`") } else {
+      (it.gap, "choices: a fractional `gap`")
+    }
+    assert(
+      type(gap) != fraction or inline or columns != none,
+      message: gap_name
+        + " spreads choices across a line, so it needs `inline: true` or `columns`; one choice per line, give a length such as `1em`",
+    )
+    let side_gap = if gap == auto { _SIDE_BY_SIDE_GAP } else { gap }
     // `auto` follows `config`, read and checked once for the whole list.
+    let source = if enumerate == auto { ("config", "choices-enumerate") } else { ("choices", "enumerate") }
     let enumerate = if enumerate == auto {
       let configured = get(config).choices-enumerate
       check_enumerate(configured, "config", name: "choices-enumerate")
       configured
     } else { enumerate }
     // Here, where the labels are known, for a `correct` naming them.
-    let resolved = resolve_choices(it.body, correct: it.correct, enumerate: enumerate)
+    let resolved = resolve_choices(it.body, correct: it.correct, enumerate: enumerate, source: source)
     // Each choice drawn as one unit (see `draw_choice`): boxed, to sit in a
     // line beside the others, or as a block of its own.
     let drawn = resolved
@@ -329,6 +380,11 @@
         enumerate: enumerate,
         index: i,
         inline: inline,
+        stroke: it.stroke,
+        label-font: it.label-font,
+        color: it.color,
+        background: it.background-color,
+        caller: "choices",
       ))
     if inline {
       drawn.join(h(side_gap, weak: true))

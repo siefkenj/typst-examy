@@ -8,14 +8,16 @@ some error messages mean, and how examy relates to
 == Why not boxes
 
 A straightforward implementation of examy would wrap each question/part/subpart in a box and apply
-an appropriate inset. Unfortunately, `#pagebreak()` cannot work inside a box and, worse still, boxes
-can only negotiate fractional units if they are peers of each other. So, the box approach would make
-it impossible to have a part and a subpart both share the remaining space on the page.
+an appropriate inset. Unfortunately, `#pagebreak()` cannot work inside a
+#typst-link("reference/layout/box/")[box] and, worse still, boxes can only negotiate
+#typst-link("reference/layout/fraction/")[fractional units] if they are peers of each other. So, the
+box approach would make it impossible to have a part and a subpart both share the remaining space on
+the page.
 
 Instead, examy flattens all question/part/subpart contents and tags the start and end of each block
-with `metadata`. The flat stream is then parsed, indentation level is tracked, and peer boxes are
-produced, so that `#pagebreak()` and `fr` units can negotiate space. The rest of this page follows
-those steps.
+with #typst-link("reference/introspection/metadata/")[`metadata`]. The flat stream is then parsed,
+indentation level is tracked, and peer boxes are produced, so that `#pagebreak()` and `fr` units can
+negotiate space. The rest of this page follows those steps.
 
 == Questions are markers
 
@@ -27,13 +29,14 @@ determined by position, not by which function was called, which is why `question
 `subpart` take the same arguments.
 
 Each one also carries a check, beside its first marker, which the exam removes when it reads the
-markers. A question that no exam lays out still has its check, which shows a warning in red where the
-question is. That catches a question outside any exam, and one inside an exam but in content the exam
-can't see into, such as a question built inside a `context`. Either would otherwise be drawn as plain
-text, without a number. A script can find these warnings with
-`typst eval --in exam.typ 'query(<examy-warning>)'`. The `--input _debug_panic=panic` command-line
-option turns them into errors that stop the compile, for a build that must not produce a document
-with one, and `--input _debug_panic=none` leaves the check out altogether.
+markers. A question that no exam lays out still has its check, which shows a warning in red where
+the question is. That catches a question outside any exam, and one inside an exam but in content the
+exam can't see into, such as a question built inside a #typst-link("reference/context/")[`context`].
+Either would otherwise be drawn as plain text, without a number. A script can find these warnings
+with ```sh typst eval --in exam.typ 'query(<examy-warning>)'```. The
+```sh --input _debug_panic=panic``` command-line option turns them into errors that stop the
+compile, for a build that must not produce a document with one, and
+```sh --input _debug_panic=none``` leaves the check out altogether.
 
 == The exam lays them out
 
@@ -41,16 +44,18 @@ with one, and `--input _debug_panic=none` leaves the check out altogether.
 parse, plan, and render.
 
 / Tokenize: The content is scanned for markers and page breaks. Only content that contains one is
-  taken apart, and only two kinds of content can be: plain sequences, and the result of a `set` or
-  `show` rule (whose styles are remembered and applied again afterwards). Everything else is kept
-  whole, which keeps lists, equations, and spacing intact. A part inside anything else, such as a
-  list item, a box, or a table, can't be found in order, so it is an error: "Questions, parts, and
-  subparts may only appear at the top level of their parent's body".
+  taken apart, and only two kinds of content can be: plain sequences, and the result of a
+  #typst-link("reference/styling/#set-rules")[`set`] or
+  #typst-link("reference/styling/#show-rules")[`show` rule] (whose styles are remembered and applied
+  again afterwards). Everything else is kept whole, which keeps lists, equations, and spacing intact. A part inside anything else, such as a list item, a
+  box, or a table, can't be found in order, so it is an error: "Questions, parts, and subparts may
+  only appear at the top level of their parent's body".
 
 / Parse: The tokens become a list of questions/parts/subparts, each with its level, number, address
   (2 (a) is question 2, part 1), points, and the total of its parts. This step works on plain data,
-  without Typst counters or layout, so all the numbers are known before anything is drawn. That is
-  why a reference can point forward, and why #api("points-table") can come before the exam.
+  without Typst #typst-link("reference/introspection/counter/")[counters] or layout, so all the
+  numbers are known before anything is drawn. That is why a reference can point forward, and why
+  #api("points-table") can come before the exam.
 
 / Plan: Typst cannot break a page inside a nested block, and `fr` heights are only shared out at the
   top level of the page. A question with neither is drawn as one block, with its parts nested inside.
@@ -80,8 +85,10 @@ two ways.
   made to the end of its block, and a later rule only changes the options it names. Options given to
   the exam, as in `#show: exam.with(..)`, are applied the same way, around the exam's content. examy reads the
   options with `e.get`, which, like Typst's `context`, gives the values in effect where it is placed.
-  This is why #api("show-solutions") takes `get`. The options that number and lay out the
-  questions are read once, where the exam starts, so a rule inside the exam may not set them.
+  This is why #api("show-solutions") takes `get`. The exam reads the options that lay out its
+  questions where it starts, and takes the values a rule inside it sets from the rule itself, for
+  the questions in its scope. A few, such as `numbering`, hold for the whole exam, and a rule inside
+  it may not set them.
 
 / References: Each labelled question/part/subpart leaves an invisible elembic element, its anchor.
   elembic lets an element decide how references to it are drawn, so the anchor can show "1 (a)" or
@@ -95,26 +102,27 @@ the other functions are plain functions. An elembic element is drawn later, by a
 declare their arguments with elembic's `e.field`, so every call is checked, and the reference is
 generated from the same declarations.
 
-#api("answer-box") is an elembic element as well, so that set rules can give its fields, and an
-exam draws its boxes itself. When it receives its questions, it reads the boxes' fields and the
+#api("answer-box") is an elembic element as well, so that set rules can give its fields, and an exam
+draws its boxes itself. When it receives its questions, it reads the boxes' fields and the
 `answer-box-` options where it starts, with `get`. It then goes through the questions, applying the
 `e.set_` and `e.apply` rules on answer boxes and on those options that it meets, to draw each box
 from its call's own arguments, its fields, and the options, in that order. That is done once, in the
 exam's own `e.get`, so that the exam can read every box's height and width as it reads any other
-`box` or `block`, which it needs to share out `fr` heights and to place question numbers. A box
-inside an element the exam doesn't go through, such as `align`, draws itself, and the exam leaves a
-note of its `fr` height beside it. It also follows an `e.reset`, drawing the boxes after it as if no
-rules had been set. Elembic's other rules on answer boxes inside an exam, such as `e.show_`, are an
-error, since the exam does not follow them.
+`box` or #typst-link("reference/layout/block/")[`block`], which it needs to share out `fr` heights
+and to place question numbers. A box inside an element the exam doesn't go through, such as
+#typst-link("reference/layout/align/")[`align`], draws itself, and the exam leaves a note of its
+`fr` height beside it. It also follows an `e.reset`, drawing the boxes after it as if no rules had
+been set. Elembic's other rules on answer boxes inside an exam, such as `e.show_`, are an error,
+since the exam does not follow them.
 
 Use the `e` that examy exports rather than importing elembic yourself, since it is the version examy
 was made with. examy's elements are named after its version, so two versions of examy in one
 document don't share settings.
 
 == Command line and data
-
-The `--input show-solutions=..` and `--input show-rubrics=..` command-line options are read from
-`sys.inputs` and override `config`. Rubrics in a margin are placed with `place`, so they take up no
-space, and the exam is laid out the same with or without them. Every exam with rubrics also stores
-them in the document as data, labelled `<examy-rubric>`, for `typst eval` to read out (see
-#page-link("rubrics.html")[Rubrics]).
+The ```sh --input show-solutions=..``` and ```sh --input show-rubrics=..``` command-line options are
+read from #typst-link("reference/foundations/sys/")[`sys.inputs`] and override `config`. Rubrics in
+a margin are placed with #typst-link("reference/layout/place/")[`place`], so they take up no space,
+and the exam is laid out the same with or without them. Every exam with rubrics also stores them in
+the document as data, labelled ```typ <examy-rubric>```, for ```sh typst eval``` to read out
+(see #page-link("rubrics.html")[Rubrics]).

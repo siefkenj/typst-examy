@@ -136,14 +136,17 @@
   display: it => {
     e.get(get => {
       // Hidden, a solution still leaves its rubrics where it stands
-      // (invisible), so that they are found for the rubric all the same.
+      // (invisible), so that they are found for the rubric all the same:
+      // also those of the solutions it would have drawn after itself, the
+      // rest of its run (see `widen_par_solutions`), which draw nothing.
       if show_solutions(get) == false {
         return {
           rubric_markers(it.body).join()
+          if it._then != none { rubric_markers(it._then, kept: true).join() }
           it.otherwise
         }
       }
-      let colors = solution_colors(get)
+      let colors = solution_colors(get, color: it.color, background: it.background-color)
       // On the key, a solution taking no height that has something in its
       // place on the exam is drawn over that, hidden, so the key lays out
       // exactly like the exam.
@@ -195,6 +198,18 @@
       e.types.option(e.types.union(auto, relative)),
       doc: "Width of the solution box. `auto` shrink-wraps it to its content; `none` lets the context choose (`answer-box` fills its width for a solution standing alone in a paragraph, otherwise it shrink-wraps).",
       default: none,
+    ),
+    e.field(
+      "color",
+      e.types.union(auto, color),
+      doc: "The color the solution is drawn in. `auto` is `config`'s `solution-color`; when that is `auto` too, it is derived from the solution's background (see `config`'s `solution-color`).",
+      default: auto,
+    ),
+    e.field(
+      "background-color",
+      e.types.union(auto, color),
+      doc: "The color behind the solution. `auto` is `config`'s `solution-background-color`; when that is `auto` too, it is derived from the solution's `color` by lightening.",
+      default: auto,
     ),
     e.field(
       "otherwise",

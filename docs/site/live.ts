@@ -14,7 +14,7 @@ import { describe, element, isLoaded, loadCompiler, withSource, type Typst } fro
 import type { Editor } from "./editor";
 
 /** The inputs live-main.typ reads: see the `data-` attributes of `example`. */
-type Inputs = Record<"solutions" | "wrap" | "width" | "height" | "inset", string>;
+type Inputs = Record<"solutions" | "wrap" | "width" | "height" | "inset" | "margin", string>;
 
 /** The editor's state, also as `data-live` on the example's figure. */
 type State = "loading" | "compiling" | "ready" | "error";
@@ -117,6 +117,7 @@ function enhance(figure: HTMLElement): void {
             width: figure.dataset.width ?? "12cm",
             height: figure.dataset.height ?? "none",
             inset: figure.dataset.inset ?? "0pt",
+            margin: figure.dataset.margin ?? "none",
           }),
         );
       }

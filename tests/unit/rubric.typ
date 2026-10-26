@@ -18,7 +18,7 @@
 // ---------------------------------------------------------------------------
 
 #let shape(nodes) = nodes.map(n => if n.kind == "group" {
-  (n.kind, n.pick, n.note != none, shape(n.children))
+  (n.kind, n.annotation, n.note != none, shape(n.children))
 } else if n.kind == "item" { (n.kind, n.points) } else { (n.kind,) })
 
 #let TREES = (
@@ -33,9 +33,9 @@
     "text between items is kept as notes",
   ),
   (
-    [#rubric(pick: "one")[Derivative #rubric(points: 3)[Right] #rubric(points: 1)[Tried]]],
-    (("group", "one", false, (("item", 3), ("item", 1))),),
-    "a rubric holding rubrics is a group",
+    [#rubric(annotation: [pick one])[Derivative #rubric(points: 3)[Right] #rubric(points: 1)[Tried]]],
+    (("group", [pick one], false, (("item", 3), ("item", 1))),),
+    "a rubric holding rubrics is a group, with its annotation",
   ),
   (
     [#rubric[*Proof*
@@ -44,7 +44,7 @@
         #rubric(points: 1)[Structure]
         #rubric[Logic #rubric(points: -1)[Circular]]
       ]],
-    (("group", "any", true, (("item", 1), ("group", "any", false, (("item", -1),)))),),
+    (("group", none, true, (("item", 1), ("group", none, false, (("item", -1),)))),),
     "a group's title is its first paragraph, the rest a note; groups nest",
   ),
 )
@@ -54,6 +54,8 @@
 // The title of a group keeps its spaces (only blanks at its ends go).
 #let titled = rubric_tree([#rubric[Two words #rubric(points: 1)[x]]]).first()
 #assert.eq(titled.title, [Two words])
+// An item keeps its annotation too.
+#assert.eq(rubric_tree([#rubric(points: 1, annotation: "once")[x]]).first().annotation, "once")
 
 #rule[The tree of rubric content: what each kind of content becomes]
 #cases(
@@ -111,34 +113,34 @@
 #let ENTRIES = rubric_entries(rubric_tree([
   #rubric(points: 1)[Right]
   A note.
-  #rubric(pick: "one")[*Proof*
+  #rubric(annotation: [pick _one_])[*Proof*
 
     Its note.
     #rubric(points: 2)[All]
-    #rubric[Logic #rubric(points: -1)[Circular]]
+    #rubric[Logic #rubric(points: -1, annotation: [at most once])[Circular]]
   ]
   #rubric[Unscored]
 ]))
 #assert.eq(ENTRIES, (
-  (type: "item", points: 1, description: "Right"),
+  (type: "item", points: 1, description: "Right", annotation: none),
   (type: "note", text: "A note."),
   (
     type: "group",
     title: "**Proof**",
     note: "Its note.",
-    pick: "one",
+    annotation: "pick *one*",
     items: (
-      (type: "item", points: 2, description: "All"),
+      (type: "item", points: 2, description: "All", annotation: none),
       (
         type: "group",
         title: "Logic",
         note: none,
-        pick: "any",
-        items: ((type: "item", points: -1, description: "Circular"),),
+        annotation: none,
+        items: ((type: "item", points: -1, description: "Circular", annotation: "at most once"),),
       ),
     ),
   ),
-  (type: "item", points: none, description: "Unscored"),
+  (type: "item", points: none, description: "Unscored", annotation: none),
 ))
 #assert.eq(division_number((0,)), "1")
 #assert.eq(division_number((1, 0)), "2.1")
@@ -387,7 +389,7 @@
   // Exam 6: question 1 has no rubric of its own; its part has one.
   let six = exports.find(x => x.exam == 6)
   assert.eq(six.questions.map(q => (q.number, q.title, q.points)), (("1.1", "Question 1\u{2009}(a)", 2),))
-  assert.eq(six.questions.first().rubric, ((type: "item", points: 2, description: "Right"),))
+  assert.eq(six.questions.first().rubric, ((type: "item", points: 2, description: "Right", annotation: none),))
 }
 #rule[The rubric data of the last exam, as `query(<examy-rubric>)` reads it]
 #context data(query(<examy-rubric>).last().value)
@@ -421,3 +423,19 @@
   #rule[A rubric in the margin of a page of `auto` width]
   #exam(questions: [#question(rubric: [#rubric(points: 1)[Given]])[A question on a page of `auto` width.]])
 ]
+
+// Exams 18 and 19: rubrics in a run of solutions in an answer box with no
+// height, which the first of the run draws (see `widen_par_solutions`):
+// those of the rest of the run are found too, solutions shown and hidden.
+#for shown in (true, false) {
+  rule[Rubrics in a run of solutions in an answer box with no height, solutions #if shown [shown] else [hidden]]
+  [#show: e.set_(config, show-solutions: shown, show-rubrics: true)
+    #exam(questions: [#question[Two steps. #answer-box(width: 100%)[
+          #solution[First step#rubric(points: 1)[Step one]]
+
+          #solution[Second step#rubric(points: 2)[Step two]]
+        ]]])]
+}
+#context for n in (18, 19) {
+  assert.eq(summary(n), (("Question 1", (("item", 1), ("item", 2))),), message: "exam " + str(n))
+}

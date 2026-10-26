@@ -34,6 +34,7 @@
 ///   right before such a wrapper, which must not be separated from it.
 
 #import "scan.typ": has_metadata, is_whitespace_content
+#import "config.typ": DEFAULT_INDENT
 
 /// The items (see parse.typ) as the functions here take them: in `metadata`,
 /// as content, whose hash Typst works out once and keeps. Typst memoizes
@@ -47,13 +48,17 @@
 /// The items as an array, whether held (see `hold`) or not.
 #let items_of(items) = if type(items) == content { items.value } else { items }
 
+/// Division `d`'s `indent`: its own, or `config`'s, as the exam resolves it
+/// (see `localize` in render.typ); the default where nothing resolved it.
+#let indent_of(d) = if d.fields.indent == auto { DEFAULT_INDENT } else { d.fields.indent }
+
 /// Sum of `indent`s of the division `idx` and all its ancestors.
 #let cumulative_indent(items, idx) = {
   let total = 0pt + 0em
   let cur = idx
   while cur != none {
     let it = items_of(items).at(cur)
-    if it.kind == "division" { total += it.fields.indent }
+    if it.kind == "division" { total += indent_of(it) }
     cur = it.parent
   }
   total

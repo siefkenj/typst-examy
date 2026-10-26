@@ -6,7 +6,9 @@
 /// one `chunk`. Everything else stays an opaque `chunk`.
 ///
 /// Token kinds (plain dictionaries):
-/// - (kind: "begin", fields: (..), styles: (..))
+/// - (kind: "begin", fields: (..), styles: (..)), `fields` holding, as
+///   `_scoped`, the options of the `config` rules around the division that
+///   it is laid out with (see `scoped_options_set`), if there are any
 /// - (kind: "end")
 /// - (kind: "break", target: "page" | "col", weak: bool, styles: (..))
 /// - (kind: "chunk", body: content, styles: (..), has_inner_break: bool,
@@ -14,7 +16,7 @@
 
 #import "prelude.typ": e
 #import "markers.typ": is_outside_check, marker_value
-#import "config.typ": exam_wide_options_set
+#import "config.typ": DIVISION_OPTIONS, exam_wide_options_set, scoped_options_set
 #import "scan.typ": STYLED_FUNC, elembic_rule, is_break, scan, unwrap
 
 /// A token's style stack (see `apply_styles`), as tokens and items keep it:
@@ -96,6 +98,8 @@
   if names.len() == 0 { return none }
   let list = names.map(n => "`" + n + "`").join(", ", last: " and ")
   let one = names.len() == 1
+  // Those a question takes for itself, which is what such a rule is after.
+  let own = names.filter(n => n in DIVISION_OPTIONS)
   (
     "examy: a `config` rule inside an exam, around some of its questions, sets "
       + list
@@ -110,6 +114,15 @@
       + ": ..)`, or set "
       + (if one { "it" } else { "them" })
       + " in a `config` rule above `#show: exam`."
+      + if own.len() > 0 {
+        (
+          " A question, part, or subpart takes "
+            + own.map(n => "`" + n + "`").join(", ", last: " and ")
+            + " of its own: `#question("
+            + own.first()
+            + ": ..)[..]`."
+        )
+      } else { "" }
   )
 }
 
@@ -128,12 +141,13 @@
   // How many containers with styles or a rule were unwrapped (see
   // `apply_styles`).
   let scopes = 0
-  // What is left to tokenize, last first, each with its styles; or a
-  // container whose content is tokenized, with where its tokens start and
-  // how many markers there were before them.
-  let stack = ((c: c, styles: ()),)
+  // What is left to tokenize, last first, each with its styles and the
+  // options the `config` rules around it set (`scoped`); or a container whose
+  // content is tokenized, with where its tokens start and how many markers
+  // there were before them.
+  let stack = ((c: c, styles: (), scoped: (:)),)
   while stack.len() > 0 {
-    let (c, styles, ..done) = stack.pop()
+    let (c, styles, scoped, ..done) = stack.pop()
     if done.len() > 0 {
       if markers == done.markers {
         let mine = ()
@@ -148,7 +162,7 @@
       continue
     }
     if type(c) == array {
-      for x in c.rev() { stack.push((c: x, styles: styles)) }
+      for x in c.rev() { stack.push((c: x, styles: styles, scoped: scoped)) }
       continue
     }
     if type(c) != content {
@@ -163,7 +177,7 @@
     if m != none {
       tokens.push(if m.kind == "begin" {
         markers += 1
-        (kind: "begin", fields: m.fields, styles: _kept(styles))
+        (kind: "begin", fields: if scoped.len() > 0 { (..m.fields, _scoped: scoped) } else { m.fields }, styles: _kept(styles))
       } else if m.kind == "end" {
         markers += 1
         (kind: "end")
@@ -186,14 +200,16 @@
     // A container: unwrapped, with its styles or rule for what it holds.
     let kids = unwrap(c)
     if kids != none {
-      stack.push((c: c, styles: styles, start: tokens.len(), markers: markers))
+      stack.push((c: c, styles: styles, scoped: scoped, start: tokens.len(), markers: markers))
       let rule = elembic_rule(c)
       let apply = if rule != none { _elembic_show(rule.rule) } else if c.func() == STYLED_FUNC { c.styles }
       let inner = if apply != none {
         scopes += 1
         styles + ((id: scopes, apply: apply),)
       } else { styles }
-      for x in kids.rev() { stack.push((c: x, styles: inner)) }
+      // What a `config` rule sets for the divisions in its scope.
+      let inner_scoped = if rule != none { scoped + scoped_options_set(rule.rule) } else { scoped }
+      for x in kids.rev() { stack.push((c: x, styles: inner, scoped: inner_scoped)) }
       continue
     }
 

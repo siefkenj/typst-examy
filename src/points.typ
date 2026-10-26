@@ -6,7 +6,7 @@
 
 #import "prelude.typ": *
 #import "config.typ": config, DEFAULT_NUMBERING
-#import "refs.typ": reference_body
+#import "refs.typ": level_numberings, reference_body
 #import "signature.typ": declare_function, define
 
 /// The per-division point data of every exam in the document, one array per
@@ -19,19 +19,25 @@
 #let EXAMS_STARTED = counter(PREFIX + "/exams-started")
 #let EXAMS_ENDED = counter(PREFIX + "/exams-ended")
 
-/// The point data of the exam a reader at `here()` is about: the exam it is
-/// in; else the next exam, as a points table on a cover page is about the
-/// exam that follows; else the last one, as a total at the end of a document
-/// is. `none` if there is no exam. Needs context.
+/// The exam a reader at `loc` is about, by its index among the document's
+/// (from 0): the exam it is in; else the next exam, as a points table on a
+/// cover page is about the exam that follows; else the last one, as a total
+/// at the end of a document is. `none` if there is no exam. Needs context.
+#let exam_index(loc) = {
+  let count = EXAMS_STARTED.final().first()
+  if count == 0 { return none }
+  let started = EXAMS_STARTED.at(loc).first()
+  let ended = EXAMS_ENDED.at(loc).first()
+  if started > ended { started - 1 } else { calc.min(started, count - 1) }
+}
+
+/// The point data of the exam a reader at `here()` is about (see
+/// `exam_index`). Needs context.
 /// `(index, rows)`: the index of that exam among the document's (from 0),
 /// and its rows, one per division; `none` if there is no exam.
 #let _exam_rows() = {
-  let all = points_data_state.final()
-  if all.len() == 0 { return none }
-  let started = EXAMS_STARTED.get().first()
-  let ended = EXAMS_ENDED.get().first()
-  let i = if started > ended { started - 1 } else { calc.min(started, all.len() - 1) }
-  (i, all.at(i))
+  let i = exam_index(here())
+  if i == none { none } else { (i, points_data_state.final().at(i)) }
 }
 
 /// The point data of the exam a reader at `here()` is about (see
@@ -59,7 +65,13 @@
 /// How a division is labelled in the points table: exactly as a reference
 /// to it reads from outside its exam ("2 (a)"; "2(a)" with `full`), an
 /// unnumbered division and those in it included ("??", "?? (a)").
-#let _division_label(d, numbering, full) = reference_body(d.address, (), numbering: numbering, full: full)
+#let _division_label(d, numbering, full) = reference_body(
+  d.address,
+  (),
+  numbering: numbering,
+  full: full,
+  levels: level_numberings(d, numbering),
+)
 
 /// The point data of an exam, from its parsed items: a row per division, in
 /// order, with its `level`, `address`, `number`, and `label` (see
@@ -75,6 +87,8 @@
         level: d.level,
         address: d.address,
         number: d.number,
+        // A division numbered by its own `numbering` (see `localize`) is
+        // labelled so too.
         label: _division_label(d, numbering, full),
         own: if d.fields.intent == none { p } else { 0 },
         own-bonus: if d.fields.intent == "bonus" { p } else { 0 },
@@ -130,7 +144,8 @@
 #let _LEVEL_NAMES = ("question", "part", "subpart")
 
 /// Decide the points badge of every division, given `config`'s
-/// `points-show-totals` and `points-position`. Pure. Each division gets
+/// `points-show-totals` and `points-position`, unless the division has its
+/// own (its `own`, see `localize` in render.typ). Pure. Each division gets
 /// - `badge`: `none`; `(kind: "points", points: n, total: bool, bonus:
 ///   bool)`, the number to show, whether it is the total of the division's
 ///   parts, and whether they are bonus points (drawn by
@@ -151,6 +166,9 @@
 #let assign_badges(items, show-totals: false, position: "start") = {
   items.map(it => {
     if it.kind != "division" { return it }
+    let own_opts = it.at("own", default: (:))
+    let show-totals = own_opts.at("points-show-totals", default: show-totals)
+    let position = own_opts.at("points-position", default: position)
     let own = it.fields.points
     let bonus = it.fields.intent == "bonus"
     let badge = if not show-totals {
@@ -190,7 +208,7 @@
 
 #let _GET_NUM_QUESTIONS = declare_function(
   "get-num-questions",
-  doc: "The total number of questions in the exam, as a number, to compute or test with. Needs context: `context get-num-questions()`. To show it, `num-questions` needs none.",
+  doc: "The total number of questions in the exam, as a number, to compute or test with. Needs [context](https://typst.app/docs/reference/context/): `context get-num-questions()`. To show it, `num-questions` needs none.",
 )
 
 /// The total number of questions in the exam (see DOCS). Needs context.
@@ -201,7 +219,7 @@
 
 #let _GET_NUM_POINTS = declare_function(
   "get-num-points",
-  doc: "The total number of regular (non-bonus, non-practice) points, as a number, to compute or test with, e.g. a pass mark: `context calc.ceil(get-num-points() * .6)`. Needs context. To show it, `num-points` needs none.",
+  doc: "The total number of regular (non-bonus, non-practice) points, as a number, to compute or test with, e.g. a pass mark: `context calc.ceil(get-num-points() * .6)`. Needs [context](https://typst.app/docs/reference/context/). To show it, `num-points` needs none.",
 )
 
 /// The total number of regular points (see DOCS). Needs context.
@@ -212,7 +230,7 @@
 
 #let _GET_NUM_BONUS_POINTS = declare_function(
   "get-num-bonus-points",
-  doc: "The total number of bonus points, as a number, to compute or test with. Needs context: `context if get-num-bonus-points() > 0 [..]`. To show it, `num-bonus-points` needs none.",
+  doc: "The total number of bonus points, as a number, to compute or test with. Needs [context](https://typst.app/docs/reference/context/): `context if get-num-bonus-points() > 0 [..]`. To show it, `num-bonus-points` needs none.",
 )
 
 /// The total number of bonus points (see DOCS). Needs context.
@@ -232,12 +250,26 @@
 /// The total number of bonus points, shown (see DOCS).
 #let num_bonus_points = context get_num_bonus_points()
 
-/// The points markers, grouped by page: an array of `(page: n, location,
-/// points, bonus)`, one per page with points, in page order, where
-/// `location` is that of the page's first marker. Needs context.
+/// The document of a bundle that `loc` is in, by its index among them (from
+/// 1); 0 outside a bundle. The documents of a bundle share one
+/// introspection, but number their pages each from 1, so a page number
+/// alone does not tell which document's page it is. Needs context.
+#let _document_index(loc) = query(selector(document).before(loc)).len()
+
+/// The points markers of the document `here()` is in (see
+/// `_document_index`). Needs context.
+#let _points_markers() = {
+  let mine = _document_index(here())
+  query(POINTS_MARKER).filter(m => _document_index(m.location()) == mine)
+}
+
+/// The points markers of the document `here()` is in, grouped by page: an
+/// array of `(page: n, location, points, bonus)`, one per page with points,
+/// in page order, where `location` is that of the page's first marker.
+/// Needs context.
 #let _points_by_page() = {
   let pages = (:)
-  for m in query(POINTS_MARKER) {
+  for m in _points_markers() {
     let page = m.location().page()
     let key = str(page)
     if key not in pages { pages.insert(key, (page: page, location: m.location(), points: 0, bonus: 0)) }
@@ -249,12 +281,12 @@
 
 #let _GET_NUM_POINTS_PAGE = declare_function(
   "get-num-points-page",
-  doc: "The number of points on a page, as a number, to compute or test with: the points of each question, part, and subpart that starts on it. Needs context, e.g. in a page footer: `context if get-num-points-page() > 0 [..]`. To show the current page's, `num-points-page` needs none.",
+  doc: "The number of points on a page, as a number, to compute or test with: the points of each question, part, and subpart that starts on it. Needs [context](https://typst.app/docs/reference/context/), e.g. in a page footer: `context if get-num-points-page() > 0 [..]`. To show the current page's, `num-points-page` needs none.",
   fields: (
     e.field(
       "page",
       e.types.smart(int),
-      doc: "The page, as its physical page number (counted from 1, whatever its numbering shows); `auto` is the current page.",
+      doc: "The page, as its physical page number (counted from 1, whatever its numbering shows), in the document it is read in; `auto` is the current page.",
       default: auto,
     ),
     e.field(
@@ -270,7 +302,7 @@
 #let get_num_points_page = define(_GET_NUM_POINTS_PAGE, it => {
   let page = if it.page == auto { here().page() } else { it.page }
   let intent = if it.bonus { "bonus" } else { none }
-  query(POINTS_MARKER)
+  _points_markers()
     .filter(m => m.value.intent == intent and m.location().page() == page)
     .map(m => m.value.points)
     .sum(default: 0)
@@ -281,14 +313,22 @@
 
 #let _PAGE_SCORE_BOX = declare_function(
   "page-score-box",
-  doc: "A box for the grader to write the score of the current page in, \"Score: ____ / 7\", made for a page footer: `#set page(footer: align(right, page-score-box()))`. Draws nothing on a page without points. Its word is `strings`' `score`.",
+  doc: "A box for the grader to write the score of the current page in, \"Score: ____ / 7\", made for a page footer: `#set page(footer: align(right, page-score-box()))`. Draws nothing on a page without points.",
+  fields: (
+    e.field(
+      "strings",
+      e.types.dict(content),
+      doc: "Its word, by the key `config`'s `strings` gives it under, `score`: `strings: (score: [Punkte])`. Left out, it is `config`'s.",
+      default: (:),
+    ),
+  ),
 )
 
 /// A score box for the current page (see DOCS).
 #let page_score_box = define(_PAGE_SCORE_BOX, it => e.get(get => {
   let points = get_num_points_page()
   if points == 0 { return }
-  let strings = get(config).strings
+  let strings = get(config).strings + it.strings
   box(stroke: .5pt, inset: (x: .6em, y: .4em))[
     #strings.score: #box(width: 2.5em, stroke: (bottom: .5pt), outset: (bottom: .15em)) / #points
   ]
@@ -354,7 +394,7 @@
 
 #let _POINTS_TABLE = declare_function(
   "points-table",
-  doc: "A scoring table with a column per question plus a total. Works anywhere in the document, even before the exam.\n\nEach argument left `auto` is `config`'s option of the same name, `points-table-..`, so that all of a document's tables can be set at once; its words are set by `strings`.",
+  doc: "A scoring table with a column per question plus a total. Works anywhere in the document, even before the exam.\n\nEach argument left `auto` is `config`'s option of the same name, `points-table-..`, so that all of a document's tables can be set at once.",
   fields: (
     e.field(
       "direction",
@@ -386,6 +426,12 @@
       doc: "The most questions (or pages) a horizontal table shows side by side; more are split into several tables, one below the other, with the total in the last. `none` keeps them all in one table. `auto`: `config`'s `points-table-max-columns`.",
       default: auto,
     ),
+    e.field(
+      "strings",
+      e.types.dict(content),
+      doc: "Its words, by the keys `config`'s `strings` gives them under (`question`, `page`, `points`, `bonus`, `score`, `total`), in place of `config`'s: `strings: (total: [Gesamt])`. Only the keys given are replaced.",
+      default: (:),
+    ),
   ),
 )
 
@@ -396,7 +442,7 @@
   // Each option as given, else `config`'s.
   let pick(key) = if it.at(key) == auto { cfg.at("points-table-" + key) } else { it.at(key) }
   let o = (
-    strings: cfg.strings,
+    strings: cfg.strings + it.strings,
     direction: pick("direction"),
     by: pick("by"),
     score: pick("score"),

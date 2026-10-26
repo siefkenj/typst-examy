@@ -3,8 +3,9 @@
 #import "../tokenize.typ": tokenize
 #import "../parse.typ": parse
 #import "../plan.typ": hold, plan
-#import "../render.typ": mark_rubrics, render, rubric_info
-#import "../points.typ": EXAMS_ENDED, EXAMS_STARTED, assign_badges, compute_points_data, points_data_state
+#import "../render.typ": localize, mark_rubrics, opts_of, render, rubric_info
+#import "../points.typ": EXAMS_ENDED, EXAMS_STARTED, assign_badges, compute_points_data, exam_index, points_data_state
+#import "../refs.typ": own_exam_refs
 #import "../config.typ": config, exam_options, exam_wide_names
 #import "./solution.typ": show_rubrics, show_solutions
 #import "../scan.typ": _find, rubric_markers
@@ -28,7 +29,7 @@
 /// ```
 #let _MAKETITLE = declare_function(
   "maketitle",
-  doc: "The exam title block (in the spirit of LaTeX's `\\maketitle`). Exam information is read from the global `config`. Renders nothing if all four values resolve to `none`. It is set in the text's font, like the rest of the document; set it apart with a `set` rule in a code block around it, e.g. `#{ set text(font: \"DejaVu Sans Mono\"); maketitle() }`.",
+  doc: "The exam title block (in the spirit of LaTeX's `\\maketitle`). Exam information is read from the global `config`. Renders nothing if all four values resolve to `none`. It is set in the text's font, like the rest of the document; set it apart with a [`set` rule](https://typst.app/docs/reference/styling/#set-rules) in a [code block](https://typst.app/docs/reference/scripting/#blocks) around it, e.g. `#{ set text(font: \"DejaVu Sans Mono\"); maketitle() }`.",
   fields: (
     e.field(
       "institution",
@@ -51,7 +52,7 @@
     e.field(
       "duration",
       e.types.union(auto, none, duration, content),
-      doc: "The exam length, shown under the term: a `duration`, shown in minutes (`duration(minutes: 110)` as \"110 Minutes\"), or content, shown as it is (`[1 h 50 min]`). `auto` takes `config`'s value, `none` suppresses it.",
+      doc: "The exam length, shown under the term: a [`duration`](https://typst.app/docs/reference/foundations/duration/), shown in minutes (`duration(minutes: 110)` as \"110 Minutes\"), or content, shown as it is (`[1 h 50 min]`). `auto` takes `config`'s value, `none` suppresses it.",
       default: auto,
     ),
   ),
@@ -135,7 +136,7 @@
 /// end — or arbitrary content, rendered verbatim as its own row.
 #let _NAME_BLOCK = declare_function(
   "name-block",
-  doc: "A block of fill-in rows for a student to write their name. It is set in the text's font, like the rest of the document; set it apart with a `set` rule in a code block around it, e.g. `#{ set text(font: \"DejaVu Sans Mono\"); name-block() }`.",
+  doc: "A block of fill-in rows for a student to write their name. It is set in the text's font, like the rest of the document; set it apart with a [`set` rule](https://typst.app/docs/reference/styling/#set-rules) in a [code block](https://typst.app/docs/reference/scripting/#blocks) around it, e.g. `#{ set text(font: \"DejaVu Sans Mono\"); name-block() }`.",
   fields: (
     e.field(
       "title",
@@ -175,11 +176,10 @@
 /// `opts` are the layout options resolved from `config` (see
 /// `exam_options`).
 #let process_questions(questions, opts) = {
-  let items = assign_badges(
-    parse(tokenize(questions, wide_names: opts.at("wide-names", default: ()))),
-    show-totals: opts.points-show-totals,
-    position: opts.points-position,
-  )
+  // What each division takes for itself (see `localize`), which its badge
+  // is decided by.
+  let items = localize(parse(tokenize(questions, wide_names: opts.at("wide-names", default: ()))), opts)
+  let items = assign_badges(items, show-totals: opts.points-show-totals, position: opts.points-position)
   // Where its rubrics are, if it has any: an exam with none emits nothing
   // for them (see `mark_rubrics`).
   let (items, present) = mark_rubrics(items)
@@ -187,6 +187,14 @@
   opts.rubric.present = present
   opts.rubric.drawn = present and opts.rubric.shown
   opts.rubric.traced = opts.rubric.drawn and opts.rubric.trace
+  // Where its divisions' rubrics are drawn, each division's own position
+  // counted (see `opts_of`).
+  if opts.rubric.drawn {
+    opts.rubric.positions = items
+      .filter(it => it.kind == "division" and it.at("rubric", default: false))
+      .map(it => opts_of(it, opts).rubric.position)
+      .dedup()
+  }
   let data = compute_points_data(items, numbering: opts.numbering, full: opts.numbering-full)
   // Each exam keeps its own data, and marks where it starts and ends, so
   // that a reader can tell which exam it is about (see `exam_points_data`).
@@ -254,7 +262,7 @@
 
 #let _EXAM = declare_function(
   "exam",
-  doc: "Lay out an exam: number its questions, parts, and subparts, draw them, and total their points for `points-table` and the other point counts. Written as a show rule, `#show: exam` (or `#show: exam.with(..)`, with options), it makes the rest of the document the exam.\n\nIt also applies `e.prepare()`, which the exam's references need.",
+  doc: "Lay out an exam: number its questions, parts, and subparts, draw them, and total their points for `points-table` and the other point counts. Written as a [show rule](https://typst.app/docs/reference/styling/#show-rules), `#show: exam` (or `#show: exam.with(..)`, with options), it makes the rest of the document the exam.\n\nIt also applies `e.prepare()`, which the exam's references need.",
   fields: (
     e.field(
       "questions",
@@ -330,8 +338,11 @@
   }
   // Where an exam is, for one around it to find (see above).
   exam_marker
-  // What the exam's references need, whether or not the document has it.
+  // What the exam's references need, whether or not the document has it;
+  // and a label its questions share with another exam's, as in a bundle of
+  // the exam and its key, refers to its own.
   show: e.prepare()
+  show ref: own_exam_refs(exam_index)
   show: if options.len() > 0 { e.set_(config, ..options) } else { it => it }
   if inner { questions } else { _exam_body(questions) }
 }

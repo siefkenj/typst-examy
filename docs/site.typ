@@ -12,8 +12,9 @@
 // shows (see `example` in site/template.typ), so neither can fall out of
 // date with the package.
 
-#import "site/template.typ": PAGES, REFERENCE_PAGES, entry_heading, entry_page, layout, output_css, paged_documents
-#import "site/pages/rubrics.typ": PAGED_EXAMPLES as RUBRIC_EXAMPLES
+#import "site/template.typ": (
+  PAGES, REFERENCE_PAGES, entry_heading, entry_page, layout, output_css, paged_documents, paged_examples,
+)
 #import "site/pages/playground.typ": playground-page
 #import "api.typ": EXPORTS, entry, page_path, summary
 #import "logo/logo.typ": examy-logo
@@ -32,15 +33,17 @@
 #document("playground.html", title: "Playground", playground-page())
 
 // The examples shown as images of a paged rendering, rather than in HTML
-// frames, which do not keep where things are (see `example`'s `paged-name`).
-#for ex in RUBRIC_EXAMPLES.values() {
-  paged_documents(ex)
+// frames, which do not keep where things are (see `example`'s `paged-name`),
+// found in the pages' source.
+#for p in PAGES {
+  for ex in paged_examples(read("site/" + p.file)) { paged_documents(ex) }
 }
 
 // The stylesheet, with the look of the examples' output from the template
 // (`output_css`), which the PDF is drawn with too.
 #asset("style.css", read("site/style.css") + "\n" + output_css())
-#asset("favicon.svg", read("site/favicon.svg"))
+// The icon is the logo's mark alone: its name would be unreadable that small.
+#asset("favicon.svg", read("logo/mark.svg"))
 
 // The logo heading the front page (see PAGES in site/template.typ), rendered
 // from logo/logo.typ with its name drawn as outlines.

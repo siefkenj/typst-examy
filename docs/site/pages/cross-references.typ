@@ -1,7 +1,9 @@
 #import "../template.typ": *
 
-To reference a question/part/subpart, add a `label: <name>` attribute and use Typst's `@name` syntax
-to refer to it. By default, a reference is rendered as the shortest unambiguous string. 
+To reference a question/part/subpart, add a
+#typst-link("reference/foundations/label/")[`label: <name>`] attribute and use Typst's
+#typst-link("reference/model/ref/")[```typ @name``` syntax] to refer to it. By default, a reference
+is rendered as the shortest unambiguous string.
 
 #example(
   ```typ
@@ -21,7 +23,7 @@ to refer to it. By default, a reference is rendered as the shortest unambiguous 
   ```,
 )
 
-Notice how in 1 (b), the reference `@continuity` is rendered as "(a)" while in question 2 the same reference is rendered as "1 (a)".
+Notice how in 1 (b), the reference ```typ @continuity``` is rendered as "(a)" while in question 2 the same reference is rendered as "1 (a)".
 
 To ensure all labels are globally unique, you can use the `numbering-full: true` option.
 

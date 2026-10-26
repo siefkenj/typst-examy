@@ -28,9 +28,23 @@
 /// beside them.
 #let DEFAULT_BUBBLE_LABEL_FONT = "DejaVu Sans Mono"
 
+/// The space a bubble keeps around itself when `bubble-outset` is not
+/// configured: a gap after it, parting it from whatever follows (see
+/// `choice`'s `outset`).
+#let DEFAULT_BUBBLE_OUTSET = (right: .4em)
+
+/// How far the body of a question, part, or subpart is indented from the one
+/// it is in, when `indent` is not configured.
+#let DEFAULT_INDENT = 1.5em
+
 /// A relative length, checked but kept as given: a plain length stays a
 /// length (see signature.typ), as `answer-box` expects.
 #let _RELATIVE = (length, ratio, e.types.exact(relative))
+
+/// What an answer box's outline and background take, as `box`'s `stroke`
+/// and `fill` do: `answer-box`'s fields and the options that give them.
+#let BOX_STROKE = e.types.union(none, length, color, gradient, tiling, e.types.exact(stroke), dictionary)
+#let BOX_FILL = e.types.union(none, color, gradient, tiling)
 
 /// How questions, parts, and subparts are numbered when `numbering` is not
 /// configured: one numbering pattern per nesting level. Deeper levels fall
@@ -93,7 +107,7 @@
     e.field(
       "show-solutions",
       bool,
-      doc: "Whether to show solutions, as on the answer key; the `--input show-solutions=..` command-line option overrides it",
+      doc: "Whether to show solutions. The `--input show-solutions=..` command-line option overrides this setting.",
       default: true,
     ),
     e.field(
@@ -114,7 +128,7 @@
     e.field(
       "duration",
       e.types.option(e.types.union(duration, content)),
-      doc: "The length of the exam, shown by `maketitle`: a `duration`, shown in minutes (`duration(minutes: 110)` as \"110 Minutes\"), or content, shown as it is (`[1 h 50 min]`)",
+      doc: "The length of the exam, shown by `maketitle`: a [`duration`](https://typst.app/docs/reference/foundations/duration/), shown in minutes (`duration(minutes: 110)` as \"110 Minutes\"), or content, shown as it is (`[1 h 50 min]`)",
     ),
     e.field(
       "show-rubrics",
@@ -161,14 +175,48 @@
     e.field(
       "bubble-label-font",
       e.types.union(str, array),
-      doc: "The font the labels inside bubbles (`choices`' `enumerate`) are set in: a font name, or a list of them to fall back through, as `text`'s `font` takes. The default is the monospaced font bundled with Typst",
+      doc: "The font the labels inside bubbles (`choices`' `enumerate`) are set in: a font name, or a list of them to fall back through, as [`text`'s `font`](https://typst.app/docs/reference/text/text/#parameters-font) takes. The default is the monospaced font bundled with Typst",
       default: DEFAULT_BUBBLE_LABEL_FONT,
+      // Set as a whole: the default folding of arrays would append to it.
+      folds: false,
+    ),
+    e.field(
+      "bubble-size",
+      e.types.union(auto, length),
+      doc: "The diameter of the round bubbles drawn by `choice`, `bubble`, `square-bubble` and `choices`, unless one is given `size`. A square bubble is drawn a little smaller across, in the same proportion as by default, so the two still read alike. `auto` is `1em`; an `em` length scales with the text around each bubble",
+      default: auto,
+    ),
+    e.field(
+      "bubble-outset",
+      e.types.union(length, dictionary),
+      doc: "The space bubbles keep around themselves, unless one is given `outset`, as `choice`'s `outset` takes it: a length for the gap after the bubble, or a dictionary of sides (`left`, `right`, `top`, `bottom`, `x`, `y`, `rest`), the sides it does not name keeping their defaults",
+      default: DEFAULT_BUBBLE_OUTSET,
     ),
     e.field(
       "choices-enumerate",
-      e.types.union(bool, str, function),
-      doc: "How `choices` labels its bubbles, unless it is given `enumerate` itself: `false` for no labels, `true` for A, B, C, …, or a numbering pattern or function, as `enum`'s `numbering` takes (`\"a\"`, `\"1\"`, `\"(i)\"`)",
+      e.types.union(bool, str, function, array),
+      doc: "How `choices` labels its bubbles, unless it is given `enumerate` itself: `false` for no labels, `true` for A, B, C, …, a numbering pattern or function, as [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering) takes (`\"a\"`, `\"1\"`, `\"(i)\"`), or an array of labels, one per choice in turn (`(\"x\", \"y\", \"z\")`)",
       default: false,
+      // Set as a whole: the default folding of arrays would append to it.
+      folds: false,
+    ),
+    e.field(
+      "choices-inline",
+      bool,
+      doc: "Whether `choices` runs its choices together, side by side in a paragraph of their own, unless it is given `inline` or `columns`. Cannot be combined with `choices-columns`",
+      default: false,
+    ),
+    e.field(
+      "choices-columns",
+      e.types.option(int),
+      doc: "How many equal columns `choices` sets its choices in, unless it is given `inline` or `columns`. `none` sets them one per line. Cannot be combined with `choices-inline`",
+      default: none,
+    ),
+    e.field(
+      "choices-gap",
+      e.types.union(auto, length, fraction),
+      doc: "The space between two choices of `choices`, unless it is given `gap`; see its `gap` for what `auto` and the others mean",
+      default: auto,
     ),
     e.field(
       "answer-box-height",
@@ -178,9 +226,21 @@
     ),
     e.field(
       "answer-box-width",
-      e.types.union(auto, .._RELATIVE),
+      e.types.union(auto, .._RELATIVE, fraction),
       doc: "The `width` of an `answer-box` that is not given one, by its call or a set rule on `answer-box`. `auto` is the full width for a box with a fractional height (`1fr`), and `answer-box-default-width` otherwise",
       default: auto,
+    ),
+    e.field(
+      "answer-box-stroke",
+      BOX_STROKE,
+      doc: "The `stroke` of an `answer-box` that is not given one, by its call or a set rule on `answer-box`: its outline, as [`box`'s `stroke`](https://typst.app/docs/reference/layout/box/#parameters-stroke) takes it. `none` leaves blank space, and `(bottom: .5pt)` draws a single rule to write on",
+      default: .5pt,
+    ),
+    e.field(
+      "answer-box-fill",
+      BOX_FILL,
+      doc: "The `fill` of an `answer-box` that is not given one, by its call or a set rule on `answer-box`: its background, as [`box`'s `fill`](https://typst.app/docs/reference/layout/box/#parameters-fill) takes it, e.g. `luma(245)`",
+      default: none,
     ),
     e.field(
       "answer-box-default-height",
@@ -197,15 +257,21 @@
     e.field(
       "numbering",
       e.types.union(str, function, e.types.array(e.types.union(str, function))),
-      doc: "How questions, parts, and subparts are numbered, as `enum`'s `numbering` takes it: a pattern such as `\"1.a.i.\"`, whose counting symbols number the levels in turn (the last one any deeper levels), or a function of the number. Or an array of them, one per level, e.g. `(\"Problem 1.\", \"(a)\", \"i.\")`, levels past its end numbered `\"1.\"`.\n\nA reference drops a pattern's trailing `.`, so `@label` reads \"Problem 1 (a)\"; a function's result is used as it is",
+      doc: "How questions, parts, and subparts are numbered, as [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering) takes it: a pattern such as `\"1.a.i.\"`, whose counting symbols number the levels in turn (the last one any deeper levels), or a function of the number. Or an array of them, one per level, e.g. `(\"Problem 1.\", \"(a)\", \"i.\")`, levels past its end numbered `\"1.\"`.\n\nA reference drops a pattern's trailing `.`, so `@label` reads \"Problem 1 (a)\"; a function's result is used as it is",
       default: DEFAULT_NUMBERING,
       // Set as a whole: the default folding of arrays would append to it.
       folds: false,
     ),
     e.field(
+      "indent",
+      length,
+      doc: "How far the body of a question, part, or subpart is indented from the one it is in, unless it is given `indent`",
+      default: DEFAULT_INDENT,
+    ),
+    e.field(
       "numbering-full",
       bool,
-      doc: "Whether a part or subpart is numbered with the numbers of the divisions it is in, as `enum`'s `full` does: `\"1.a.\"` numbers part (a) of question 1 \"1.a.\", and a function is given every level's number, `(1, 1)`. With an array of `numbering`s, a level's entry numbers it so if it has a counting symbol for each level (`(\"1.\", \"1.a.\")`); otherwise it is the number above it followed by its own, after a thin space and without the trailing `.` or `,` of the one above (\"1 (a)\"), unless every level is a number in digits, which keep their punctuation (\"1.1.\"). A reference then reads as the full number too, \"1.a\", and a question whose body starts with a part shows only the part's number on their shared line, which holds its own. A level whose numbers are not all counted (a division given `number: [..]` or `none`, or one inside it) is numbered on its own",
+      doc: "Whether a part or subpart is numbered with the numbers of the divisions it is in, as [`enum`'s `full`](https://typst.app/docs/reference/model/enum/#parameters-full) does: `\"1.a.\"` numbers part (a) of question 1 \"1.a.\", and a function is given every level's number, `(1, 1)`. With an array of `numbering`s, a level's entry numbers it so if it has a counting symbol for each level (`(\"1.\", \"1.a.\")`); otherwise it is the number above it followed by its own, after a thin space and without the trailing `.` or `,` of the one above (\"1 (a)\"), unless every level is a number in digits, which keep their punctuation (\"1.1.\"). A reference then reads as the full number too, \"1.a\", and a question whose body starts with a part shows only the part's number on their shared line, which holds its own. A level whose numbers are not all counted (a division given `number: [..]` or `none`, or one inside it) is numbered on its own",
       default: false,
     ),
     e.field(
@@ -339,11 +405,16 @@
 
 /// `resolve_solution_colors` for the configured values, for use inside
 /// `e.get(get => ..)`. The deprecated `solution-text-color` stands in for
-/// `solution-color` when only it is set.
-#let solution_colors(get) = {
+/// `solution-color` when only it is set. `color` and `background`, when not
+/// `auto`, stand in for the configured ones, as a solution's own `color` and
+/// `background-color` do.
+#let solution_colors(get, color: auto, background: auto) = {
   let cfg = get(config)
-  let solution-color = if cfg.solution-color != auto { cfg.solution-color } else { cfg.solution-text-color }
-  resolve_solution_colors(solution-color, cfg.solution-background-color)
+  if color == auto {
+    color = if cfg.solution-color != auto { cfg.solution-color } else { cfg.solution-text-color }
+  }
+  if background == auto { background = cfg.solution-background-color }
+  resolve_solution_colors(color, background)
 }
 
 /// The options the exam pipeline lays out with, resolved from `config`, for
@@ -373,16 +444,22 @@
     // `shown` is resolved by the exam, which knows whether solutions are shown
     // (see `show_rubrics`), and `present`, whether it has rubrics at all, and
     // so `drawn`, whether they are drawn, and `traced`, whether their leaders
-    // are too (see `process_questions`).
+    // are too, and `positions`, those its divisions' rubrics are drawn at
+    // (see `process_questions`).
     rubric: (
       shown: cfg.show-rubrics,
       present: false,
       drawn: false,
       traced: false,
+      positions: (),
       position: cfg.rubric-position,
       trace: if cfg.rubric-trace == auto { cfg.rubric-position != "end" } else { cfg.rubric-trace },
+      // As configured, for a division with a `rubric-position` of its own
+      // (see `opts_of` in render.typ).
+      trace-given: cfg.rubric-trace,
       width: cfg.rubric-width,
     ),
+    indent: cfg.indent,
   )
 }
 
@@ -403,12 +480,32 @@
   "rubric-position",
   "rubric-trace",
   "rubric-width",
+  "indent",
 )
 
-/// Which of `EXAM_WIDE_OPTIONS` an elembic rule (its data, see
-/// `elembic_rule` in scan.typ) sets on `config`, in order: a `set_` or
-/// `cond-set` rule's, or those of the rules an `apply` combines.
-#let exam_wide_options_set(rule) = {
+/// The options of `EXAM_WIDE_OPTIONS` that a question, part, or subpart
+/// takes for itself too, under the same name (see divisions.typ).
+#let DIVISION_OPTIONS = ("numbering", "rubric-position", "rubric-trace", "rubric-width", "indent")
+
+/// The options of `EXAM_WIDE_OPTIONS` that a `config` set rule inside an
+/// exam may set: the exam applies them to the questions, parts, and subparts
+/// in the rule's scope (see `scoped_options_set`, and `localize` in
+/// render.typ). The others are read once for all of them: `numbering` too,
+/// as references across the exam would no longer read alike.
+#let SCOPED_OPTIONS = (
+  "points-format",
+  "bonus-points-format",
+  "points-position",
+  "points-show-totals",
+  "rubric-position",
+  "rubric-trace",
+  "rubric-width",
+  "indent",
+)
+
+/// The `config` rules an elembic rule (its data, see `elembic_rule` in
+/// scan.typ) is made of, in order: itself, or those an `apply` combines.
+#let _config_rules(rule) = {
   let found = ()
   let stack = (rule,)
   while stack.len() > 0 {
@@ -418,10 +515,36 @@
     if kind == "apply" {
       stack += r.at("rules", default: ()).rev()
     } else if kind in ("set", "cond-set") and r.at("element", default: (:)).at("eid", default: none) == e.eid(config) {
-      found += r.at("args", default: (:)).keys().filter(k => k in EXAM_WIDE_OPTIONS)
+      found.push(r)
     }
   }
+  found
+}
+
+/// Which of `EXAM_WIDE_OPTIONS` an elembic rule sets on `config` that it may
+/// not inside an exam, in order: any but `SCOPED_OPTIONS` that a `set_` rule
+/// sets, and any that a `cond-set` rule sets, as a condition on `config`
+/// would hold for some questions and not others.
+#let exam_wide_options_set(rule) = {
+  let found = ()
+  for r in _config_rules(rule) {
+    let keys = r.at("args", default: (:)).keys().filter(k => k in EXAM_WIDE_OPTIONS)
+    found += if r.kind == "set" { keys.filter(k => k not in SCOPED_OPTIONS) } else { keys }
+  }
   found.dedup()
+}
+
+/// The values of `SCOPED_OPTIONS` that an elembic rule sets on `config`, by
+/// name: a later rule's (in an `apply`) over an earlier one's.
+#let scoped_options_set(rule) = {
+  let found = (:)
+  for r in _config_rules(rule) {
+    if r.kind != "set" { continue }
+    for (k, v) in r.at("args", default: (:)) {
+      if k in SCOPED_OPTIONS { found.insert(k, v) }
+    }
+  }
+  found
 }
 
 /// The names of the rules before an exam that set any of
@@ -453,5 +576,16 @@
   points-position: "start",
   points-show-totals: false,
   fr-unit: none,
-  rubric: (shown: false, present: false, drawn: false, traced: false, position: "margin-right", trace: true, width: auto),
+  rubric: (
+    shown: false,
+    present: false,
+    drawn: false,
+    traced: false,
+    positions: (),
+    position: "margin-right",
+    trace: true,
+    trace-given: auto,
+    width: auto,
+  ),
+  indent: DEFAULT_INDENT,
 )

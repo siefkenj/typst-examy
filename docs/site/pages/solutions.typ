@@ -1,11 +1,16 @@
 #import "../template.typ": *
 
-Wrap solutions in #api("solution", body: raw("#solution[...]")) (anywhere in
-your document, including inside an answer box). Solutions are only rendered
-when enabled, so the same source produces both the exam and the answer key:
+Wrapping content #api("solution", arg: "[...]") ensures that it is only shown in an "answer key"
+version of an exam, which means you can use a single source to render both an exam and its answer
+key. Solutions can be placed anywhere in an exam, but are often placed in an #api(
+  "answer-box",
+  arg: "[...]",
+).
 
 #example(
   ```typ
+  #solution[SOLUTIONS]
+
   #question(points: 2)[
     Compute $integral_0^1 3 x^2 dif x$.
     #answer-box(width: 100%, height: 2.4cm)[
@@ -20,48 +25,75 @@ when enabled, so the same source produces both the exam and the answer key:
   ```,
 )
 
-Solutions are turned on with the global #api("config")'s `show-solutions` option:
+To toggle whether solutions are visible, set `show-solutions` on the global #api("config").
 
 ```typ
 #show: exam.with(show-solutions: true)
 ```
 
-== Command line options
+or
 
-When given on the command line, the `show-solutions` input overrides the
-document setting `show-solutions: ...`. This can be
-used in build scripts that must produce a specific variant regardless of what
-the source file currently configures.
+```typ
+#show: e.set_(config, show-solutions: true)
+```
+
+
+== Compiling with and without solutions
+
+There are three ways to create solution/no-solution versions of an exam: (1) explicitly set
+`show-solutions:` as `true`/`false` and recompile, (2) use a commandline flag, or (3) Typst's
+experimental bundle option.
+
+=== Manually setting the flag
+
+By default, solutions are shown in an exam. To create a no-solutions version, use
+```typ
+#show: exam.with(
+  show-solutions: false
+)
+```
+Putting `show-solutions` on its own line allows you to easily comment/uncomment the line to produce
+multiple exam versions.
+
+
+=== Command line flag
+
+The `show-solutions` #typst-link("reference/foundations/sys/")[input] given on the command line
+overrides the document's `show-solutions` setting, so it can be used to create solution/no-solution
+versions regardless of the current exam state.
 
 ```bash
-# whatever the document configures
+# whatever the exam has set
 typst compile exam.typ
-# student version (force solutions off)
+# the exam (solutions off)
 typst compile --input show-solutions=false exam.typ
-# answer key (force solutions on)
+# the answer key (solutions on)
 typst compile --input show-solutions=true exam.typ
 ```
 
-Typst's (experimental) _bundle_ export can also emit both PDFs from a single
-compilation: wrap the exam in a function of the `show-solutions` value and
-make one `document` of each version.
+=== Experimental bundle option
+
+Typst's (experimental) #typst-link("reference/bundle/")[_bundle_ export] can produce multiple PDFs
+during a single compile. To use it, save the exam as content, and make one #typst-link(
+  "reference/model/document/#parameters-path",
+)[`document`] of each version, setting `show-solutions` around it with `e.set_`.
 
 ```typ
-#let quiz(solutions) = {
-  set page(paper: "us-letter", margin: 1in)
-  show: exam.with(show-solutions: solutions)
+#let quiz = [
+  #show: exam
 
-  {
-    set text(font: "DejaVu Sans Mono")
-    name-block()
-  }
-  [
-    ...
-  ]
-}
+  #question[...]
+  #question[...]
+]
 
-#document("quiz-nosolutions.pdf", quiz(false))
-#document("quiz-solutions.pdf", quiz(true))
+#document("quiz-nosolutions.pdf", {
+  show: e.set_(config, show-solutions: false)
+  quiz
+})
+#document("quiz-solutions.pdf", {
+  show: e.set_(config, show-solutions: true)
+  quiz
+})
 ```
 
 ```bash
@@ -69,11 +101,54 @@ typst compile --features bundle -f bundle bundle.typ out/
 # writes out/quiz-nosolutions.pdf and out/quiz-solutions.pdf
 ```
 
-== Something in the solution's place
+#note[
+  _Note._ The documents of a bundle share their labels, so each version of the exam has the same
+  labelled questions. A reference to a question/part/subpart refers to the one in its own version.
+  Other labelled content in the exam, such as a heading or a figure, is in every version too, and a
+  reference to it is an error.
+]
 
-Use `otherwise` to show something in a solution's place on the exam, such as a blank to fill in or
-lines to write on. Inside an answer box without a height, the key draws the solution on top of it,
-so the exam and the key still have the same layout. Elsewhere, the solution replaces it.
+== Customizing solutions
+
+=== Colors
+
+The solution environments colors can be set via the global #api("config") with:
+
+/ `solution-color`: The color of a solution's text. The highlight behind it is derived from it,
+  unless set too.
+/ `solution-background-color`: The color of the highlight. The text color is derived from it, unless
+  set too.
+
+If only one is set, the other is inferred by lightening or darkening the set color.
+
+A single solution takes its own `color` and `background-color`, which win over the global options
+for that solution, as in the last question below.
+
+#example(
+  ```typ
+  #show: exam.with(solution-color: maroon)
+
+  #question[What is $6 times 7$? #answer-box[#solution[42]]]
+  #question[
+    Name the largest planet.
+    #answer-box(width: 100%)[#solution[Jupiter.]]
+  ]
+  #question[
+    A test for the color blind.
+    #answer-box(width: 100%)[
+      #solution(background-color: yellow.darken(30%))[Can you read me?]
+    ]
+  ]
+  ```,
+)
+
+
+=== The `otherwise:` argument
+
+Normally, when a solution is not rendered, nothing is shown. Setting its `otherwise: ...` value to
+content will show that content when a solution is not shown. This can be used, for example, to show
+lined space on a no-solutions version of an exam, but replace it with just a solution on the
+solutions version.
 
 #example(
   ```typ
@@ -99,124 +174,51 @@ so the exam and the key still have the same layout. Elsewhere, the solution repl
   ```,
 )
 
-== Solution colors
+== Solutions inside graphics and other advanced solutions
 
-Solutions are drawn in a configurable pair of colors — the text color and the
-highlight behind it. If only one of these is set, the other color is derived
-from the set color.
+A #api("solution", arg: "[...]") is wrapped in context, and as such, its output cannot be used
+as the input for most functions, like those that draw graphics. 
 
-#example(
-  ```typ
-  #show: exam.with(solution-color: maroon)
-
-  #question[What is $6 times 7$? #answer-box[#solution[42]]]
-  #question[
-    Name the largest planet.
-    #answer-box(width: 100%)[#solution[Jupiter.]]
-  ]
-  ```,
-)
-
-```typ
-// The highlight follows the text color:
-#show: exam.with(solution-color: maroon)
-// The text color follows the highlight:
-#show: exam.with(solution-background-color: olive.lighten(90%))
-// Both set:
-#show: exam.with(
-  solution-color: maroon,
-  solution-background-color: luma(93%),
-)
-```
-
-== An answer key that differs from the exam
-
-A `#solution` only changes what is drawn in its own place. When the key needs to differ from the
-exam in other ways, such as an extra part or an answer box of a different size, give #api("exam")
-its `questions` as a function. examy calls it with a helper, named `solutions-only` here.
-`solutions-only(x)` gives `x` on the key and nothing on the exam, and
-`solutions-only(x, otherwise: y)` gives `y` on the exam instead. Its content is drawn as it is, not
-styled as a solution.
-
-#example(
-  ```typ
-  #exam(questions: solutions-only => [
-    #question(points: 2)[
-      Compute $integral_0^1 2x dif x$.
-      // Room to write on the exam; on the key, just the answer.
-      #answer-box(
-        width: 100%,
-        height: solutions-only(auto, otherwise: 2cm),
-      )[
-        #solution[$lr(x^2 |)_0^1 = 1$]
-      ]
-      // A note to the grader, on the key only.
-      #solutions-only(part(number: none)[
-        _Award 1 point for the antiderivative._
-      ])
-    ]
-    #question(points: 1)[Is $f(x) = x^2$ even?]
-  ])
-  ```,
-)
-
-A question that only appears on the key would renumber the questions after it. To avoid this, give
-it `number: none`, or put what the key adds in a part, as above.
-
-== Solutions `#solution` cannot wrap
-
-Solutions are wrapped in `context {...}`, which limits their use in some
-cases. In these cases, give #api("exam") its questions as a function, as in
-the previous section: `solutions-only(x)` is `x` on the answer key and
-nothing on the exam, wherever it is used in the questions, code included.
+An alternative is to pass #api("exam", arg: "[...]") a function of the form `solutions-only => ...`.
+The first argument is a function which returns its content only when solutions are rendered and
+returns its `otherwise:` argument otherwise.
 
 #example(
   ```typ
   #exam(questions: solutions-only => [
     #question[
-      Draw the line through the box's center, perpendicular to
-      the one shown.
-      #let s = 2.5cm
-      #box(width: s, height: s, stroke: .5pt, {
-        place(line(start: (0pt, s), end: (s, 0pt), stroke: gray))
-        solutions-only(place(line(
-          start: (0pt, 0pt),
-          end: (s, s),
-          stroke: 1.5pt + blue,
-        )))
-      })
+      Mark the top and right sides of the box.
+
+      #box(width: 2cm, height: 2cm, stroke: (
+        rest: .5pt,
+        top: solutions-only(2pt + blue, otherwise: .5pt),
+        right: solutions-only(2pt + blue, otherwise: .5pt),
+      ))
     ]
   ])
   ```,
-  key: true,
-  width: 7cm,
 )
 
-Outside of an exam's questions, you can manually access the `show-solutions`
-config variable via elembic methods: #api("show-solutions") gives the
-effective setting, command-line override included, inside `e.get`.
+This can also be used to achieve effects like changing a question's height between solution and no-solution versions.
 
 #example(
   ```typ
-  #e.get(get => {
-    let should-show-solution = show-solutions(get)
-    let s = 2.5cm
-    box(width: s, height: s, stroke: .5pt, {
-      place(line(start: (0pt, s), end: (s, 0pt), stroke: gray))
-      if should-show-solution {
-        place(line(
-          start: (0pt, 0pt),
-          end: (s, s),
-          stroke: 1.5pt + blue,
-        ))
-      }
-    })
-  })
+  #exam(questions: solutions-only => [
+    _An exam with a compact key._
+    #question[
+      Find the derivative of $f(x) = x^3 - 2x$.
+      // Room to work on the exam; on the key, only as tall as the answer.
+      #answer-box(
+        width: 100%,
+        height: solutions-only(auto, otherwise: 3cm),
+      )[#solution[$f'(x) = 3x^2 - 2$]]
+    ]
+    #question[Is $f$ increasing at $x = 1$?]
+  ])
   ```,
-  key: true,
-  width: 2.5cm + .5pt,
 )
 
-The quiz on the #page-link("index.html")[first page] uses this to draw the
-answer to a sketch-the-derivative question, plotted with
-#link("https://typst.app/universe/package/lilaq")[lilaq], on the key only.
+The `solutions-only` function behaves in the following way:
+
+/ `solutions-only(x)`: `x` on the key, and nothing on the exam.
+/ `solutions-only(x, otherwise: y)`: `x` on the key, and `y` on the exam.

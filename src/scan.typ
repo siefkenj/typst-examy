@@ -42,15 +42,26 @@
 /// divisions inside it can still be found.
 #let _ELEMBIC_RULE_TAGS = (<__elembic_element_rule_v2>, <__elembic_element_rule>)
 
+/// Whether `c` is the tag that ends the content an elembic rule left in its
+/// place (see `_ELEMBIC_RULE_TAGS`).
+#let _is_rule_tag(c) = {
+  if type(c) != content or c.func() != metadata or c.at("label", default: none) not in _ELEMBIC_RULE_TAGS {
+    return false
+  }
+  type(c.value) == dictionary and "doc" in c.value and "rule" in c.value
+}
+
 /// The `(doc, rule)` an elembic rule (see `_ELEMBIC_RULE_TAGS`) was applied
 /// to, if `c` is the content such a rule left in its place; else `none`.
+/// That content is a sequence of exactly two, the rule's output and its tag.
+/// Joined to other content (`a + rule`, a `.join()`), the two are spliced
+/// into the sequence they join, after what came before them: that sequence
+/// ends in the tag, but is not the rule (see `unwrap`).
 #let elembic_rule(c) = {
-  if type(c) != content or c.func() != SEQUENCE_FUNC or c.children.len() < 2 { return none }
+  if type(c) != content or c.func() != SEQUENCE_FUNC or c.children.len() != 2 { return none }
   let tag = c.children.last()
-  if tag.func() != metadata or tag.at("label", default: none) not in _ELEMBIC_RULE_TAGS { return none }
-  let v = tag.value
-  if type(v) != dictionary or "doc" not in v or "rule" not in v { return none }
-  (doc: v.doc, rule: v.rule)
+  if not _is_rule_tag(tag) { return none }
+  (doc: tag.value.doc, rule: tag.value.rule)
 }
 
 #let EMPTY_SCAN = (has_marker: false, has_break: false, fr: none, marker_names: ())
@@ -66,11 +77,16 @@
 /// is made of, in order; `none` for anything else. These are what a
 /// document made the exam by `#show: exam` nests a level deeper with every
 /// set or show rule in it, and what the walks over content look through.
+/// A sequence with a rule spliced into its end (see `elembic_rule`) is made
+/// of what comes before the rule, and the rule, apart again.
 #let unwrap(c) = {
   if type(c) != content { return none }
   let rule = elembic_rule(c)
   if rule != none { return (rule.doc,) }
   let f = c.func()
+  if f == SEQUENCE_FUNC and c.children.len() > 2 and _is_rule_tag(c.children.last()) {
+    return (..c.children.slice(0, -2), SEQUENCE_FUNC(c.children.slice(-2)))
+  }
   if f == SEQUENCE_FUNC { return c.children }
   if f == STYLED_FUNC { return (c.child,) }
   none
@@ -383,36 +399,46 @@
 /// document where blank content is. A rubric is one.
 #let has_metadata(c) = _find(c, x => type(x) == content and x.func() == metadata, first: true).len() > 0
 
-/// Whether `c` holds a rubric marker anywhere at all: also in the fields of
-/// elements kept in metadata (a `solution`'s body, a division's `rubric:`),
-/// which `has_rubric` does not look into. For the exam to know whether it
-/// has rubrics to draw, before drawing anything.
-#let has_any_rubric(c) = {
-  // Of elembic's own data, only what can hold a rubric: the content a rule
-  // is applied to, and an element's fields, not the rest of what elembic
-  // keeps with them (the element's whole description, for one), which
-  // would take long to walk, for every answer box (which holds a rule on
-  // its solutions) and every solution.
-  let inside(x) = if type(x) == dictionary {
-    x.values()
-  } else if type(x) != content {
-    ()
-  } else if x.func() == metadata {
-    let label = x.at("label", default: none)
-    if label == <__elembic_element_tag> and type(x.value) == dictionary and "fields" in x.value {
-      x.value.fields.values()
-    } else if label in _ELEMBIC_RULE_TAGS and type(x.value) == dictionary and "doc" in x.value {
-      (x.value.doc,)
-    } else { (x.value,) }
-  } else {
-    x.fields().values()
-  }
-  _find(c, x => rubric_value(x) != none, inside: inside, first: true).len() > 0
+/// What `_find` looks inside to reach the fields of elements kept in
+/// metadata too (a `solution`'s body, a division's `rubric:`), which
+/// `_inside` does not look into. Of elembic's own data, only what can hold
+/// content: the content a rule is applied to, and an element's fields, not
+/// the rest of what elembic keeps with them (the element's whole
+/// description, for one), which would take long to walk, for every answer
+/// box (which holds a rule on its solutions) and every solution. A rule is
+/// looked through as `unwrap` does, to the content it is applied to alone,
+/// so that nothing in it is reached twice.
+#let _inside_kept(x) = if type(x) == dictionary {
+  x.values()
+} else if type(x) != content {
+  ()
+} else if unwrap(x) != none {
+  unwrap(x)
+} else if x.func() == metadata {
+  let label = x.at("label", default: none)
+  if label == <__elembic_element_tag> and type(x.value) == dictionary and "fields" in x.value {
+    x.value.fields.values()
+  } else if label in _ELEMBIC_RULE_TAGS and type(x.value) == dictionary and "doc" in x.value {
+    (x.value.doc,)
+  } else { (x.value,) }
+} else {
+  x.fields().values()
 }
 
+/// Whether `c` holds a rubric marker anywhere at all, also in the fields of
+/// elements kept in metadata (see `_inside_kept`), which `has_rubric` does
+/// not look into. For the exam to know whether it has rubrics to draw,
+/// before drawing anything.
+#let has_any_rubric(c) = _find(c, x => rubric_value(x) != none, inside: _inside_kept, first: true).len() > 0
+
 /// Every rubric marker inside `c`, in order: what a hidden `solution`
-/// leaves in its place, so that its rubrics are still found.
-#let rubric_markers(c) = _find(c, x => rubric_value(x) != none)
+/// leaves in its place, so that its rubrics are still found. With `kept`,
+/// also those in the fields of elements kept in metadata (see
+/// `_inside_kept`): the solutions a hidden one would have drawn after itself
+/// (its `_then`).
+#let rubric_markers(c, kept: false) = _find(c, x => rubric_value(x) != none, inside: if kept {
+  _inside_kept
+} else { _inside })
 
 /// Whether `c` ends with inline content, in a paragraph's line. Unsure
 /// means no (see `glue_rubrics`).

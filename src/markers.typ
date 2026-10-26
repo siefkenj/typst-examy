@@ -3,6 +3,7 @@
 /// pipeline later tokenizes the stream and reconstructs the structure.
 
 #import "constants.typ": DEBUG_PANIC
+#import "signature.typ": UNSET
 
 /// Version tag for the marker format; bump when the format changes.
 #let MARKER_V = 1
@@ -15,7 +16,12 @@
   rubric: none,
   number: auto,
   height: auto,
-  indent: 1.5em,
+  indent: auto,
+  // Options of its own: `auto` (`UNSET`, for the last two) for `config`'s.
+  numbering: auto,
+  rubric-position: auto,
+  rubric-trace: UNSET,
+  rubric-width: UNSET,
   label: none,
   // Name of the constructor ("question"/"part"/...); used only for diagnostics.
   name: "division",

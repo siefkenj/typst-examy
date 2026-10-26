@@ -1,5 +1,5 @@
 #import "../prelude.typ": *
-#import "../config.typ": DEFAULT_BUBBLE_LABEL_FONT, config, solution_colors
+#import "../config.typ": DEFAULT_BUBBLE_LABEL_FONT, DEFAULT_BUBBLE_OUTSET, DEFAULT_BUBBLE_STROKE, config, solution_colors
 #import "solution.typ": show_solutions
 #import "../scan.typ": is_multi_par
 #import "../signature.typ": declare_function, define
@@ -43,8 +43,9 @@
 ///
 /// Note that this reserves layout space, which is what an author means by
 /// "the space around a bubble"; Typst's own `outset` on a box expands only
-/// what is *drawn*, leaving the space it occupies alone.
-#let _OUTSET = (right: .4em)
+/// what is *drawn*, leaving the space it occupies alone. `config`'s
+/// `bubble-outset` changes it for every bubble.
+#let _OUTSET = DEFAULT_BUBBLE_OUTSET
 
 /// No space on any side: what a side not named by `_OUTSET` defaults to.
 #let _NO_SIDES = (left: 0pt, right: 0pt, top: 0pt, bottom: 0pt)
@@ -82,21 +83,38 @@
 
 /// What is wrong with an `outset` argument, or `none` if nothing is, so a
 /// mistake is reported in the bubble's terms rather than as a failure deep
-/// inside the box it is drawn in.
-#let outset_error(caller, value) = {
+/// inside the box it is drawn in. `name` is the option's (`config`'s is
+/// `bubble-outset`), and `auto` is allowed where it means "as configured".
+#let outset_error(caller, value, name: "outset", allow-auto: false) = {
   let hint = (
-    " — give a length for the gap after the bubble (`outset: .6em`), or a dictionary of sides (`outset: (left: .2em, right: .6em)`)"
+    " — give a length for the gap after the bubble (`"
+      + name
+      + ": .6em`), or a dictionary of sides (`"
+      + name
+      + ": (left: .2em, right: .6em)`)"
   )
+  if allow-auto and value == auto { return none }
   if type(value) != dictionary {
     if type(value) == length { return none }
-    return caller + ": `outset` must be a length or a dictionary, got " + repr(value) + hint
+    return (
+      caller
+        + ": `"
+        + name
+        + "` must be a length or a dictionary"
+        + if allow-auto { ", or `auto`" } else { "" }
+        + ", got "
+        + repr(value)
+        + hint
+    )
   }
   for (key, v) in value {
     if key not in _SIDE_KEYS {
-      return caller + ": `outset` has no side `" + key + "`; the sides are " + _SIDE_KEYS.map(k => "`" + k + "`").join(", ")
+      return (
+        caller + ": `" + name + "` has no side `" + key + "`; the sides are " + _SIDE_KEYS.map(k => "`" + k + "`").join(", ")
+      )
     }
     if type(v) != length {
-      return caller + ": `outset` side `" + key + "` must be a length, got " + repr(v) + hint
+      return caller + ": `" + name + "` side `" + key + "` must be a length, got " + repr(v) + hint
     }
   }
 }
@@ -122,7 +140,7 @@
 /// background — so a marked bubble and a highlighted solution read as the
 /// same annotation; a plain outline when it is not. Pure, so the color
 /// decision can be checked without rendering and measuring pixels.
-/// `thickness` is the outline's, `config`'s `bubble-stroke`.
+/// `thickness` is the outline's (see `draw_choice`'s `stroke`).
 #let bubble_style(filled, colors, thickness) = if filled {
   (stroke: thickness + colors.color, fill: colors.background)
 } else {
@@ -148,8 +166,8 @@
   sym.checkmark,
 )
 
-/// The outline thickness a bubble of `size` is drawn with when `config`'s
-/// `bubble-stroke` is `thickness`. `mark` is the longer side of the check mark
+/// The outline thickness a bubble of `size` is drawn with when its `stroke`
+/// (or `config`'s `bubble-stroke`) is `thickness`. `mark` is the longer side of the check mark
 /// drawn in that bubble. All three are absolute lengths.
 ///
 /// A shape's outline is drawn centered on its edge, so as it thickens it
@@ -218,18 +236,19 @@
 /// hold: `numbering` rejects a pattern without one.
 #let _COUNTING_SYMBOLS = "1aAiIαΑ一壹あいアイא가ㄱ*١۱१১ক①⓵"
 
-/// Check an `enumerate` option: `true`, `false`, or what `enum`'s `numbering`
-/// takes — a pattern such as `"a"` or `"(i)"`, or a function of the number.
+/// Check an `enumerate` option: `true`, `false`, what `enum`'s `numbering`
+/// takes — a pattern such as `"a"` or `"(i)"`, or a function of the number —
+/// or an array of the labels themselves, one per choice in turn.
 /// `caller` names the function in the error message and `name` the option,
 /// and `auto` is allowed where it means "as configured".
 /// Returns the message saying what is wrong, or `none` if nothing is.
 #let enumerate_error(value, caller, name: "enumerate", allow-auto: false) = {
-  if not (type(value) in (bool, str, function) or (allow-auto and value == auto)) {
+  if not (type(value) in (bool, str, function, array) or (allow-auto and value == auto)) {
     return (
       caller
         + ": `"
         + name
-        + "` must be `true`, `false`, a numbering pattern such as \"a\" or \"(i)\", or a numbering function"
+        + "` must be `true`, `false`, a numbering pattern such as \"a\" or \"(i)\", a numbering function, or an array of labels"
         + if allow-auto { ", or `auto` to follow `config`'s `choices-enumerate`" } else { "" }
         + "; got "
         + repr(value)
@@ -245,6 +264,39 @@
         + " has nothing to count with; it needs a counting symbol such as 1, a, A, i or I, as in \"a\" or \"(i)\""
     )
   }
+  if type(value) == array {
+    let stray = value.position(l => type(l) not in (str, content, symbol))
+    if stray != none {
+      return (
+        caller
+          + ": `"
+          + name
+          + "` labels must be strings or content, but label "
+          + str(stray + 1)
+          + " is "
+          + repr(value.at(stray))
+      )
+    }
+  }
+}
+
+/// The error when an array of labels, from `enumerate` as `caller` and
+/// `name` name it, is too short for `count` choices; `none` if it is long
+/// enough or is no array.
+#let enumerate_count_error(value, count, caller, name: "enumerate") = {
+  if type(value) != array or value.len() >= count { return none }
+  (
+    caller
+      + ": `"
+      + name
+      + "` gives "
+      + str(value.len())
+      + " label"
+      + if value.len() != 1 { "s" } else { "" }
+      + ", but there are "
+      + str(count)
+      + " choices; give one label per choice"
+  )
 }
 
 /// `enumerate_error`, failing the call if anything is wrong.
@@ -257,6 +309,7 @@
 /// as `enumerate` numbers it, or `none` when `enumerate` is `false`.
 #let choice_label(enumerate, index) = {
   if enumerate == false { return none }
+  if type(enumerate) == array { return [#enumerate.at(index)] }
   let pattern = if enumerate == true { DEFAULT_ENUMERATE } else { enumerate }
   [#numbering(pattern, index + 1)]
 }
@@ -292,8 +345,9 @@
   (size: ring, thickness: ring_thickness, room: ring - ring_thickness)
 }
 
-/// A choice's label, set to fit inside `room` across, in `font` (`config`'s
-/// `bubble-label-font`) and `paint` (`auto` for the text's own color).
+/// A choice's label, set to fit inside `room` across, in `font` (`choices`'
+/// `label-font`, or `config`'s `bubble-label-font`) and `paint` (`auto` for
+/// the text's own color).
 ///
 /// Its text edges are the glyphs' own bounds, so the box it sits in is
 /// exactly its ink, and the label is centered in the bubble by that box: a
@@ -345,6 +399,12 @@
 /// it, with `auto` already resolved (`choices` reads `config` once for the
 /// whole list), and `index` the choice's place in its list.
 ///
+/// `size`, `outset`, `stroke`, `label-font`, `color` and `background` are
+/// the caller's own, `auto` for `config`'s (`bubble-size`, `bubble-outset`,
+/// `bubble-stroke`, `bubble-label-font`, `solution-color` and
+/// `solution-background-color`); `caller` names the function an error about
+/// them names.
+///
 /// A choice is one unit, whose bubble stays on its first line and whose
 /// further lines hang under its body rather than under the bubble.
 ///
@@ -369,19 +429,28 @@
   shape: "circle",
   correct: false,
   size: auto,
-  outset: _OUTSET,
+  outset: auto,
+  stroke: auto,
+  label-font: auto,
+  color: auto,
+  background: auto,
   enumerate: false,
   index: none,
   inline: true,
+  caller: "choice",
 ) = {
   let shape = _SHAPES.at(shape)
-  if size == auto { size = shape.size }
 
   show: it => if inline { box(it) } else { it }
   e.get(get => {
     let cfg = get(config)
+    // `bubble-size` is the round bubble's; a square one keeps its proportion
+    // to it (see `_SQUARE_SIZE`).
+    let size = if size != auto { size } else if cfg.bubble-size != auto {
+      cfg.bubble-size * (shape.size / _BUBBLE_SIZE)
+    } else { shape.size }
     let filled = is_filled(correct, get)
-    let colors = solution_colors(get)
+    let colors = solution_colors(get, color: color, background: background)
     let label = if index == none { none } else { choice_label(enumerate, index) }
 
     // A bubble sits inline in a sentence, so it is centered on the text's
@@ -399,13 +468,18 @@
     // label — is placed over the shape, centered in the box's inset area
     // (which is the shape), and takes no space, so it neither resizes the
     // bubble nor moves it on the line.
-    let sides = resolve_sides(outset, base: resolve_sides(_OUTSET))
+    let message = outset_error("config", cfg.bubble-outset, name: "bubble-outset")
+    if message != none { assert(false, message: message) }
+    let sides = resolve_sides(cfg.bubble-outset, base: resolve_sides(_OUTSET))
+    if outset != auto { sides = resolve_sides(outset, base: sides) }
     // Capped on every bubble, filled in or not, so that the exam and the
     // answer key draw the same ring.
-    let thickness = cfg.bubble-stroke
+    let (thickness, source) = if stroke != auto { (stroke, caller + ": `stroke`") } else {
+      (cfg.bubble-stroke, "config: `bubble-stroke`")
+    }
     assert(
       thickness.to-absolute() >= 0pt,
-      message: "config: `bubble-stroke` must not be negative, got " + repr(thickness),
+      message: source + " must not be negative, got " + repr(thickness),
     )
     thickness = thickness.to-absolute()
     // The check mark is no larger than its font size (about .84 of it, in
@@ -436,7 +510,7 @@
             ring.room,
             label,
             if filled { colors.color } else { auto },
-            font: cfg.bubble-label-font,
+            font: if label-font != auto { label-font } else { cfg.bubble-label-font },
             // The inside of the outline, less the gap the ring keeps from it.
             limit: size.to-absolute() * (1 - 2 * _RING_GAP) - thickness,
           ))
@@ -490,10 +564,10 @@
     ),
     e.field(
       "outset",
-      e.types.union(length, dictionary),
-      doc: "The space the bubble keeps around itself. A length sets the gap after the bubble, between it and its content (`outset: .6em`); a dictionary sets any of `left`, `right`, `top`, `bottom`, `x`, `y` and `rest`, as the `inset` of a box does, and leaves the sides it does not name at their defaults.\n\nThe default parts the bubble from whatever follows — its content, an answer box, the next choice — so a gap need not be written at the call site.",
-      default: _OUTSET,
-      meta: (check: v => outset_error("choice", v)),
+      e.types.union(auto, length, dictionary),
+      doc: "The space the bubble keeps around itself. A length sets the gap after the bubble, between it and its content (`outset: .6em`); a dictionary sets any of `left`, `right`, `top`, `bottom`, `x`, `y` and `rest`, as the [`inset` of a box](https://typst.app/docs/reference/layout/box/#parameters-inset) does, and leaves the sides it does not name as `config`'s `bubble-outset` has them.\n\n`auto` is `config`'s `bubble-outset`, whose default parts the bubble from whatever follows — its content, an answer box, the next choice — so a gap need not be written at the call site.",
+      default: auto,
+      meta: (check: v => outset_error("choice", v, allow-auto: true), default-shown: repr(_OUTSET)),
     ),
     e.field(
       "size",
@@ -502,9 +576,29 @@
         + repr(_BUBBLE_SIZE)
         + " round and "
         + repr(_SQUARE_SIZE)
-        + " square (a little smaller across than the circle, so the two read alike); relative to the font size, so a bubble scales with the surrounding text.",
+        + " square (a little smaller across than the circle, so the two read alike), or as `config`'s `bubble-size` scales them; relative to the font size, so a bubble scales with the surrounding text.",
       default: auto,
       meta: (hint: "such as `1.2em` or `12pt`"),
+    ),
+    e.field(
+      "stroke",
+      e.types.smart(length),
+      doc: "The thickness of the bubble's outline. `auto` is `config`'s `bubble-stroke`, which is `"
+        + repr(DEFAULT_BUBBLE_STROKE)
+        + "` unless it is set. Must not be negative; an outline thick enough to cover a filled-in bubble's check mark is drawn thinner (see `bubble-stroke`).",
+      default: auto,
+    ),
+    e.field(
+      "color",
+      e.types.union(auto, color),
+      doc: "The color a correct bubble is outlined and checked in, and its content set in, on the answer key. `auto` is `config`'s `solution-color`; when that is `auto` too, it is derived from `background-color`, as a solution's is.",
+      default: auto,
+    ),
+    e.field(
+      "background-color",
+      e.types.union(auto, color),
+      doc: "The fill of a correct bubble on the answer key. `auto` is `config`'s `solution-background-color`; when that is `auto` too, it is derived from `color` by lightening.",
+      default: auto,
     ),
   ),
   aliases: (
@@ -533,6 +627,9 @@
     correct: it.correct,
     size: it.size,
     outset: it.outset,
+    stroke: it.stroke,
+    color: it.color,
+    background: it.background-color,
   )
 })
 

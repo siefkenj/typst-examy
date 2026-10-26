@@ -1,11 +1,13 @@
 // `config`'s `answer-box-height`, `answer-box-width`,
-// `answer-box-default-height` and `answer-box-default-width` give the fields
-// of the answer boxes that neither their call nor a set rule on `answer-box`
-// gives. A box whose fields come from `config` lays out exactly as one given
+// `answer-box-default-height`, `answer-box-default-width`,
+// `answer-box-stroke` and `answer-box-fill` give the fields of the answer
+// boxes that neither their call nor a set rule on `answer-box` gives. A box whose fields come from `config` lays out exactly as one given
 // the same fields on its call, and a box given a field, on its call or by a
 // set rule, keeps it whatever `config` says, `none` and `auto` included.
 // Each case is laid out both ways, on a page of its own, and every mark
-// placed after a box must land in the same place.
+// placed after a box must land in the same place. The outline and
+// background, which move nothing, are compared as the boxes are drawn:
+// every `box` drawn records its `stroke` and `fill`.
 // The rules on those options the exam cannot follow are errors (see
 // tests/fail/answer-box-config-*).
 #import "/src/lib.typ": *
@@ -123,3 +125,63 @@
     #question(points: 1)[A box. #answer-box(width: 100%, height: 1cm)[]]
   ]
 ]
+
+#let STROKE_CASES = (
+  (
+    "from the exam's options, in a line, full width, fr, and in align",
+    way => exam(..on(way, "config", (answer-box-stroke: (bottom: 1pt + blue), answer-box-fill: luma(235))))[
+      #let given = on(way, "call", (stroke: (bottom: 1pt + blue), fill: luma(235)))
+      #question[In a line: #answer-box(..given)[]]
+      #question[Full: #answer-box(width: 100%, height: 1cm, ..given)[#solution[42]]]
+      #question[Fills: #answer-box(height: 1fr, ..given)[]]
+      #question[#align(center)[#answer-box(width: 50%, height: 1fr, ..given)[]]]
+    ],
+  ),
+  (
+    "from a config rule, outside an exam and in one",
+    way => {
+      show: e.set_(config, ..on(way, "config", (answer-box-stroke: none, answer-box-fill: yellow)))
+      let given = on(way, "call", (stroke: none, fill: yellow))
+      [Outside: #answer-box(..given)[]]
+      exam[#question[Inside: #answer-box(width: 100%, height: 1cm, ..given)[]]]
+    },
+  ),
+  (
+    "a set rule on answer-box wins over config, and a call's none over both",
+    way => {
+      show: e.set_(config, answer-box-stroke: 2pt + red, answer-box-fill: yellow)
+      show: e.set_(answer-box, ..on(way, "config", (stroke: (top: 1pt + green))))
+      let given = on(way, "call", (stroke: (top: 1pt + green)))
+      exam[
+        #question[Set: #answer-box(..given)[]]
+        #question[None: #answer-box(stroke: none, fill: none)[]]
+      ]
+    },
+  ),
+)
+
+#for (i, (desc, doc)) in STROKE_CASES.enumerate() {
+  for way in ("config", "call") {
+    pagebreak()
+    rule[#desc: stroke and fill from #if way == "config" [config] else [the calls]]
+    show box: it => [#metadata((case: i, way: way, stroke: it.stroke, fill: it.fill))<drawn>#it]
+    doc(way)
+  }
+}
+
+#context {
+  let drawn = query(<drawn>).map(m => m.value)
+  let of(case, way) = drawn.filter(d => d.case == case and d.way == way).map(d => (d.stroke, d.fill))
+  for (i, _) in STROKE_CASES.enumerate() {
+    assert(of(i, "config").len() > 0, message: "stroke case " + str(i) + " drew no box")
+    assert.eq(of(i, "config"), of(i, "call"), message: "stroke case " + str(i))
+  }
+  // Config's options did reach the boxes: as the calls' did, and not the
+  // defaults.
+  assert(of(0, "config").filter(((_, fill)) => fill == luma(235)).len() >= 4, message: repr(of(0, "config")))
+  assert(of(1, "config").filter(((_, fill)) => fill == yellow).len() == 2, message: repr(of(1, "config")))
+  // The set rule's outline, not config's, and the call's none.
+  let strokes = of(2, "config").map(((stroke, _)) => stroke).filter(s => s not in (none, (:)))
+  assert(strokes.len() > 0 and strokes.all(s => s.keys() == ("top",) and s.top.paint == green), message: repr(strokes))
+  assert((none, none) in of(2, "config"), message: repr(of(2, "config")))
+}

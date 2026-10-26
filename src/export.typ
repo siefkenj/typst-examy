@@ -109,18 +109,18 @@
 #let _desc(c) = markdown(c).replace(regex(" *\n *"), "\n").replace(regex("\n{3,}"), "\n\n").replace(regex(" {2,}"), " ").trim()
 
 /// A rubric's nodes (see `rubric_tree`) as data, nested as they are:
-///   (type: "item", points, description)
-///   (type: "group", title, note, pick, items)
+///   (type: "item", points, description, annotation)
+///   (type: "group", title, note, annotation, items)
 ///   (type: "note", text)
 /// with their text as Markdown (`none`: not given). Pure.
 #let rubric_entries(nodes) = nodes.map(n => if n.kind == "item" {
-  (type: "item", points: n.points, description: _desc(n.body))
+  (type: "item", points: n.points, description: _desc(n.body), annotation: if n.annotation != none { _desc(n.annotation) })
 } else if n.kind == "group" {
   (
     type: "group",
     title: _desc(n.title),
     note: if n.note != none { _desc(n.note) },
-    pick: n.pick,
+    annotation: if n.annotation != none { _desc(n.annotation) },
     items: rubric_entries(n.children),
   )
 } else {

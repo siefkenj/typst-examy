@@ -31,7 +31,7 @@
 // Accepted calls: each given value reaches the function as it was given, of
 // the same type, and the arguments not given take their defaults.
 #let ACCEPTED = (
-  ("question", "[Body]", (points: none, number: auto, indent: 1.5em)),
+  ("question", "[Body]", (points: none, number: auto, indent: auto)),
   ("question", "[Body], points: 2", (points: 2)),
   ("part", "[Body], intent: \"bonus\", label: <x>", (intent: "bonus", label: <x>)),
   // A dictionary of sides stays a dictionary, as `box`'s `stroke` takes it.

@@ -1,15 +1,9 @@
 #import "../template.typ": *
 
 Supplying a question/part/subpart with `points: x` will cause an "(x points)" annotation to be shown
-next to the question/part/subpart. Points defined this way will show up in the #api(
-  "points-table",
-  body: raw("#points-table()"),
-) as well as related functions like #api("num-points", body: raw("#num-points")), #api(
-  "num-questions",
-  body: raw(
-    "#num-questions",
-  ),
-), etc..
+next to the question/part/subpart. Points defined this way will show up in the
+#api("points-table", arg: "()") as well as related functions like #api("num-points", arg: ""),
+#api("num-questions", arg: ""), etc..
 
 #example(
   ```typ
@@ -120,10 +114,10 @@ in this case.
 
 == Points tables
 
-A #api("points-table", body: raw("#points-table()")) displays point totals for each question.
+A #api("points-table", arg: "()") displays point totals for each question.
 Multiple points tables can be included in an exam, and a points table can be customized via the
 `points-table-..` options on the global #api("config") or by passing arguments directly to
-#api("points-table", body: raw("#points-table()"))
+#api("points-table", arg: "()")
 
 #example(
   ```typ
@@ -194,16 +188,16 @@ Examy includes some fixed strings which can be localized via the `strings` optio
   the display of "points" in a question, use `points-format`
 ]
 
+A single table takes `strings` too, which replaces only the words it gives, e.g.
+`#points-table(strings: (total: [Gesamt]))`. So does #api("page-score-box", arg: "()"), for its
+`score`.
+
 == Computing with points
 
-The globally accessible variables #api("num-points", body: raw("#num-points")), #api(
-  "num-bonus-points",
-  body: raw("#num-bonus-points"),
-) and #api(
-  "num-points-page",
-  body: raw("#num-points-page"),
-) can be used to show point totals anywhere in an exam. However, because these return content
-wrapped in `context {...}`, you cannot do computations with them.
+The globally accessible variables #api("num-points", arg: ""), #api("num-bonus-points", arg: "") and
+#api("num-points-page", arg: "") can be used to show point totals anywhere in an exam. However,
+because these return content wrapped in #typst-link("reference/context/")[`context {...}`], you
+cannot do computations with them.
 
 
 To compute with or test a points value, use the `get-*` versions of these functions (#api(
@@ -244,11 +238,11 @@ To compute with or test a points value, use the `get-*` versions of these functi
 
 === Showing points per page
 
-You can use #api("num-points-page", body: raw("#num-points-page")) or #api(
-  "get-num-points-page",
-  body: `#get-num-points-page()`,
-) in a page header or footer (or anywhere else on the page) to shows the number of points on the
-current page, subtotalling each question/part/subpart appearing on that page.
+You can use #api("num-points-page", arg: "") or #api("get-num-points-page", arg: "()") in a
+#typst-link("reference/layout/page/#parameters-header")[page header] or
+#typst-link("reference/layout/page/#parameters-footer")[footer] (or anywhere else on the page) to
+shows the number of points on the current page, subtotalling each question/part/subpart appearing on
+that page.
 
 This can be used to achieve effects like adding a "Score: \_\_\_\_ / 7" box on the footer of each
 page.

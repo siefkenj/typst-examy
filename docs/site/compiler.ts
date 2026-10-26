@@ -82,9 +82,11 @@ export function describe(error: unknown): string {
   if (Array.isArray(error)) return error.map(describe).join("\n");
   const text = error instanceof Object && "message" in error ? String(error.message) : String(error);
   // Diagnostics arrive as Rust's debug output of `SourceDiagnostic`s: keep
-  // just their messages.
+  // just their messages, with Rust's escapes undone (`\n` a line break, not
+  // an "n").
+  const unescape: Record<string, string> = { n: "\n", t: "\t", r: "\r" };
   const messages = [...text.matchAll(/message: "((?:[^"\\]|\\.)*)"/g)].map((m) =>
-    m[1].replace(/\\(.)/g, "$1").replace(/^assertion failed: /, ""),
+    m[1].replace(/\\(.)/g, (_, c: string) => unescape[c] ?? c).replace(/^assertion failed: /, ""),
   );
   return messages.length ? messages.join("\n") : text;
 }

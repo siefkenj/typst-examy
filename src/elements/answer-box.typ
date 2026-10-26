@@ -1,9 +1,10 @@
 #import "../prelude.typ": *
-#import "../config.typ": config
+#import "../config.typ": BOX_FILL, BOX_STROKE, config
 #import "../widen.typ": exam_content, par_events, widen_par_solutions
 #import "solution.typ": solution as solution_element
 #import "../scan.typ": (
-  ANSWER_BOX_EID, STYLED_FUNC, SEQUENCE_FUNC, _find, _inside, elembic_rule, has_metadata, is_whitespace_content,
+  ANSWER_BOX_EID, STYLED_FUNC, SEQUENCE_FUNC, _find, _inside, elembic_rule, extract_height, has_metadata,
+  is_whitespace_content, unwrap,
 )
 #import "../signature.typ": declare_function
 #import "../tokenize.typ": _elembic_show
@@ -23,6 +24,8 @@
   answer-box-width: "width",
   answer-box-default-height: "default-height",
   answer-box-default-width: "default-width",
+  answer-box-stroke: "stroke",
+  answer-box-fill: "fill",
 )
 
 /// Those options with nothing configured.
@@ -40,13 +43,20 @@
 #let _UNSET = <examy-answer-box-unset>
 
 /// `type`, or `_UNSET`: accepted as `type` is, with its errors, and named as
-/// it is, so that neither the reference nor an error mentions `_UNSET`.
+/// it is, so that neither the reference nor an error mentions `_UNSET`. A
+/// value given over `_UNSET` replaces it, and one given over another is
+/// folded into it as `type` folds them (a `stroke`'s sides).
 #let _unset_or(type) = e.types.wrap(
   e.types.union(e.types.literal(_UNSET), type),
   name: type.name,
   input: ("any",),
   check: _ => x => x == _UNSET or e.types.cast(x, type).first(),
   error: _ => x => e.types.cast(x, type).last(),
+  fold: prev => if prev == none { none } else {
+    (outer, inner) => if outer == _UNSET or inner == _UNSET { inner } else if prev == auto { outer + inner } else {
+      prev(outer, inner)
+    }
+  },
 )
 
 /// The deprecated names of fields, by their names now: snake_case, as in
@@ -114,8 +124,8 @@
     ),
     e.field(
       "width",
-      _unset_or(e.types.union(auto, .._RELATIVE)),
-      doc: "The width of the box. `auto` is the full width for a box with a fractional `height` (`1fr`), and `default-width` otherwise.\n\nLeft out, it is `config`'s `answer-box-width`, which is `auto` unless it is set.",
+      _unset_or(e.types.union(auto, .._RELATIVE, fraction)),
+      doc: "The width of the box. `auto` is the full width for a box with a fractional `height` (`1fr`), and `default-width` otherwise.\n\nA fraction (`1fr`) makes the box fill the rest of its line, shared proportionally with anything else in the line with a fractional width, as with `box`. A box with a fractional `height` is a block of its own, which a fractional width makes full width.\n\nLeft out, it is `config`'s `answer-box-width`, which is `auto` unless it is set.",
       default: _UNSET,
       meta: (default-shown: "auto"),
     ),
@@ -155,32 +165,34 @@
     ),
     e.field(
       "stroke",
-      e.types.union(none, length, color, gradient, tiling, e.types.exact(stroke), dictionary),
-      doc: "The outline of the box, as `box`'s `stroke` takes it. A dictionary outlines only the sides it names (`left`, `right`, `top`, `bottom`, `x`, `y`, `rest`): `(bottom: .5pt)` draws a single rule to write on, and `none` leaves blank space with no outline at all.\n\nTo change it for a whole document, give it a set rule: `#show: e.set_(answer-box, stroke: none)`.",
-      default: .5pt,
+      _unset_or(BOX_STROKE),
+      doc: "The outline of the box, as [`box`'s `stroke`](https://typst.app/docs/reference/layout/box/#parameters-stroke) takes it. A dictionary outlines only the sides it names (`left`, `right`, `top`, `bottom`, `x`, `y`, `rest`): `(bottom: .5pt)` draws a single rule to write on, and `none` leaves blank space with no outline at all.\n\nLeft out, it is `config`'s `answer-box-stroke`, which is `.5pt` unless it is set: `#show: exam.with(answer-box-stroke: none)` changes it for a whole exam.",
+      default: _UNSET,
+      meta: (default-shown: ".5pt"),
     ),
     e.field(
       "fill",
-      e.types.union(none, color, gradient, tiling),
-      doc: "The box's background, as `box`'s `fill` takes it, e.g. `luma(245)`. A solution's background is drawn over it.",
-      default: none,
+      _unset_or(BOX_FILL),
+      doc: "The box's background, as [`box`'s `fill`](https://typst.app/docs/reference/layout/box/#parameters-fill) takes it, e.g. `luma(245)`. A solution's background is drawn over it.\n\nLeft out, it is `config`'s `answer-box-fill`, which is `none` unless it is set.",
+      default: _UNSET,
+      meta: (default-shown: "none"),
     ),
     e.field(
       "radius",
       e.types.union(.._RELATIVE, dictionary),
-      doc: "How round the box's corners are, as `box`'s `radius` takes it: a length, or a dictionary of corners (`top-left`, …, `top`, `left`, …, `rest`).",
+      doc: "How round the box's corners are, as [`box`'s `radius`](https://typst.app/docs/reference/layout/box/#parameters-radius) takes it: a length, or a dictionary of corners (`top-left`, …, `top`, `left`, …, `rest`).",
       default: 0pt,
     ),
     e.field(
       "outset",
       e.types.union(.._RELATIVE, dictionary),
-      doc: "How far the box's outline and background reach out past it, as `box`'s `outset` takes it: a length, or a dictionary of sides. They take no room: the box lays out as without it.",
+      doc: "How far the box's outline and background reach out past it, as [`box`'s `outset`](https://typst.app/docs/reference/layout/box/#parameters-outset) takes it: a length, or a dictionary of sides. They take no room: the box lays out as without it.",
       default: 0pt,
     ),
     e.field(
       "clip",
       bool,
-      doc: "Whether to cut off what overflows the box, as `box`'s `clip` does: a solution too long for a box of fixed height, say, or the square corners of its background in a box with a `radius`.",
+      doc: "Whether to cut off what overflows the box, as [`box`'s `clip`](https://typst.app/docs/reference/layout/box/#parameters-clip) does: a solution too long for a box of fixed height, say, or the square corners of its background in a box with a `radius`.",
       default: false,
     ),
     // The names `default-height` and `default-width` had in 0.4.0. Kept so
@@ -247,8 +259,9 @@
     height
   }
 
-  let width = if is_block and it.width == auto {
-    // The default width for block elements is 100%
+  let width = if is_block and (it.width == auto or type(it.width) == fraction) {
+    // The default width for block elements is 100%, and a fractional width,
+    // which only a box in a line can take, is the full width of a block too.
     100%
   } else {
     it.width
@@ -295,12 +308,16 @@
   // full box. The wrapper repeats the box's height so that it still reads as
   // a sized box to the exam pipeline's scans (`starts_inline` keeps a gutter
   // label off the baseline of a tall box only when it can see its height).
+  // A fractional width (`1fr`) is the room left in the line, which only a
+  // box in the line itself is given: the wrapper takes it, and the box fills
+  // the wrapper.
+  let fills = type(width) == fraction
   show: it_ => if is_standalone { it_ } else {
-    box(height: box_height, baseline: it.baseline, stack(dir: ttb, it_))
+    box(width: if fills { width } else { auto }, height: box_height, baseline: it.baseline, stack(dir: ttb, it_))
   }
   show: box.with(
     stroke: stroke,
-    width: width,
+    width: if fills { 100% } else { width },
     height: box_height,
     inset: _INSET,
     fill: it.fill,
@@ -504,23 +521,26 @@
 }
 
 /// The answer boxes inside `x`, an element the exam does not rebuild (see
-/// `resolve_boxes`), which draw themselves: each as `(args, fields, cfg)`,
-/// its call's arguments and the fields and `CONFIG_FIELDS` options in force
-/// where it is, those `at` (a frame's) with the set rules on the way to it
-/// applied. Walked with a stack, not by recursing (see `_find`).
+/// `resolve_boxes`), which draw themselves: each as `(args, fields, cfg,
+/// sized)`, its call's arguments and the fields and `CONFIG_FIELDS` options
+/// in force where it is, those `at` (a frame's) with the set rules on the way
+/// to it applied; and whether it is inside an element of a height of its own
+/// (a `block(height: 3cm)`), against which an `fr` height of the box
+/// resolves, as `scan` has it. Walked with a stack, not by recursing (see
+/// `_find`).
 #let _boxes_inside(x, at) = {
   let out = ()
-  let stack = ((x, at.fields, at.cfg),)
+  let stack = ((x, at.fields, at.cfg, false),)
   while stack.len() > 0 {
-    let (y, fields, cfg) = stack.pop()
+    let (y, fields, cfg, sized) = stack.pop()
     if type(y) == array {
-      for z in y.rev() { stack.push((z, fields, cfg)) }
+      for z in y.rev() { stack.push((z, fields, cfg, sized)) }
       continue
     }
     let args = box_args(y)
     if args == none { args = _tag_args(y) }
     if args != none {
-      out.push((args, fields, cfg))
+      out.push((args, fields, cfg, sized))
       continue
     }
     let rule = elembic_rule(y)
@@ -528,10 +548,12 @@
       // Only its set rules matter here: elembic applies the rest itself, as
       // these boxes draw themselves.
       let (fields, cfg, ..) = _apply_rule(rule.rule, fields, cfg, (), ())
-      stack.push((rule.doc, fields, cfg))
+      stack.push((rule.doc, fields, cfg, sized))
       continue
     }
-    for z in _inside(y).rev() { stack.push((z, fields, cfg)) }
+    let h = extract_height(y)
+    let sized = sized or h not in (none, auto)
+    for z in _inside(y).rev() { stack.push((z, fields, cfg, sized)) }
   }
   out
 }
@@ -649,7 +671,9 @@
     } else if type(x) == content and x.func() == SEQUENCE_FUNC {
       // Rebuilt as a sequence of these very children: joining them would
       // splice sequences among them (an elembic rule's, a box's) into it.
-      frames.push(frame(x.children.rev(), at, parts => SEQUENCE_FUNC(parts), x))
+      // A rule already spliced into its end is taken apart from what comes
+      // before it (see `unwrap`), and so applies to its own content alone.
+      frames.push(frame(unwrap(x).rev(), at, parts => SEQUENCE_FUNC(parts), x))
     } else if type(x) == content and x.func() == STYLED_FUNC {
       // Its styles only, not all of `x`, in the closure.
       let styles = x.styles
@@ -657,15 +681,16 @@
     } else {
       // Boxes inside an element the walk does not rebuild (`align`, a list,
       // ...) draw themselves, and `scan` reads only what their calls give:
-      // the `fr` height a rule or `config` gives one is told it by a hint.
+      // the `fr` height a rule or `config` gives one is told it by a hint,
+      // unless it resolves inside an element of a height of its own.
       let inside = _boxes_inside(x, at)
       if inside == () {
         frames.last().done.push(x)
         continue
       }
       let hints = inside
-        .filter(((args, ..)) => "height" not in args)
-        .map(((args, fields, cfg)) => _configured(_given(fields, args), cfg).height)
+        .filter(((args, _, _, sized)) => "height" not in args and not sized)
+        .map(((args, fields, cfg, _)) => _configured(_given(fields, args), cfg).height)
         .filter(h => type(h) == fraction)
         .map(height_hint)
       frames.last().boxes = true

@@ -132,6 +132,26 @@ for f in tests/not-laid-out/*.typ; do
     fi
 done
 
+# tests/bundle/*.typ are each compiled as a bundle, several documents from
+# one compile, to a directory of their own that is then removed.
+for f in tests/bundle/*.typ; do
+    name="bundle/$(basename "$f")"
+    if [[ -n "$filter" && "$name" != *"$filter"* ]]; then
+        continue
+    fi
+    dir="$(mktemp -d)"
+    out="$(typst compile --root . --features bundle -f bundle "$f" "$dir" 2>&1)"
+    if [[ $? -eq 0 ]]; then
+        pass=$((pass + 1))
+        echo "PASS $name"
+    else
+        fail=$((fail + 1))
+        echo "FAIL $name"
+        echo "$out" | sed 's/^/     /'
+    fi
+    rm -rf "$dir"
+done
+
 # tests/fail/*.typ must each fail to compile, with the message their first
 # line gives after `// expect: `.
 for f in tests/fail/*.typ; do

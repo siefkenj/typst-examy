@@ -231,48 +231,68 @@ td, th { border: 1px solid var(--line); padding: .35rem .7rem; text-align: left;
   background: var(--output-exam-shade);
 }
 /* Two columns, the labels in a row of their own above the papers, so they
-   share a baseline; the papers centered on each other vertically. */
-.example.with-key .example-output {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  grid-template-areas: "exam-label key-label" "exam key";
-  background:
+   share a baseline; the papers centered on each other vertically. Or one
+   above the other, each label over its paper: for an example too wide for
+   two side by side (`stacked`, see `example` in template.typ), and for any on
+   a screen too narrow. The two layouts differ only in these properties. */
+.example.with-key {
+  --key-columns: repeat(2, minmax(0, 1fr));
+  --key-areas: "exam-label key-label" "exam key";
+  --key-background:
     var(--output-wave) 50% 0 / var(--output-wave-size) repeat-y,
     linear-gradient(to right, var(--output-exam-shade) 50%, var(--output-key-shade) 50%);
+  --key-label-gap: 0;
+  --key-wave-across: none;
+}
+.example.with-key.stacked {
+  --key-columns: minmax(0, 1fr);
+  --key-areas: "exam-label" "exam" "key-label" "key";
+  --key-background: var(--output-exam-shade);
+  --key-label-gap: .6rem;
+  --key-wave-across: block;
+}
+@media (max-width: 40rem) {
+  .example.with-key {
+    --key-columns: minmax(0, 1fr);
+    --key-areas: "exam-label" "exam" "key-label" "key";
+    --key-background: var(--output-exam-shade);
+    --key-label-gap: .6rem;
+    --key-wave-across: block;
+  }
+}
+.example.with-key .example-output {
+  grid-template-columns: var(--key-columns);
+  grid-template-areas: var(--key-areas);
+  background: var(--key-background);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 }
 .example.with-key .paper-label[data-solutions="false"] { grid-area: exam-label; }
 .example.with-key .paper-label[data-solutions="true"] { grid-area: key-label; }
 .example.with-key .paper[data-solutions="false"] { grid-area: exam; }
 .example.with-key .paper[data-solutions="true"] { grid-area: key; }
-/* Too narrow for two: one above the other, each label over its paper. */
-/* The shades meet along a wavy line across, halfway between the exam and
-   the key's label: drawn behind the papers by the label, out to the panel's
-   edges and down past its bottom, which the panel clips. */
-@media (max-width: 40rem) {
-  .example.with-key .example-output {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas: "exam-label" "exam" "key-label" "key";
-    background: var(--output-exam-shade);
-    position: relative;
-    overflow: hidden;
-    isolation: isolate;
-  }
-  .example.with-key .paper-label[data-solutions="true"] { margin-top: .6rem; position: relative; }
-  .example.with-key .paper-label[data-solutions="true"]::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    /* The label is centered: out to the panel's edges from its middle. */
-    left: 50%;
-    width: 200vw;
-    margin-left: -100vw;
-    /* The middle of the gap above the label (the gap .55rem, the margin
-       .6rem), less half the tile, whose middle the line runs along. */
-    top: calc(-.575rem - var(--output-wave-x-size-h) / 2);
-    height: 200vh;
-    background:
-      var(--output-wave-x) 0 0 / var(--output-wave-x-size) repeat-x,
-      linear-gradient(var(--output-key-shade), var(--output-key-shade)) 0 var(--output-wave-x-size-h) / 100% 100% no-repeat;
-  }
+.example.with-key .paper-label[data-solutions="true"] { margin-top: var(--key-label-gap); position: relative; }
+/* One above the other, the shades meet along a wavy line across, halfway
+   between the exam and the key's label: drawn behind the papers by the
+   label, out to the panel's edges and down past its bottom, which the panel
+   clips. */
+.example.with-key .paper-label[data-solutions="true"]::before {
+  display: var(--key-wave-across);
+  content: "";
+  position: absolute;
+  z-index: -1;
+  /* The label is centered: out to the panel's edges from its middle. */
+  left: 50%;
+  width: 200vw;
+  margin-left: -100vw;
+  /* The middle of the gap above the label (the gap .55rem, the margin
+     .6rem), less half the tile, whose middle the line runs along. */
+  top: calc(-.575rem - var(--output-wave-x-size-h) / 2);
+  height: 200vh;
+  background:
+    var(--output-wave-x) 0 0 / var(--output-wave-x-size) repeat-x,
+    linear-gradient(var(--output-key-shade), var(--output-key-shade)) 0 var(--output-wave-x-size-h) / 100% 100% no-repeat;
 }
 .paper {
   /* As wide as what is rendered on it (scaled down when the column is

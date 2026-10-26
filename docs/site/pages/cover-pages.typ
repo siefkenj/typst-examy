@@ -1,24 +1,64 @@
 #import "../template.typ": *
 
-A cover page is ordinary content before the first question: a title block, a block of name fields,
-instructions, and a points table, followed by a page break. With `#show: exam` at the top of the
-document, the cover page is part of the exam, so the options given to the exam apply to it too.
+A cover page is ordinary content placed before the first question. Examy provides #api(
+  "maketitle",
+  arg: "()",
+), #api("name-block", arg: "()"), and #api("points-table", arg: "()"), which may be used to
+construct a typical cover page.
 
 #screenshots(
-  screenshot("cover.png", "An exam cover page with a title block, name fields, instructions, and a points table", caption: [The cover of #link(REPOSITORY + "/blob/main/examples/final-exam.typ")[`examples/final-exam.typ`].]),
+  screenshot(
+    "cover.png",
+    "An exam cover page with a title block, name fields, instructions, and a points table",
+    caption: [The cover of #link(
+        REPOSITORY + "/blob/main/examples/final-exam.typ",
+      )[```txt examples/final-exam.typ```].],
+    // Short enough to fit on the chapter's first page.
+    pdf-height: 15cm,
+  ),
+)
+
+== Title blocks
+
+A #api("maketitle", arg: "()") renders the exam's details, which are set with the global #api(
+  "config",
+). It includes the `institution`, `exam-name`, `term`, and `duration`. Each detail can be
+overwritten by passing arguments directly to #api("maketitle", arg: "()") (e.g.
+`#maketitle(term: [Summer 2026])`).
+
+The exam's `duration` can be a typst #typst-link("reference/foundations/duration/")[`duration`] such
+as `duration(minutes: 150)`, or content.
+
+#example(
+  ```typ
+  #show: exam.with(
+    institution: [University of Examples],
+    exam-name: [MAT 101 Final Exam],
+    term: [Winter 2026],
+    duration: duration(minutes: 150),
+  )
+
+  #maketitle()
+  ```,
+  width: 13cm,
 )
 
 == Name blocks
 
-#api("name-block", body: raw("#name-block()")) renders a fill-in block (Name / Student ID by
-default). It is ordinary content, so put it at the top of a quiz page or on a cover page. The rows
-are set with `fields:`. Each entry is either a `(prefix: ..., suffix: ...)` dictionary, drawn as the
-prefix followed by a line to write on with the suffix at its right end, or any other content, shown
-as a row of its own. An optional `title:` is shown above the block.
+A #api("name-block", arg: "()") renders a fill-in block, with a Name and a Student ID row by
+default.
 
-Like #api("maketitle"), a name block is set in the document's font. The examples here set both in
-the monospaced font bundled with Typst with a `set` rule: in a code block (`#{ .. }`) around the
-blocks when the questions after them should keep the document's font.
+#note[
+  _Note._ #api("maketitle", arg: "()") and #api("name-block", arg: "()") are typeset in the
+  document's #typst-link("reference/text/text/#parameters-font")[font]. Use the usual
+  `#set: text(font: ...)` commands to change the font.
+]
+
+=== Customizing
+
+Name blocks can be customized by setting the `fields: (...)` attribute. The `fields` attribute
+expects an array of content or dictionaries consisting of `(prefix: ..., suffix: ...)`.
+`(prefix: ..., suffix: ...)` items will show before and after an underline.
 
 #example(
   ```typ
@@ -43,35 +83,15 @@ blocks when the questions after them should keep the document's font.
   width: 10cm,
 )
 
-Institution-specific layouts ship with the package as #api("presets"). For example, the University
-of Toronto block is `#name-block(fields: presets.utoronto.name-fields)`.
+=== Presets
 
-== The title block
+Institution-specific presets are available in #api("presets"). For example, the University of
+Toronto standard can be typeset with `#name-block(fields: presets.utoronto.name-fields)`.
 
-Give the exam its details (`institution`, `exam-name`, `term`, `duration`) and render them with #api("maketitle", body: raw("#maketitle()")). Each configured value can be
-overridden by passing arguments to `maketitle()`, e.g. `#maketitle(term: [Summer 2026])`.
+== Putting together a cover page
 
-A `duration` such as `duration(minutes: 150)` is shown in minutes, as "150 Minutes". To word it
-another way, give content instead, e.g. `duration: [2 h 30 min]` or `duration: [2½ Stunden]`.
-
-#example(
-  ```typ
-  #show: exam.with(
-    institution: [University of Examples],
-    exam-name: [MAT 101 Final Exam],
-    term: [Winter 2026],
-    duration: duration(minutes: 150),
-  )
-  #set text(font: "DejaVu Sans Mono")
-
-  #maketitle()
-  #v(1em)
-  #name-block()
-  ```,
-  width: 13cm,
-)
-
-== A whole cover page
+With `#show: exam` at the top of the document, the cover page is part of the exam, so the options
+given to the exam apply to it too.
 
 ```typ
 #show: exam.with(
@@ -106,9 +126,7 @@ another way, give content instead, e.g. `duration: [2 h 30 min]` or `duration: [
 #question[...]
 ```
 
-The repository's examples include
-#link(REPOSITORY + "/blob/main/examples/quiz.typ")[a minimal quiz],
-#link(REPOSITORY + "/blob/main/examples/final-exam.typ")[a complete exam] with
-custom name fields, and
-#link(REPOSITORY + "/blob/main/examples/utoronto-exam.typ")[an exam using the
-University of Toronto preset].
+The repository's examples include #link(REPOSITORY + "/blob/main/examples/quiz.typ")[a minimal
+  quiz], #link(REPOSITORY + "/blob/main/examples/final-exam.typ")[a complete exam] with custom name
+fields, and #link(REPOSITORY + "/blob/main/examples/utoronto-exam.typ")[an exam using the University
+  of Toronto preset].

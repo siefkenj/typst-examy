@@ -1,11 +1,9 @@
 #import "../template.typ": *
 
-A document is built out of an #api("exam", body: raw("#exam[...]")) (alternatively `#show: exam`).
-Inside are questions created with the commands #api("question", body: raw("#question[...]")), #api(
-  "part",
-  body: raw("#part[...]"),
-), and #api("subpart", body: raw("#subpart[...]")), used to create a question hierarchy.
-Questions/parts/subparts can be assigned points, heights, etc.
+A document is built out of an #api("exam", arg: "[...]") (alternatively `#show: exam`). Inside are
+questions created with the commands #api("question", arg: "[...]"), #api("part", arg: "[...]"), and
+#api("subpart", arg: "[...]"), used to create a question hierarchy. Questions/parts/subparts can be
+assigned points, heights, etc.
 
 #example(
   ```typ
@@ -54,8 +52,11 @@ content. To omit a number completely, you can set `number: none`.
 == Numbering styles
 
 The numbering style of each level is set for the document via the global #api("config")'s
-`numbering` option. It takes an array of numbering patterns (e.g., `("1.", "(a)", "(i)")`) or
-numbering strings following the same format as an `enum`'s `numbering` argument (e.g., `"1.a.i."`).
+`numbering` option. It takes an array of
+#typst-link("reference/model/numbering/")[numbering patterns] (e.g., `("1.", "(a)", "(i)")`) or
+#typst-link("reference/model/numbering/")[numbering strings] following the same format as an
+#typst-link("reference/model/enum/#parameters-numbering")[`enum`'s `numbering` argument] (e.g.,
+`"1.a.i."`).
 Questions/parts/subparts are labelled hierarchically with the left-most numbering pattern being
 assigned to the outer-most question/part/subpart.
 
@@ -79,7 +80,8 @@ assigned to the outer-most question/part/subpart.
 )
 
 To force each question/part/subpart to be labeled with a globally unique identifier, use
-`numbering-full: true`. This is similar to setting the `full` argument on an `enum`.
+`numbering-full: true`. This is similar to setting the
+#typst-link("reference/model/enum/#parameters-full")[`full` argument] on an `enum`.
 
 #example(
   ```typ
@@ -94,13 +96,31 @@ To force each question/part/subpart to be labeled with a globally unique identif
   inset: 3em,
 )
 
+A single question/part/subpart can be numbered differently by giving it a `numbering` of its own.
+It takes the same values as the global `numbering` option and replaces it for that
+question/part/subpart and everything inside it. The levels still count from the question, so the
+first pattern always numbers questions. References and the points table use the same numbers.
+
+#example(
+  ```typ
+  #question[What is $3 + 4$?]
+  #question(numbering: ("Bonus 1.", "(i)"))[
+    #part[Name a prime number larger than 100.]
+    #part(label: <largest>)[Name the largest prime number you know.]
+  ]
+  #question[Is your answer to @largest really prime?]
+  ```,
+  inset: 4em,
+)
+
+The `indent` option sets how far each part and subpart is indented from the question/part it is
+in (by default, `1.5em`). A question/part/subpart given `indent` itself uses its own.
+
 == A question's height
 
-To allow students a space to write, use #api(
-  "answer-box",
-  body: raw("#answer-box(height: ...)[]"),
-). However, if you need a question and all its part/subparts to cumulatively take up a fixed amount
-of space, you can provide a `height: ...` argument directly on a question.
+To allow students a space to write, use #api("answer-box", arg: "(height: ...)[]"). However, if you
+need a question and all its part/subparts to cumulatively take up a fixed amount of space, you can
+provide a `height: ...` argument directly on a question.
 
 #example(
   ```typ
@@ -123,15 +143,14 @@ of space, you can provide a `height: ...` argument directly on a question.
   _Warning._
   A question/part/subpart with a `height` is laid out as a single block, so it cannot break across
   pages, and the height of its part/subparts cannot be shared with other questions. Usually, you wan
-  to use something like #api(
-    "answer-box",
-    body: raw("#answer-box(width: 100%, stroke: none, height: ...)[]"),
-  ) instead.
+  to use something like #api("answer-box", arg: "(width: 100%, stroke: none, height: ...)[]")
+  instead.
 ]
 
 == Pagebreaks
 
-`#pagebreak()` works inside questions, parts, and subparts. The question/part/subpart continues on
+#typst-link("reference/layout/pagebreak/")[`#pagebreak()`] works inside questions, parts, and
+subparts. The question/part/subpart continues on
 the next page with the same indentation.
 
 #example(

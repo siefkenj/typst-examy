@@ -1,10 +1,15 @@
 #import "../template.typ": *
 
-#api("choice", body: raw("#choice[]")) draws a bubble (circle or square) to the
-left of text. #api("choices", body: raw("#choices[...]")) takes a list and
-draws a bubble before each item for students to fill in. Write each choice on
-its own line starting with `-`. Starting an item with `+` will mark it as a
-correct choice (it will only render differently if solutions are shown).
+Multiple choice questions can be written with #api("choices", arg: "[...]") for an automatically
+formatted list, or with #api("choice", arg: "[...]") and #api("bubble", arg: "()") for finer-grained
+control.
+
+A #api("choices", arg: "[...]") accepts a mixed list with both
+#typst-link("reference/model/list/")[```typ -```] and
+#typst-link("reference/model/enum/")[```typ +```] starting a line or an
+#typst-link("reference/foundations/array/")[array] of content. Lines starting with ```typ +``` are
+recorded as correct choices. Alternatively, correct choices can be specified by supplying a
+0-indexed array.
 
 #example(
   ```typ
@@ -17,34 +22,33 @@ correct choice (it will only render differently if solutions are shown).
       - Vancouver
     ]
   ]
+  #question(points: 1)[
+    Which cities lie on the Canada's southern border? _Select all that apply._
+    #choices(
+      bubble: "square",
+      correct: (0,2,3),
+      ([Toronto], [Ottawa], [Montreal], [Vancouver])
+    )
+  ]
   ```,
   width: 9cm,
 )
 
-== `#choices[...]` API
+== Rows and columns
 
-- `correct: int | str | content | array` — An alternative to using `+` to
-  mark a correct choice, by index or by label. `correct: 0` marks the first
-  choice as correct. A label is the one drawn in the choice's bubble, so it
-  needs `enumerate`: with `enumerate: true`, `correct: "A"` marks the first.
-  Case and punctuation do not matter, so with `enumerate: "(i)"`, `"(ii)"`,
-  `"ii"`, and `"II"` all mark the second choice. An array marks several:
-  `correct: (0, 2)` or `correct: ("A", "C")`.
-- `bubble: "circle" | "square"` — Round bubbles (the default) for "select
-  one", square ones for "select all that apply".
-- `columns: int` — Lay the choices out in this many equal columns, filled
-  row by row.
-- `inline: bool` — Run the choices side by side in a paragraph, wrapping like
-  words. Suits short choices. Cannot be combined with `columns`.
-- `gap: length` — The space between choices. One per line, it is the space
-  between rows (by default, the text's line spacing). Side by side, it is the
-  space between them (by default `1.5em`); inline, `1fr` spreads the choices
-  across the line.
+By default, choices are listed one per line, but they can also be laid out in a paragraph or in
+columns.
 
-The choices can also be given as an array:
+/ `inline: true`: Run the choices side by side, wrapping like words. This suits short choices.
+/ `columns: n`: Lay the choices out in `n` equal columns, filled row by row.
+/ `gap`: The space between choices. Inline, `gap: 1fr` spreads the choices across the line.
 
 #example(
   ```typ
+  #question(points: 1)[
+    Which of these numbers is prime?
+    #choices(inline: true, correct: 1, (9, 11, 15, 21))
+  ]
   #question(points: 2)[
     Which of these functions are continuous at $x = 0$?
     _Select all that apply._
@@ -55,28 +59,32 @@ The choices can also be given as an array:
       - $floor(x)$
     ]
   ]
-  #question(points: 1)[
-    Which of these numbers is prime?
-    #choices(inline: true, correct: 1, (9, 11, 15, 21))
-  ]
   ```,
   width: 10cm,
 )
 
-== Letters in the bubbles
+== Round, square, and labelled bubbles
 
-`enumerate: bool | str | function` — Put labels inside the bubbles. `true` gives A, B, C, …, and any
-numbering pattern or function that `enum` takes also works (`"a"`, `"1"`, `"(i)"`). It is off by
-default; turn it on for the whole exam with `#show: exam.with(choices-enumerate: true)`.
-Labels use the monospaced font bundled with Typst, which can be changed with the global
-#api("config")'s `bubble-label-font` option. On the answer key, a correct bubble gets a thin ring
-inside its outline.
+The shape of a choice's bubble can be set using `bubble: "circle"` (default) or `bubble: "square"` (often used for select-all-that-apply questions).
+
+Setting `enumerate: true` will label each bubbles with the letters A, B, C, … in sequence. 
+For custom lettering, you can supply a
+#typst-link("reference/model/numbering/")[numbering string], an array, or a function that
+determines the label.
 
 #example(
   ```typ
   #question(points: 1)[
     Which planet is largest?
-    #choices(enumerate: true, gap: .8em)[
+    #choices(enumerate: true)[
+      - Mars
+      + Jupiter
+      - Venus
+    ]
+  ]
+  #question(points: 1)[
+    Which planet is your favorite?
+    #choices(enumerate: "i", inline: true)[
       - Mars
       + Jupiter
       - Venus
@@ -86,12 +94,35 @@ inside its outline.
   width: 9cm,
 )
 
-== Single bubbles
+If you would like to set exam-wite defaults for choices, use the global #api("config").
+```typ
+#show: exam.with(choices-enumerate: "a", bubble-stroke: .06em)
+```
+Relevant options are:
 
-For a layout of your own, #api("choice", body: raw("#choice[...]")) draws a single bubble before its
-content. Mark it as correct with `correct: true`, and pick its shape with
-`bubble: "circle" | "square"`. #api("bubble") and #api("square-bubble") draw a bare bubble with no
-content:
+/ `choices-enumerate`: Letters in the bubbles of every #api("choices", arg: "[...]"), as `enumerate`
+  gives them.
+/ `choices-inline`, `choices-columns`, `choices-gap`: The layout of every `choices`, as `inline`,
+  `columns`, and `gap` give it. A `choices` given `inline` or `columns` itself ignores both
+  `choices-inline` and `choices-columns`.
+/ `bubble-label-font`: The font of those letters (by default, the monospaced font bundled with
+  Typst).
+/ `bubble-size`: The size of every round bubble (by default, `1em`). Square bubbles are drawn a
+  little smaller, in the same proportion as by default.
+/ `bubble-stroke`: The outline thickness of every bubble (by default, `.1em`).
+/ `bubble-outset`: The space around every bubble, as `outset` gives it.
+
+A single `choice` takes `size`, `stroke`, and `outset` itself, and a single `choices` takes
+`stroke` and `label-font`. Each wins over the global option. Both also take `color` and
+`background-color`, which set the colors of a correct bubble on the answer key in place of
+`solution-color` and `solution-background-color`.
+
+
+== Custom layouts
+
+To fully customize layouts, you can use the 
+#api("choice", arg: "[...]") function directly to draw choices one at a time, or 
+the #api("bubble", arg: "()") and #api("square-bubble", arg: "()") functions to draw bubbles without associated content.
 
 #example(
   ```typ
@@ -112,10 +143,3 @@ content:
   ```,
   width: 10cm,
 )
-
-In every layout, a choice is kept whole. When its text wraps, the bubble stays on the first line and
-the further lines hang under the text, not under the bubble. The gap between a choice's bubble and
-its content can be set with `outset` (e.g. `outset: .6em`). The outline thickness of every bubble in
-the exam is set with `#show: exam.with(bubble-stroke: .06em)` (default `.1em`). It is
-capped at about a fifth of the bubble's size, so that it never covers the mark in a filled-in
-bubble.

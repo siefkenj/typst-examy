@@ -36,16 +36,16 @@
       default: none,
     ),
     e.field(
-      "pick",
-      e.types.union("any", "one"),
-      doc: "For a group: whether any number of its items may apply (`\"any\"`), or at most one (`\"one\"`), its alternatives drawn as one box.",
-      default: "any",
+      "annotation",
+      e.types.union(none, content, str),
+      doc: "A short note for the grader, set small at the right of the rubric's first line: beside a group's title, e.g. `annotation: [pick one]`, or beside an item's criterion. It changes nothing but what is shown.",
+      default: none,
     ),
   ),
 )
 
 /// A rubric item or group (see DOCS).
-#let rubric = define(_RUBRIC, it => rubric_marker((points: it.points, pick: it.pick, body: it.body)))
+#let rubric = define(_RUBRIC, it => rubric_marker((points: it.points, annotation: it.annotation, body: it.body)))
 
 // ---------------------------------------------------------------------------
 // The data: rubric content as a tree
@@ -98,7 +98,9 @@
 #let _node(v) = {
   let pieces = _pieces(v.body)
   let first = pieces.position(p => type(p) == dictionary)
-  if first == none { return (kind: "item", points: v.points, body: v.body) }
+  // `annotation` is missing from the data of a rubric made by hand.
+  let annotation = v.at("annotation", default: none)
+  if first == none { return (kind: "item", points: v.points, annotation: annotation, body: v.body) }
   let head = pieces.slice(0, first)
   let brk = head.position(p => type(p) == content and p.func() == parbreak)
   let title = _trim(head.slice(0, if brk == none { head.len() } else { brk })).join()
@@ -107,14 +109,14 @@
     kind: "group",
     title: title,
     note: note,
-    pick: v.pick,
+    annotation: annotation,
     children: _nodes(pieces.slice(first), _node),
   )
 }
 
 /// The rubric content `c` as a list of nodes, each one of
-///   (kind: "item", points, body)
-///   (kind: "group", title, note, pick, children)
+///   (kind: "item", points, annotation, body)
+///   (kind: "group", title, note, annotation, children)
 ///   (kind: "note", body)
 /// Pure.
 #let rubric_tree(c) = _nodes(_pieces(c), _node)
@@ -125,7 +127,7 @@
 
 /// The colors a rubric is drawn in. A group's look depends on how deep it
 /// is, so that a group inside a group stands apart from it; its `text`, for
-/// its note and its "pick" label, is about 7:1 on its fill.
+/// its note and its annotation, is about 7:1 on its fill.
 #let COLORS = (
   ink: rgb("#3a2630"),
   muted: rgb("#7a4560"),
@@ -133,7 +135,7 @@
   positive: rgb("#1f7a3a"),
   negative: rgb("#b3261e"),
   card: (fill: rgb("#fdf4f8"), stroke: rgb("#e8b4ca"), title: rgb("#7a2148"), rule: rgb("#f1cfdd")),
-  item: (fill: white, stroke: rgb("#efcadb"), divider: rgb("#f5dce7")),
+  item: (fill: white, stroke: rgb("#efcadb")),
   groups: (
     (fill: rgb("#f9e2ec"), edge: rgb("#d77aa2"), title: rgb("#6e1d41"), text: rgb("#6a3a50")),
     (fill: rgb("#f2e0f3"), edge: rgb("#b264ad"), title: rgb("#5b2358"), text: rgb("#5e3a5b")),
@@ -162,20 +164,22 @@
   place(top + right, dx: inset.right, dy: -inset.top, [#metadata((key: key, edge: "right", scale: scale))#row_label(key, "right")])
 }
 
-/// An item's points and criterion, side by side.
+/// A rubric's annotation, set small in `fill`; `none` if it has none.
+#let _annotation(n, fill) = if n.annotation != none { text(size: .85em, fill: fill, [#n.annotation]) }
+
+/// An item's points, criterion, and annotation, side by side.
 #let _item_row(n) = grid(
-  columns: (1.7em, 1fr),
+  columns: (1.7em, 1fr, auto),
   column-gutter: 5pt,
-  align: (right + top, left + top),
-  _points(n.points), n.body,
+  align: (right + top, left + top, right + top),
+  _points(n.points), n.body, _annotation(n, COLORS.muted),
 )
 
 #let _ITEM_INSET = (left: 4pt, right: 4pt, top: 3pt, bottom: 3pt)
 #let _GROUP_INSET = (left: 5pt, right: 4pt, top: 2.5pt, bottom: 2.5pt)
 
 /// Nodes as boxes: an item in a box of its own, a group in a tinted box
-/// holding its items (the alternatives of a "pick one" group as sections of
-/// one box), a note as it is. `keys` maps a node's index (a string) to the
+/// holding its items, a note as it is. `keys` maps a node's index (a string) to the
 /// key of the rubric it was written as in the body, for its leader; only
 /// the top level's are traced. `scale` is how much the card is scaled (see
 /// `_scale`), which its leaders are too.
@@ -215,34 +219,12 @@
             column-gutter: 3pt,
             align: (left + horizon, right + horizon),
             text(weight: "bold", fill: style.title, n.title),
-            text(size: .85em, fill: style.text, if n.pick == "one" [pick one] else [pick any]),
+            _annotation(n, style.text),
           )
           if n.note != none {
             block(above: 2pt, below: 3pt, text(fill: style.text, style: "italic", n.note))
           }
-          if n.pick == "one" {
-            block(
-              width: 100%,
-              above: 2.5pt,
-              below: 2.5pt,
-              fill: COLORS.item.fill,
-              stroke: .6pt + COLORS.item.stroke,
-              radius: 3.5pt,
-              clip: true,
-              for (j, c) in n.children.enumerate() {
-                block(
-                  width: 100%,
-                  above: 0pt,
-                  below: 0pt,
-                  inset: _ITEM_INSET,
-                  stroke: if j > 0 { (top: .5pt + COLORS.item.divider) },
-                  if c.kind == "item" { _item_row(c) } else { draw_nodes((c,), depth: depth + 1) },
-                )
-              },
-            )
-          } else {
-            draw_nodes(n.children, depth: depth + 1)
-          }
+          draw_nodes(n.children, depth: depth + 1)
         },
       )
     }
@@ -284,7 +266,7 @@
 /// The address of the division whose own content follows: set by the
 /// renderer around each run of a division's content that holds rubrics, and
 /// `none` everywhere else.
-#let OWNER = state("_examy_rubric_owner", none)
+#let OWNER = state(PREFIX + "/rubric-owner", none)
 
 /// Mark the content that follows as division `address`'s (`none`: no
 /// division's), for the rubrics in it.
