@@ -53,7 +53,7 @@
     + m-rubric.DOCS
     + (
       e: (
-        desc: "A re-export of [elembic](https://typst.app/universe/package/elembic), used mainly for `e.set_` and `e.get`. Options are set with `#show: e.set_(config, ..)` (or given to the exam, `#show: exam.with(..)`), and read with `e.get(get => ..)`. References need `#show: e.prepare()`, which `exam` applies to its own content.",
+        desc: "A re-export of [elembic](https://typst.app/universe/package/elembic), mainly for `e.set_` and `e.get` (e.g. `#show: e.set_(config, ..)`). Use it rather than importing elembic yourself.",
       ),
     )
 )

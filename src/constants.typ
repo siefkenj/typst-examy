@@ -4,6 +4,26 @@
 /// Elembic prefix for this package.
 #let PREFIX = "@preview/" + package_name + ",v" + version
 
+/// How many rounds of a walk over content one round of its outer loop runs.
+/// Typst ends a `while` loop after 10,000 rounds, taking it for an infinite
+/// one, and a walk goes round once per piece of content it meets, so a long
+/// exam goes round more often than that. Each walk runs its loop in batches
+/// of this many, inside an outer loop, whose count of rounds is its own:
+///
+/// ```typst
+/// while stack.len() > 0 {
+///   let round = 0
+///   while stack.len() > 0 and round < BATCH {
+///     round += 1
+///     ..
+///   }
+/// }
+/// ```
+///
+/// (Not a function that takes the round as a closure: Typst memoizes each
+/// call, hashing its arguments, the walk's stack among them, every round.)
+#let BATCH = 9999
+
 /// A `--input name=true|false` flag as a bool; `none` when it is absent.
 /// `alias`, its name in the singular, is read too, so that either spelling
 /// works; given both, they must agree. Any other value is an error.

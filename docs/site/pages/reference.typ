@@ -1,11 +1,12 @@
-#import "../template.typ": IMPORT, reference_index
+#import "../template.typ": IMPORT, api, note, reference_index
 
-Every name examy exports, each with a page listing the arguments it takes. All of them are imported
-by
+To import all examy functions, use
 
 #raw(IMPORT, lang: "typ", block: true)
 
-The guide pages show them in use. The reference is generated from the package's own declarations,
-the same ones that check the arguments of every call, so it always matches the version it documents.
+A complete list is documented below.
+
+#note[_Note_. Many arguments on individual elements can be set on the global #api("config") instead
+  of specifying them on the element.]
 
 #reference_index()

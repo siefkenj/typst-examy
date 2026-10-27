@@ -1,7 +1,9 @@
 /// Phase E: turn plan instructions into actual layout.
 
 #import "prelude.typ": *
-#import "scan.typ": _find, glue_rubrics, has_any_rubric, is_whitespace_content, leading, rubric_markers
+#import "scan.typ": (
+  _find, glue_rubrics, has_any_rubric, is_plain_text, is_whitespace_content, leading, rubric_markers, split_first_par,
+)
 #import "tokenize.typ": apply_styles, stack_of
 #import "plan.typ": cumulative_indent, frame_plan, hold, indent_of, items_of
 #import "config.typ": DEFAULT_EXAM_OPTIONS, default_points_format
@@ -9,7 +11,7 @@
 #import "refs.typ": (
   display_number, division_anchor, enum_numbering, level_numberings, reference_body, update_current_address,
 )
-#import "rubric.typ": owner_update, rubric_area, rubric_end_area, rubric_head, rubric_leaders, stacked_badges
+#import "rubric.typ": _margin, owner_update, rubric_area, rubric_end_area, rubric_head, rubric_leaders, stacked_badges
 #import "signature.typ": UNSET
 
 /// Half-em gap between a gutter label and the body text.
@@ -17,6 +19,58 @@
 
 /// The gap between a points badge in the margin and the text.
 #let MARGIN_GAP = 1em
+
+/// The least space between two gutter labels on one line (see
+/// `_label_push`). With the default indent, a question's "1." and the "(a)"
+/// of a part on its first line are about .46em apart, and stay where they
+/// are (as for any part up to "(g)"; a wider one starting a question, such
+/// as "(m)", moves right by a little, and the part's first line with it).
+#let LABEL_SEP = .35em
+
+/// How far left the badges in the left margin move (see `_margin_badges`),
+/// so that each keeps `LABEL_SEP` from the gutter labels of the exam, which
+/// run out past the text's edge into the margin when its indent is smaller
+/// than they are (as it is with none): all alike, so that they stay in line.
+/// None with an indent that leaves room for every label. `labels` are every
+/// gutter label of the exam (see `exam_badge_shift`).
+///
+/// The labels are measured once for the exam, in its context (see
+/// `render`), not in each badge's: measuring every label for each badge takes
+/// time growing with the square of the exam's length. But a badge and the
+/// labels are drawn at the text size where they are, which a `set text`
+/// inside the exam changes. So each label's width is kept in `em` (see
+/// `_label_of`), and how far it runs left as a length of an absolute part
+/// and an `em` part, which a badge resolves at its own size: the shift is
+/// the least of them (see `_badge_shift_at`). Only those that can be less
+/// than none at some size are kept, each once: few however long the exam, as
+/// the labels of a level are alike. `none` when there are none: then no
+/// badge moves, nor is measured.
+#let _badge_shift(labels) = {
+  let lefts = labels
+    .map(l => l.x - LABEL_GAP - l.width - LABEL_SEP + MARGIN_GAP)
+    .filter(x => x.abs < 0pt or x.em < 0)
+    .dedup()
+  if lefts == () { none } else { lefts }
+}
+
+/// The shift that `_badge_shift` gave (`lefts`), for a badge where it is
+/// drawn (in context), `widest` the widest badge of the exam in the left
+/// margin, in `em` (see `exam_badge_shift`).
+///
+/// Only as far as that badge stays on the page, its text at the margin of
+/// the page it is on: a label that runs out farther (`"Problem 1."` in a
+/// narrow margin) is not cleared, its badge drawn over it, rather than every
+/// badge of the exam moved off the page. A badge too wide for the margin
+/// where it is not moved at all (at a large text size) is off the page
+/// already: it goes as far as its end stays on it.
+#let _badge_shift_at(lefts, widest) = {
+  let (gap, margin) = (MARGIN_GAP.to-absolute(), _margin("margin-left"))
+  // The farthest left a badge can go: its left edge on the page's, or else
+  // its right edge.
+  let limit = widest.to-absolute() + gap - margin
+  let limit = if limit > 0pt { gap - margin } else { limit }
+  calc.min(0pt, ..lefts.map(x => x.to-absolute()).filter(x => x >= limit))
+}
 
 /// The width of the box a gutter label or a badge in the margin is set
 /// in, against its edge nearest the text: wider than any of them, so that
@@ -144,11 +198,7 @@
     .filter(i => i == innermost or not _badge(items_of(items).at(i)).total)
     .map(i => _badge_body(items_of(items).at(i), opts))
   if badges.len() == 0 { return none }
-  let side = if _margin_side(items, d_idxs, opts) == "margin-right" { left } else { right }
-  // Set against the text in a box wider than any badge, so that it neither
-  // wraps nor needs measuring (a `context` here would break the paragraph
-  // the badge is placed in).
-  box(width: _OVERFLOW, align(side, stack(dir: ltr, spacing: .5em, ..badges)))
+  stack(dir: ltr, spacing: .5em, ..badges)
 }
 
 /// Whether points badges in the margin on `side` are stacked with the
@@ -165,12 +215,22 @@
   let body = _margin_badge_body(items, d_idxs, opts)
   if body == none { return none }
   let side = _margin_side(items, d_idxs, opts)
+  // Set against the text in a box wider than any badge, so that it neither
+  // wraps nor needs measuring (a `context` here would break the paragraph
+  // the badge is placed in).
+  let body = box(width: _OVERFLOW, align(if side == "margin-right" { left } else { right }, body))
   let stacked = _badges_stacked(opts, side)
   // Anchored to the block, not to the line: since Typst 0.15 a `place`
   // with no alignment inside a paragraph anchors at the line's baseline.
   let placed(dy) = if side == "margin-right" {
     place(top + right, dx: MARGIN_GAP + _OVERFLOW, dy: dy, body)
   } else {
+    // Clear of gutter labels that run out into the margin (see
+    // `_badge_shift`).
+    let shift = opts.at("badge-shift", default: none)
+    let body = if shift == none { body } else {
+      context move(dx: _badge_shift_at(shift.lefts, shift.widest), body)
+    }
     place(top + left, dx: -indent - MARGIN_GAP - _OVERFLOW, dy: dy, body)
   }
   if stacked { stacked_badges(body, side, placed, dy: dy) } else { placed(dy) }
@@ -191,42 +251,16 @@
   [#h(.5em, weak: true)#sym.zws#box()#h(1fr)#sym.wj#_badge_body(d, opts)]
 }
 
-/// The gutter label for a division, placed to the left of the body.
-/// `indent` is the inset of the block the label is placed inside (placement
-/// is relative to that block's content origin) and `width` is the gutter
-/// width the label may occupy: the division's own indent for nested blocks,
-/// its cumulative indent for top-level peer segments.
-///
-/// When the body starts with inline content, pass `inline: true`: the label
-/// is emitted as a zero-width inline box that participates in the first
-/// line's layout, so it stays on the baseline even when the line is taller
-/// than usual (e.g. a boxed solution on the first line). When the body
-/// starts with a block-level element (or is empty), the label is `place`d at
-/// the block top instead, which is where the block's first content sits.
-/// (The zero-width trick assumes LTR text.)
-#let _gutter_label(items, d_idx, indent, width, opts, inline: false, dy: 0pt) = {
+/// Division `d_idx`'s number as its gutter label shows it; `none` for an
+/// unnumbered one.
+#let _label_number(items, d_idx, opts) = {
   let d = items_of(items).at(d_idx)
-  let disp = display_number(
+  display_number(
     d.address,
     numbering: opts_of(d, opts).numbering,
     full: opts.numbering-full,
     levels: level_numberings(d, opts.numbering),
   )
-  if disp == none { return none }
-  // Right-aligned in a box ending `LABEL_GAP` short of the text, and wider
-  // than the gutter, so that a label too long for it (`"Problem 1."`) runs
-  // out to the left rather than wrapping.
-  let dx = -indent + width - LABEL_GAP - _OVERFLOW
-  let label = box(width: _OVERFLOW, align(right, disp))
-  if inline {
-    box(width: 0pt, h(dx) + label)
-  } else {
-    // Anchor to the block region explicitly: since Typst 0.15 an
-    // alignment-less `place` inside a paragraph anchors at the line's
-    // baseline, which for a line containing a tall inline box is its bottom.
-    // `dy` moves it down to the first line of a box the body starts with.
-    place(top + left, dx: dx, dy: dy, label)
-  }
 }
 
 /// Whether a division's address is counted at every level, so that its
@@ -241,6 +275,132 @@
   if not opts.numbering-full { return false }
   let i = line.position(d => d == idx)
   i != none and line.slice(i + 1).any(d => _counted(items_of(items).at(d)))
+}
+
+/// The gutter label of division `d`, on its first line (`line`, its
+/// divisions outermost first; see `_first_line`), as it is drawn:
+/// `(division, number, x, width)`, `x` where its division's text starts,
+/// which its label ends `LABEL_GAP` short of, and `width` the label's, in
+/// `em`, so that it holds at the text size the label is drawn at. `none` for
+/// a division whose number is left out (see `_covered`), or that has none.
+///
+/// Measured in the exam's context (see `render`), once, rather than in a
+/// `context` where the label is drawn: one in a line moves its inline math
+/// by a hair (see `rubric_area`), and in each badge, measuring every label
+/// for each would take time growing with the square of the exam's length.
+#let _label_of(items, d, line, opts) = {
+  if _covered(items, d, line, opts) { return none }
+  let number = _label_number(items, d, opts)
+  if number == none { return none }
+  (division: d, number: number, x: cumulative_indent(items, d), width: measure(number).width / text.size * 1em)
+}
+
+/// The gutter labels on a line that several share (`line`, see
+/// `_label_of`).
+#let _line_labels(items, line, opts) = line.map(d => _label_of(items, d, line, opts)).filter(l => l != none)
+
+/// How lengths worked out from the labels on a line (`labels`, see
+/// `_line_labels`) are compared: as they are when all are in `em`, which
+/// holds at any text size (as with the default indent); otherwise resolved
+/// at the size the exam starts at (in its context, see `render`).
+#let _resolver(labels) = if labels.all(l => l.x.abs == 0pt) { x => x } else { x => x.to-absolute() }
+
+/// How far right of where it would end the `k`th of the labels on a line
+/// (`labels`, see `_line_labels`) is moved, so that it starts `LABEL_SEP`
+/// after the end of the label before it, as that one has moved: none when
+/// the indent between them leaves room for it. The first label of a line
+/// never moves, so that the labels of the outermost level stay in line, and
+/// a label moves only on a line it shares: the next part, "(b)", is in line
+/// with the others of its level. Needs no context with an indent in `em`
+/// (see `_resolver`).
+#let _label_push(labels, k) = {
+  let resolve = _resolver(labels)
+  let (end, push) = (none, 0pt)
+  for l in labels.slice(0, k + 1) {
+    let start = resolve(l.x - LABEL_GAP - l.width)
+    push = if end == none { 0pt } else { calc.max(0pt, resolve(end + LABEL_SEP - start)) }
+    end = start + push + resolve(l.width)
+  }
+  push
+}
+
+/// How far right the text of a line moves to clear the labels on it
+/// (`labels`, see `_line_labels`): to start `LABEL_GAP` after the end of the
+/// last, as that one has moved (see `_label_push`). `x` is where the text
+/// starts, that of the line's innermost division, which has no label of its
+/// own when it is unnumbered: then the last label is that of a division it
+/// is in. None when the labels leave room for it.
+#let _text_push(labels, x) = {
+  if labels == () { return 0pt }
+  let resolve = _resolver(labels + ((x: x),))
+  let last = labels.last()
+  calc.max(0pt, resolve(last.x + _label_push(labels, labels.len() - 1) - x))
+}
+
+/// Whether the labels of a line (`labels`, see `_line_labels`) that starts
+/// with a block (not `inline`) are drawn on a line of their own above it:
+/// when its text, starting at `x`, moves (see `_text_push`). Then the badges
+/// in the margin are drawn there with them, at its top, not moved down to
+/// the first line of a box it starts with (`dy`).
+#let _labels_above(labels, inline, x) = not inline and _text_push(labels, x) > 0pt
+
+/// The gutter label for a division, placed to the left of the body.
+/// `indent` is the cumulative indent of the block the label is placed inside
+/// (placement is relative to that block's content origin) and `width` is
+/// the division's own cumulative indent, where its text starts.
+///
+/// When the body starts with inline content, pass `inline: true`: the label
+/// is emitted as a zero-width inline box that participates in the first
+/// line's layout, so it stays on the baseline even when the line is taller
+/// than usual (e.g. a boxed solution on the first line). When the body
+/// starts with a block-level element (or is empty), the label is `place`d at
+/// the block top instead, which is where the block's first content sits.
+/// (The zero-width trick assumes LTR text.)
+///
+/// `labels` are the gutter labels of its line when it shares it with others
+/// (see `_line_labels`), and otherwise `()`. One after the first is moved
+/// right, if it must be, clear of the label before it (see `_label_push`).
+#let _gutter_label(items, d_idx, indent, width, opts, inline: false, dy: 0pt, labels: ()) = {
+  let disp = _label_number(items, d_idx, opts)
+  if disp == none { return none }
+  // Right-aligned in a box ending `LABEL_GAP` short of the text, and wider
+  // than the gutter, so that a label too long for it (`"Problem 1."`) runs
+  // out to the left rather than wrapping.
+  let dx = -indent + width - LABEL_GAP - _OVERFLOW
+  let label = box(width: _OVERFLOW, align(right, disp))
+  // Anchor to the block region explicitly: since Typst 0.15 an
+  // alignment-less `place` inside a paragraph anchors at the line's
+  // baseline, which for a line containing a tall inline box is its bottom.
+  // `dy` moves it down to the first line of a box the body starts with.
+  let k = labels.position(l => l.division == d_idx)
+  let push = if k == none or k == 0 { 0pt } else { _label_push(labels, k) }
+  // Moved, not set after more space: in its box of no width, that would
+  // wrap it onto a line of its own.
+  if inline { box(width: 0pt, move(dx: push, h(dx) + label)) } else { place(top + left, dx: dx + push, dy: dy, label) }
+}
+
+/// The gutter labels of a line (`line`, its divisions outermost first; see
+/// `_first_line`), all drawn in the block of its innermost division, whose
+/// text starts at `indent` (that block's cumulative indent), so that they are
+/// all on the line's baseline when it starts `inline` (see `_gutter_label`).
+/// `labels` as for `_gutter_label`. A division whose number one in it shows
+/// has none (see `_covered`).
+///
+/// When the labels move the line's text right (see `_text_push`), they move
+/// it as far: inline, by a box as wide after them; beside a block, which they
+/// cannot move, they are drawn inline instead, on a line of their own above
+/// the block, kept on the same page as the block (see `_labels_above`).
+#let _gutter_labels(items, line, indent, opts, inline: false, dy: 0pt, labels: ()) = {
+  let push = _text_push(labels, indent)
+  let drawn = for d in line {
+    if not _covered(items, d, line, opts) {
+      _gutter_label(items, d, indent, cumulative_indent(items, d), opts, inline: inline or push > 0pt, dy: dy, labels: labels)
+    }
+  }
+  if push == 0pt { drawn } else if inline { drawn + box(width: push) } else {
+    // Spaced from the block as the paragraph it is would be.
+    context block(sticky: true, below: par.spacing, drawn + box(width: push))
+  }
 }
 
 /// Whether a body (a list of item indices, in order) starts with a child
@@ -290,8 +450,10 @@
 }
 
 /// `_chunks_lead` for the body of division `idx`. A body that shares its
-/// first line with a part it starts with has its label level with the
-/// part's; one whose badge takes that line has its label at the top.
+/// first line with a part it starts with has its label drawn with the
+/// part's (see `_gutter_labels`), and its badges and rubrics in the margin
+/// level with them; one whose badge takes that line has its label at the
+/// top.
 #let _label_lead(items, idx, opts) = {
   let children = items_of(items).at(idx).children
   if not _body_starts_with_division(items, children) { return _chunks_lead(items, children) }
@@ -376,18 +538,17 @@
   _owned(c.at("owner", default: none), _find(c.body, x => type(x) == content and x.func() == metadata).join())
 }
 
-/// Join a run of chunk items back into content, re-applying recorded styles.
-/// Consecutive chunks with the same style stack are joined first so spacing
-/// is preserved, then wrapped once. `base` styles (already applied by an
-/// enclosing block) are skipped. `opts` are those of the division they are
-/// in (see `opts_of`).
-#let render_chunks(items, idxs, opts, base: 0) = {
+/// Join a run of chunks (items) back into content, re-applying recorded
+/// styles. Consecutive chunks with the same style stack are joined first so
+/// spacing is preserved, then wrapped once. `base` styles (already applied
+/// by an enclosing block) are skipped. `opts` are those of the division they
+/// are in (see `opts_of`).
+#let _render_chunk_list(chunks, opts, base: 0) = {
   let groups = ()
   // The division of those holding rubrics (all are its), if any do.
   let marked = false
   let owner = none
-  for i in idxs {
-    let c = items_of(items).at(i)
+  for c in chunks {
     if c.at("rubric", default: false) { (marked, owner) = (true, c.owner) }
     let styles = stack_of(c.styles)
     let styles = styles.slice(calc.min(base, styles.len()))
@@ -403,6 +564,82 @@
   let glue = if opts.rubric.traced { glue_rubrics } else { c => c }
   _owned(owner, groups.map(g => apply_styles(glue(g.bodies.join()), g.styles)).join())
 }
+
+/// `_render_chunk_list` for the chunks at item indices `idxs`.
+#let render_chunks(items, idxs, opts, base: 0) = _render_chunk_list(idxs.map(i => items_of(items).at(i)), opts, base: base)
+
+/// A run of chunks (items) cut where the first paragraph they hold ends (see
+/// `split_first_par`): `(before, after)`, two runs of chunks, the chunk it
+/// ends in cut in two. Of a chunk marked as holding rubrics (see
+/// `mark_rubrics`), only a half that holds one stays marked.
+#let _split_first_par(chunks) = {
+  for (i, c) in chunks.enumerate() {
+    let (b, a) = split_first_par(c.body)
+    if a != none {
+      let half(body) = if c.at("rubric", default: false) and not has_any_rubric(body) {
+        (..c, body: body, rubric: false)
+      } else { (..c, body: body) }
+      let before = chunks.slice(0, i) + if b != none { (half(b),) } else { () }
+      return (before, (half(a),) + chunks.slice(i + 1))
+    }
+  }
+  (chunks, ())
+}
+
+/// `head`, the labels of a line that several share, then the chunks (items)
+/// after it, `chunks`, of the innermost of them, and `end_badge`, the
+/// innermost's badge at the `"end"` (or `none`). `hang` is `(labels, x)`
+/// (see `_hang_of`).
+///
+/// When the line's text, starting at `x`, moved right to clear its labels
+/// (see `_text_push`), the first paragraph, from the labels on,
+/// is drawn with its lines after the first starting where the line's first
+/// label starts: with no indent, "1. (a) The part's text" wraps back under
+/// the "1.". Never left of the text's edge, though: where the "1." is in the
+/// margin (as with no indent at all), they start at the edge, as the
+/// paragraphs after it do. The chunks are cut where that paragraph ends (see
+/// `split_first_par`), and the badge ends it when it is all of them. The
+/// paragraph ends with a paragraph break: text alone in its block is not a
+/// paragraph, and does not take a `hanging-indent`. (Not made a `par(..)` of
+/// its own, which would drop a block in it that `split_first_par` cannot
+/// see, one a `context` or a show rule makes; here, that block ends the
+/// paragraph.)
+///
+/// When it did not move (as with the default indent), or the line's labels
+/// are all in the margin, all is drawn as it would be, and the chunks are
+/// not cut. So it is too when that paragraph holds more than text (see
+/// `is_plain_text`): a box in it, an inline `solution` say, is as wide as
+/// the paragraph, not as its lines after the first, which are wider, and
+/// the text after the box would run on beside it. `opts` and `base` as for
+/// `_render_chunk_list`.
+#let _draw_hung(hang, head, chunks, end_badge, opts, base: 0) = {
+  let (labels, x) = hang
+  let first = labels.first()
+  // From the edge of the division's text back to where the first label
+  // starts, but no farther than the edge of the exam's text.
+  let resolve = _resolver(labels + ((x: x),))
+  let indent = calc.min(resolve(x), resolve(x - first.x + LABEL_GAP + first.width))
+  let plain() = head + _render_chunk_list(chunks, opts, base: base) + end_badge
+  if _text_push(labels, x) == 0pt or indent <= 0pt { return plain() }
+  let (before, after) = _split_first_par(chunks)
+  if not before.all(c => is_plain_text(c.body)) { return plain() }
+  {
+    set par(hanging-indent: -indent)
+    head
+    _render_chunk_list(before, opts, base: base)
+    if after == () { end_badge }
+    parbreak()
+  }
+  _render_chunk_list(after, opts, base: base)
+  if after != () { end_badge }
+}
+
+/// Whether the first paragraph of the innermost division of a line that
+/// several share, its text starting at `x`, may be drawn hung (see
+/// `_draw_hung`), and with what: `(labels, x)`, or `none`. Only when its
+/// labels (`labels`, see `_line_labels`) ride the line (`inline`); then they
+/// may move its text.
+#let _hang_of(labels, x, inline) = if inline and labels.len() > 1 { (labels, x) }
 
 /// What division `d`'s rubric is headed by, and its points (or its parts'),
 /// for the export (see `rubric_area`).
@@ -459,8 +696,14 @@
   // Whether it has rubrics written in its own text, whose leaders it draws.
   let traced = o.rubric.traced and it.at("rubric_text", default: false)
   let margin = o.rubric.position != "end" and _drawn(it, opts)
-  // The divisions on its first line, outermost first.
+  // The divisions on its first line, outermost first, and their labels when
+  // they share it; where the innermost's text starts.
   let line = carry + _first_line(items, idx, opts)
+  let labels = if line.len() > 1 { _line_labels(items, line, opts) } else { () }
+  let x = cumulative_indent(items, line.last())
+  // On a line of their own above a box it starts with, all are drawn level
+  // with it, not with the box's first line.
+  let dy = if _labels_above(labels, inline_label, x) { 0pt } else { dy }
   let body = {
     // First, before the paragraph it is level with: a `place` aligned to the
     // block in the middle of a paragraph would break it in two.
@@ -474,18 +717,33 @@
     }
     if traced { rubric_head(it.address) }
     if margin { _rubric_margin(it, opts, cumulative_indent(items, idx), dy) }
-    // Numbered in full, the parts it shares its first line with show its
-    // number (see `_covered`).
-    let covered = shares_line and _covered(items, idx, line, opts)
-    if not covered { _gutter_label(items, idx, indent, indent, opts, inline: inline_label, dy: dy) }
-    _division_head(items, idx, opts, inline: inline_label)
+    // The labels of its first line, drawn by the innermost division on it,
+    // on that line, its own last.
+    let head = {
+      if not shares_line { _gutter_labels(items, line, x, opts, inline: inline_label, dy: dy, labels: labels) }
+      _division_head(items, idx, opts, inline: inline_label)
+    }
     let carry = if shares_line { carry + (idx,) } else { () }
-    // Children in document order: runs of chunks joined, child divisions
-    // rendered recursively. A badge at the `"end"` follows the division's
-    // own text, before its first part.
+    let children = it.children
+    // A badge at the `"end"` follows the division's own text, before its
+    // first part.
     let end_badge = _end_badge(it, opts)
+    // The innermost on a line shared with labels that may move it: its first
+    // paragraph, which the line starts, drawn whole with its head (see
+    // `_draw_hung`), from the chunks its body starts with, and then its
+    // badge at the `"end"`, which follows its text before its first part.
+    let hang = if not shares_line { _hang_of(labels, x, inline_label) }
+    if hang == none { head } else {
+      let n = children.position(c => items_of(items).at(c).kind != "chunk")
+      let lead = if n == none { children } else { children.slice(0, n) }
+      children = children.slice(lead.len())
+      _draw_hung(hang, head, lead.map(i => items_of(items).at(i)), end_badge, o, base: it_styles.len())
+      end_badge = none
+    }
+    // Children in document order: runs of chunks joined, child divisions
+    // rendered recursively.
     let chunk_run = ()
-    for c_idx in it.children {
+    for c_idx in children {
       let child = items_of(items).at(c_idx)
       if child.kind == "chunk" {
         chunk_run.push(c_idx)
@@ -550,6 +808,12 @@
 
   let body = {
     let (inline: inline_label, dy: dy) = _chunks_lead(items, seg.items)
+    // Gutter labels: possibly several divisions share this segment's first
+    // line (e.g. a question whose body starts with a part), drawn on a line
+    // of their own above a box it starts with (see `render_nested`).
+    let line = seg.label_divisions
+    let labels = if line.len() > 1 { _line_labels(items, line, opts) } else { () }
+    let dy = if _labels_above(labels, inline_label, seg.indent) { 0pt } else { dy }
     // First, before the paragraph it is level with (see `render_nested`).
     if seg.label_divisions.len() > 0 { _margin_badges(items, seg.label_divisions, seg.indent, opts, dy: dy) }
     if owners.len() > 0 { rubric_head(owner.address) }
@@ -559,31 +823,32 @@
         if _drawn(d, opts) and opts_of(d, opts).rubric.position != "end" { _rubric_margin(d, opts, seg.indent, dy) }
       }
     }
-    // Gutter labels: possibly several divisions share this segment's first
-    // line (e.g. a question whose body starts with a part).
-    for d_idx in seg.label_divisions {
-      if _covered(items, d_idx, seg.label_divisions, opts) { continue }
-      _gutter_label(
-        items,
-        d_idx,
-        seg.indent,
-        cumulative_indent(items, d_idx),
-        opts,
-        inline: inline_label,
-        dy: dy,
-      )
-    }
-    if seg.label_divisions.len() > 0 {
-      for d_idx in seg.label_divisions {
-        _division_head(items, d_idx, opts, inline: inline_label)
+    let head = {
+      _gutter_labels(items, line, seg.indent, opts, inline: inline_label, dy: dy, labels: labels)
+      if seg.label_divisions.len() > 0 {
+        for d_idx in seg.label_divisions {
+          _division_head(items, d_idx, opts, inline: inline_label)
+        }
+      } else {
+        // Continuation: no label, but references inside still belong here.
+        update_current_address(owner.address)
       }
-    } else {
-      // Continuation: no label, but references inside still belong here.
-      update_current_address(owner.address)
+      if carried.len() > 0 { _carried_rubrics(carried) }
     }
-    if carried.len() > 0 { _carried_rubrics(carried) }
-    render_chunks(items, seg.items, o, base: owner_styles.len())
-    if ends.at(str(seg.division), default: none) == n { _end_badge(owner, opts) }
+    let end_badge = if ends.at(str(seg.division), default: none) == n { _end_badge(owner, opts) }
+    // On a line shared with labels that may move its own, the first
+    // paragraph is drawn whole with them, and then the badge at the `"end"`
+    // (see `_draw_hung`).
+    let hang = _hang_of(labels, seg.indent, inline_label)
+    let chunks = seg.items.map(i => items_of(items).at(i))
+    if hang == none {
+      head
+      _render_chunk_list(chunks, o, base: owner_styles.len())
+    } else {
+      _draw_hung(hang, head, chunks, end_badge, o, base: owner_styles.len())
+      end_badge = none
+    }
+    end_badge
     if owners.len() > 0 { rubric_leaders(owner.address, owners, o.rubric.position) }
   }
 
@@ -707,6 +972,28 @@
   if styles != none { stack_of(styles) }
 }
 
+/// How far the badges an exam draws in the left margin move, clear of its
+/// gutter labels (see `_badge_shift`): `(lefts, widest)`, `widest` the
+/// widest of those badges, on one line (see `_margin_badge_body`), in `em`,
+/// as the labels' widths are (see `_label_of`). Each label is where it is
+/// drawn unless a shared line moves it right (see `_label_push`), which
+/// takes it farther from the margin. `none` when none move: when no badge is
+/// drawn in the left margin, or the indent leaves room for every label; then
+/// the badges are not measured. Needs context.
+#let exam_badge_shift(items, opts) = {
+  let divisions = range(items_of(items).len()).filter(i => items_of(items).at(i).kind == "division")
+  if not divisions.any(d => _badge_position(items_of(items).at(d), opts) == "margin-left") { return none }
+  let lines = divisions.map(d => (d, _first_line(items, d, opts)))
+  let lefts = _badge_shift(lines.map(((d, line)) => _label_of(items, d, line, opts)).filter(l => l != none))
+  if lefts == none { return none }
+  let size = text.size
+  let widths = lines
+    .map(((_, line)) => line)
+    .filter(line => _margin_side(items, line, opts) == "margin-left")
+    .map(line => measure(_margin_badge_body(items, line, opts)).width / size * 1em)
+  (lefts: lefts, widest: calc.max(0em, ..widths))
+}
+
 /// Render a full instruction list. `opts` are the layout options resolved
 /// from `config` (see `exam_options`). `root` is the division a frame's
 /// instructions are inside (see `_rubric_ends`). `base` styles are already
@@ -720,6 +1007,9 @@
 /// as a document may have more rules than Typst lets functions recurse.
 #let render(items, instructions, opts: DEFAULT_EXAM_OPTIONS, root: none, base: 0) = {
   let items = hold(items)
+  // Found once, at the top (a frame's instructions are rendered with them),
+  // in the exam's context (see `_exam_body`).
+  if "badge-shift" not in opts { opts.insert("badge-shift", exam_badge_shift(items, opts)) }
   let ends = _end_segments(items, instructions, opts)
   let rubric_ends = if opts.rubric.drawn and "end" in opts.rubric.positions {
     _rubric_ends(items, instructions, opts, root: root)

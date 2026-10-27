@@ -1,4 +1,4 @@
-// The options a bubble, `choices`, `points-table`, and `page-score-box` take
+// The options a bubble, `choices`, and `points-table` take
 // for themselves, beside `config`'s of the same kind: each `config` option is
 // what the call's own is when it is left out, and the call's own wins over
 // it. Checked by what is drawn (the bubbles' outlines and fills, the labels'
@@ -46,28 +46,36 @@
 #let MAROON = resolve_solution_colors(maroon, auto)
 
 // --- the solution colors of a correct bubble ---
-#probed("choice-color", [`choice(correct: true, color: maroon)`.], choice(correct: true, color: maroon)[answer])
+#probed(
+  "choice-color",
+  [`choice(correct: true, solution-color: maroon)`.],
+  choice(correct: true, solution-color: maroon)[answer],
+)
 #probed(
   "choice-background",
-  [`bubble(correct: true, background-color: aqua)`, under `solution-color: olive`.],
+  [`bubble(correct: true, solution-background-color: aqua)`, under `solution-color: olive`.],
   {
     show: e.set_(config, solution-color: olive)
-    bubble(correct: true, background-color: aqua)[answer]
+    bubble(correct: true, solution-background-color: aqua)[answer]
   },
 )
-#probed("choices-color", [`choices(color: maroon)`: only the correct one in it.], choices(color: maroon, three))
+#probed(
+  "choices-color",
+  [`choices(solution-color: maroon)`: only the correct one in it.],
+  choices(solution-color: maroon, three),
+)
 #context {
   let c = circles("choice-color").first()
-  assert.eq(c.fill, MAROON.background, message: "choice's color: the fill follows it")
-  assert.eq(c.stroke.paint, maroon, message: "choice's color outlines it")
-  assert.eq(texts("choice-color").first().fill, maroon, message: "choice's color sets its content")
+  assert.eq(c.fill, MAROON.background, message: "choice's solution-color: the fill follows it")
+  assert.eq(c.stroke.paint, maroon, message: "choice's solution-color outlines it")
+  assert.eq(texts("choice-color").first().fill, maroon, message: "choice's solution-color sets its content")
 
   let c = circles("choice-background").first()
-  assert.eq(c.fill, aqua, message: "bubble's background-color fills it")
+  assert.eq(c.fill, aqua, message: "bubble's solution-background-color fills it")
   assert.eq(c.stroke.paint, olive, message: "and the configured color stays")
 
   let cs = circles("choices-color")
-  assert.eq(cs.map(c => c.fill), (none, none, MAROON.background), message: "choices' color: the correct one only")
+  assert.eq(cs.map(c => c.fill), (none, none, MAROON.background), message: "choices' solution-color: the correct one only")
   assert.eq(cs.last().stroke.paint, maroon)
 }
 
@@ -168,22 +176,12 @@
 )
 #context assert.ne(measure(choices(gap: 1em, three)), measure(choices(three)), message: "a gap spaces them")
 
-// --- `strings` of a points table and a page's score box ---
+// --- a points table's words: `config`'s `strings` only ---
 #show: exam
 #question(points: 2)[A question.]
 #question(points: 3)[Another.]
-#alike(
-  [`points-table(strings: (total: [Gesamtpunktzahl]))` is as with `config`'s `strings`.],
-  points-table(strings: (total: [Gesamtpunktzahl])),
-  { show: e.set_(config, strings: (total: [Gesamtpunktzahl])); points-table() },
-)
-#context assert.ne(
-  measure(points-table(strings: (total: [Gesamtpunktzahl]))),
-  measure(points-table()),
-  message: "the word changes the table",
-)
-#alike(
-  [`page-score-box(strings: (score: [Erreichte Punkte]))` likewise.],
-  page-score-box(strings: (score: [Erreichte Punkte])),
-  { show: e.set_(config, strings: (score: [Erreichte Punkte])); page-score-box() },
-)
+#let localized = { show: e.set_(config, strings: (total: [Gesamtpunktzahl])); points-table() }
+#rule[`config`'s `strings: (total: [Gesamtpunktzahl])`, then the table as it is by default.]
+#localized
+#points-table()
+#context assert.ne(measure(localized), measure(points-table()), message: "the word changes the table")

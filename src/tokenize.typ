@@ -15,6 +15,7 @@
 ///    fr: fraction | none)
 
 #import "prelude.typ": e
+#import "constants.typ": BATCH
 #import "markers.typ": is_outside_check, marker_value
 #import "config.typ": DIVISION_OPTIONS, exam_wide_options_set, scoped_options_set
 #import "scan.typ": STYLED_FUNC, elembic_rule, is_break, scan, unwrap
@@ -130,7 +131,8 @@
 /// names of the `config` rules before the exam that set options it reads
 /// once (see `exam_wide_rule_error`). Walked with a stack of
 /// its own, in order, not by recursing, as `scan` is, for a document nested
-/// a level deeper with every set or show rule in it. Each container is
+/// a level deeper with every set or show rule in it, and in batches, for one
+/// longer than Typst lets a loop run (see `BATCH`). Each container is
 /// unwrapped, and once what it holds is tokenized, put back together if
 /// that holds no marker: so each piece of content is looked at once, not
 /// scanned again for every container around it.
@@ -147,93 +149,100 @@
   // there were before them.
   let stack = ((c: c, styles: (), scoped: (:)),)
   while stack.len() > 0 {
-    let (c, styles, scoped, ..done) = stack.pop()
-    if done.len() > 0 {
-      if markers == done.markers {
-        let mine = ()
-        while tokens.len() > done.start { mine.push(tokens.pop()) }
-        tokens.push(_rejoin(c, styles, mine))
-      } else {
-        // Around divisions, a rule may not set what the exam reads once.
-        let rule = elembic_rule(c)
-        let error = if rule != none { exam_wide_rule_error(rule.rule, wide_names: wide_names) }
-        if error != none { panic(error) }
+    // In batches (see `BATCH`).
+    let round = 0
+    while stack.len() > 0 and round < BATCH {
+      round += 1
+      let (c, styles, scoped, ..done) = stack.pop()
+      if done.len() > 0 {
+        if markers == done.markers {
+          // Popped, not sliced off: a slice copies all of `tokens`, every
+          // container. A `for` loop has no limit on its rounds.
+          let mine = ()
+          for _ in range(tokens.len() - done.start) { mine.push(tokens.pop()) }
+          tokens.push(_rejoin(c, styles, mine))
+        } else {
+          // Around divisions, a rule may not set what the exam reads once.
+          let rule = elembic_rule(c)
+          let error = if rule != none { exam_wide_rule_error(rule.rule, wide_names: wide_names) }
+          if error != none { panic(error) }
+        }
+        continue
       }
-      continue
-    }
-    if type(c) == array {
-      for x in c.rev() { stack.push((c: x, styles: styles, scoped: scoped)) }
-      continue
-    }
-    if type(c) != content {
-      tokens.push(_chunk([#c], styles, scan(c)))
-      continue
-    }
+      if type(c) == array {
+        for x in c.rev() { stack.push((c: x, styles: styles, scoped: scoped)) }
+        continue
+      }
+      if type(c) != content {
+        tokens.push(_chunk([#c], styles, scan(c)))
+        continue
+      }
 
-    // A division's check that it is laid out by an exam: it is (see
-    // `outside_check`).
-    if is_outside_check(c) { continue }
-    let m = marker_value(c)
-    if m != none {
-      tokens.push(if m.kind == "begin" {
-        markers += 1
-        (kind: "begin", fields: if scoped.len() > 0 { (..m.fields, _scoped: scoped) } else { m.fields }, styles: _kept(styles))
-      } else if m.kind == "end" {
-        markers += 1
-        (kind: "end")
-      } else {
-        // Other marker kinds (e.g. height hints) travel as ordinary chunks.
-        _chunk(c, styles, scan(c))
-      })
-      continue
-    }
-    if is_break(c) {
-      tokens.push((
-        kind: "break",
-        target: if c.func() == pagebreak { "page" } else { "col" },
-        weak: c.at("weak", default: false),
-        styles: _kept(styles),
-      ))
-      continue
-    }
+      // A division's check that it is laid out by an exam: it is (see
+      // `outside_check`).
+      if is_outside_check(c) { continue }
+      let m = marker_value(c)
+      if m != none {
+        tokens.push(if m.kind == "begin" {
+          markers += 1
+          (kind: "begin", fields: if scoped.len() > 0 { (..m.fields, _scoped: scoped) } else { m.fields }, styles: _kept(styles))
+        } else if m.kind == "end" {
+          markers += 1
+          (kind: "end")
+        } else {
+          // Other marker kinds (e.g. height hints) travel as ordinary chunks.
+          _chunk(c, styles, scan(c))
+        })
+        continue
+      }
+      if is_break(c) {
+        tokens.push((
+          kind: "break",
+          target: if c.func() == pagebreak { "page" } else { "col" },
+          weak: c.at("weak", default: false),
+          styles: _kept(styles),
+        ))
+        continue
+      }
 
-    // A container: unwrapped, with its styles or rule for what it holds.
-    let kids = unwrap(c)
-    if kids != none {
-      stack.push((c: c, styles: styles, scoped: scoped, start: tokens.len(), markers: markers))
-      let rule = elembic_rule(c)
-      let apply = if rule != none { _elembic_show(rule.rule) } else if c.func() == STYLED_FUNC { c.styles }
-      let inner = if apply != none {
-        scopes += 1
-        styles + ((id: scopes, apply: apply),)
-      } else { styles }
-      // What a `config` rule sets for the divisions in its scope.
-      let inner_scoped = if rule != none { scoped + scoped_options_set(rule.rule) } else { scoped }
-      for x in kids.rev() { stack.push((c: x, styles: inner, scoped: inner_scoped)) }
-      continue
-    }
+      // A container: unwrapped, with its styles or rule for what it holds.
+      let kids = unwrap(c)
+      if kids != none {
+        stack.push((c: c, styles: styles, scoped: scoped, start: tokens.len(), markers: markers))
+        let rule = elembic_rule(c)
+        let apply = if rule != none { _elembic_show(rule.rule) } else if c.func() == STYLED_FUNC { c.styles }
+        let inner = if apply != none {
+          scopes += 1
+          styles + ((id: scopes, apply: apply),)
+        } else { styles }
+        // What a `config` rule sets for the divisions in its scope.
+        let inner_scoped = if rule != none { scoped + scoped_options_set(rule.rule) } else { scoped }
+        for x in kids.rev() { stack.push((c: x, styles: inner, scoped: inner_scoped)) }
+        continue
+      }
 
-    let info = scan(c)
-    if not info.has_marker {
-      // No structure inside: keep as one opaque chunk. Never destructured.
-      tokens.push(_chunk(c, styles, info))
-      continue
-    }
+      let info = scan(c)
+      if not info.has_marker {
+        // No structure inside: keep as one opaque chunk. Never destructured.
+        tokens.push(_chunk(c, styles, info))
+        continue
+      }
 
-    // Contains markers but cannot be unwrapped without losing information.
-    let names = info.marker_names.dedup()
-    if names.len() == 0 { names = ("division",) }
-    panic(
-      "examy: a `"
-        + names.join("`/`")
-        + "` was found inside a `"
-        + repr(c.func())
-        + "` element. Questions, parts, and subparts may only appear at the "
-        + "top level of their parent's body (not inside list items, blocks, "
-        + "boxes, figures, tables, etc.). Move it out of the `"
-        + repr(c.func())
-        + "`.",
-    )
+      // Contains markers but cannot be unwrapped without losing information.
+      let names = info.marker_names.dedup()
+      if names.len() == 0 { names = ("division",) }
+      panic(
+        "examy: a `"
+          + names.join("`/`")
+          + "` was found inside a `"
+          + repr(c.func())
+          + "` element. Questions, parts, and subparts may only appear at the "
+          + "top level of their parent's body (not inside list items, blocks, "
+          + "boxes, figures, tables, etc.). Move it out of the `"
+          + repr(c.func())
+          + "`.",
+      )
+    }
   }
   tokens
 }

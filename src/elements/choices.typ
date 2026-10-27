@@ -214,26 +214,37 @@
 
 #let _CHOICES = declare_function(
   "choices",
-  doc: "An enumerate environment for multiple-choice answers. Every list item gets turned into a `#choice`, with a round/square bubble as its list marker. On the answer key (when solutions are shown), the bubbles of the correct choices are filled in and checked, and their content is set in the solution color. Mark a correct choice with `+` in place of `-`, or by its index or label with `correct`.",
+  doc: "Used for creating multiple-choice questions. Accepts a list, with each list item becoming a `#choice[..]` with a bubble. Correct choice use `+` and incorrect choices use `-` as their list item designator.
+  
+  For example, to specify a list of choices, `a`, `b`, `c`, with `c` being the correct choice, use:
+  ```
+  #choices[
+   - a
+   - b
+   + c
+  ]
+  ```
+  
+  When solutions are shown, the correct choices are filled in and checked.",
   fields: (
     e.field(
       "body",
       e.types.union(content, array),
-      doc: "The choices: a list, one `- ..` item per choice (`+ ..` for a correct one), each starting its own line; or an array of the choices' content.",
+      doc: "The choices, as a list (one `- ..` item per choice, or `+ ..` for a correct one) or the choices as an array of content.",
       required: true,
       meta: (hint: "give the choices as a list, one `- ..` item per choice (`+ ..` for a correct one), or as an array such as `(\"a\", \"b\")`"),
     ),
     e.field(
       "correct",
       e.types.union(none, int, str, content, array),
-      doc: "The correct choice, or an array of them for several, named by index or by label. An index counts as Typst counts an array's: from 0 at the first choice, or from -1 at the last. A label, a string or content, is what the choice's bubble shows, so it needs `enumerate` (or `config`'s `choices-enumerate`): with `enumerate: true`, `\"A\"` is the first. Case and punctuation do not matter unless they are needed to tell two labels apart, so `\"a\"`, `\"A\"`, and `\"(a)\"` all name the first choice. Adds to any choices marked with `+`.",
+      doc: "The correct choice, by index (`0`-indexed) or by label if `enumerate: true` is set (e.g. `\"A\"` for `enumerate: true`), or an array of indices/labels. Additive with choices marked with `+`.",
       default: none,
       meta: (hint: "name choices by their index (`correct: 1` for the second) or label (`correct: \"B\"`), several in an array (`correct: (0, 2)`), or start a correct choice with `+` instead of `-`"),
     ),
     e.field(
       "bubble",
       e.types.union(e.types.literal("circle"), e.types.literal("square"), function),
-      doc: "The shape of the bubbles: round for \"select one\", square for \"select all that apply\".",
+      doc: "The shape of the bubbles: `\"circle\"` for \"select one\", `\"square\"` for \"select all that apply\".",
       default: "circle",
       // Typst's own `circle` and `square` are taken too, and examy's
       // `bubble` and `square-bubble`, but not documented.
@@ -242,14 +253,14 @@
     e.field(
       "inline",
       e.types.union(auto, bool),
-      doc: "Run the choices together, side by side in a paragraph of their own, rather than one per line; suits short choices. A choice is kept whole: one longer than a line starts a line of its own, with its further lines hanging under its content. Cannot be combined with `columns`.\n\nGiven `inline` or `columns`, the choices are laid out as they say, one per line unless one of them says otherwise. Given neither, they are laid out as `config`'s `choices-inline` and `choices-columns` say, one per line unless they are set.",
+      doc: "Show the choices inline in a paragraph. If you would like a grid of choices, consider using `columns` instead.",
       default: auto,
       meta: (hint: "write `true` or `false`"),
     ),
     e.field(
       "columns",
       unset_or(int, none),
-      doc: "Set the choices in this many equal columns, filled across each row in turn, rather than one per line. Cannot be combined with `inline`. Left out, the layout is as `inline` says.",
+      doc: "Split the choices into the specified number of columns. Setting to `none` results in a single column (i.e., each choice on its own line). Cannot be combined with `inline`.",
       default: UNSET,
       meta: (
         hint: "give a number of columns, such as `columns: 2`",
@@ -262,44 +273,38 @@
     e.field(
       "gap",
       unset_or(auto, length, fraction),
-      doc: "The space between two choices. One per line, it is the space between one choice and the next below it, and `auto` sets them as close as the lines of a paragraph. Side by side, inline or in `columns`, it is the space between them, and `auto` is "
-        + repr(_SIDE_BY_SIDE_GAP)
-        + "; there, a fraction (`1fr`) spreads the choices across the line.\n\nLeft out, it is `config`'s `choices-gap`, which is `auto` unless it is set.",
+      doc: "The space between the choices. Setting to `auto` uses the usual line spacing for choices on separate lines, and `1.5em` for choices side by side. A fraction (e.g. `1fr`) spreads side-by-side choices across the line.",
       default: UNSET,
       meta: (hint: "give a length, such as `1em`", default-shown: "auto"),
     ),
     e.field(
       "stroke",
       e.types.smart(length),
-      doc: "The thickness of the bubbles' outlines, as `choice`'s `stroke`. `auto` is `config`'s `bubble-stroke`, which is `"
-        + repr(DEFAULT_BUBBLE_STROKE)
-        + "` unless it is set.",
+      doc: "The outline thickness of the bubbles. Setting to `auto` uses `config`'s `bubble-stroke`.",
       default: auto,
     ),
     e.field(
       "label-font",
       e.types.union(auto, str, array),
-      doc: "The font the labels inside the bubbles (see `enumerate`) are set in: a font name, or a list of them to fall back through, as [`text`'s `font`](https://typst.app/docs/reference/text/text/#parameters-font) takes. `auto` is `config`'s `bubble-label-font`, which is "
-        + repr(DEFAULT_BUBBLE_LABEL_FONT)
-        + " unless it is set.",
+      doc: "The font of the labels inside the bubbles, relevant when `enumerate: true` is set.",
       default: auto,
     ),
     e.field(
-      "color",
+      "solution-color",
       e.types.union(auto, color),
-      doc: "The color the correct choices' bubbles are outlined and checked in, and their content set in, on the answer key. `auto` is `config`'s `solution-color`; when that is `auto` too, it is derived from `background-color`, as a solution's is.",
+      doc: "The primary color for the correct bubbles; i.e., the color of their outlines, check marks, and text when filled in. Setting to `auto` uses `config`'s `solution-color`.",
       default: auto,
     ),
     e.field(
-      "background-color",
+      "solution-background-color",
       e.types.union(auto, color),
-      doc: "The fill of the correct choices' bubbles on the answer key. `auto` is `config`'s `solution-background-color`; when that is `auto` too, it is derived from `color` by lightening.",
+      doc: "The background color for the correct bubbles when filled in. Setting to `auto` uses `config`'s `solution-background-color`.",
       default: auto,
     ),
     e.field(
       "enumerate",
       e.types.union(auto, bool, str, function, array),
-      doc: "Labels inside the bubbles: `false` for none, `true` for A, B, C, …, a numbering pattern or function, as [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering) takes (`\"a\"`, `\"1\"`, `\"(i)\"`), or an array of labels, one per choice in turn (`(\"x\", \"y\", \"z\")`). `auto` follows `config`'s `choices-enumerate`, which is `false` unless set.\n\nOn the answer key, a correct labelled bubble is filled in like any other, with its label, in the solution color, in place of the check mark, and a thin ring inside its outline.",
+      doc: "Determines how the bubbles are labelled. Setting to `false` results in no labels; `true` results in A, B, C, …. A numbering pattern, function, or array of labels can be used (e.g., `\"a\"` or `(\"x\", \"y\", \"z\")`). Setting to `auto` uses `config`'s `choices-enumerate`.",
       default: auto,
       meta: (check: v => enumerate_error(v, "choices", allow-auto: true)),
     ),
@@ -382,8 +387,8 @@
         inline: inline,
         stroke: it.stroke,
         label-font: it.label-font,
-        color: it.color,
-        background: it.background-color,
+        color: it.solution-color,
+        background: it.solution-background-color,
         caller: "choices",
       ))
     if inline {

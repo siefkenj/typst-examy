@@ -29,30 +29,32 @@
 /// ```
 #let _MAKETITLE = declare_function(
   "maketitle",
-  doc: "The exam title block (in the spirit of LaTeX's `\\maketitle`). Exam information is read from the global `config`. Renders nothing if all four values resolve to `none`. It is set in the text's font, like the rest of the document; set it apart with a [`set` rule](https://typst.app/docs/reference/styling/#set-rules) in a [code block](https://typst.app/docs/reference/scripting/#blocks) around it, e.g. `#{ set text(font: \"DejaVu Sans Mono\"); maketitle() }`.",
+  doc: "Displays the exam's title block (like LaTeX's `\\maketitle`), using `config`'s `institution`, `exam-name`, `term`, and `duration`. Displays nothing if all four are `none`.
+
+  Note: use a [`set` rule](https://typst.app/docs/reference/styling/#set-rules) to change the font settings (e.g. `#{ set text(font: \"DejaVu Sans Mono\"); maketitle() }`).",
   fields: (
     e.field(
       "institution",
       e.types.union(auto, content, none),
-      doc: "The institution name; `auto` takes `config`'s value, `none` suppresses it.",
+      doc: "The institution name. Setting to `auto` uses `config`'s `institution`; `none` hides it.",
       default: auto,
     ),
     e.field(
       "exam-name",
       e.types.union(auto, content, none),
-      doc: "The exam name, shown bold; `auto` takes `config`'s value, `none` suppresses it.",
+      doc: "The name of the exam (e.g. Midterm 1). Setting to `auto` uses `config`'s `exam-name`; `none` hides it.",
       default: auto,
     ),
     e.field(
       "term",
       e.types.union(auto, content, none),
-      doc: "The term (e.g. Fall 2026); `auto` takes `config`'s value, `none` suppresses it.",
+      doc: "The term of the exam (e.g. Fall 2026). Setting to `auto` uses `config`'s `term`; `none` hides it.",
       default: auto,
     ),
     e.field(
       "duration",
       e.types.union(auto, none, duration, content),
-      doc: "The exam length, shown under the term: a [`duration`](https://typst.app/docs/reference/foundations/duration/), shown in minutes (`duration(minutes: 110)` as \"110 Minutes\"), or content, shown as it is (`[1 h 50 min]`). `auto` takes `config`'s value, `none` suppresses it.",
+      doc: "The length of the exam. [`Duration`](https://typst.app/docs/reference/foundations/duration/)s are shown in minutes (e.g. `duration(hours: 1, minutes: 50)` shows as \"110 Minutes\"). Pass content for complete control over what is shown (e.g., pass `[1 h 50 min]`). Setting to `auto` uses `config`'s `duration`; `none` hides it.",
       default: auto,
     ),
   ),
@@ -136,7 +138,9 @@
 /// end — or arbitrary content, rendered verbatim as its own row.
 #let _NAME_BLOCK = declare_function(
   "name-block",
-  doc: "A block of fill-in rows for a student to write their name. It is set in the text's font, like the rest of the document; set it apart with a [`set` rule](https://typst.app/docs/reference/styling/#set-rules) in a [code block](https://typst.app/docs/reference/scripting/#blocks) around it, e.g. `#{ set text(font: \"DejaVu Sans Mono\"); name-block() }`.",
+  doc: "A block of lines for students to fill in their name and other details.
+
+  Note: it uses the document's font. To change it, use a [`set` rule](https://typst.app/docs/reference/styling/#set-rules) (e.g. `#{ set text(font: \"DejaVu Sans Mono\"); name-block() }`).",
   fields: (
     e.field(
       "title",
@@ -147,7 +151,7 @@
     e.field(
       "fields",
       e.types.array(e.types.union(dictionary, content)),
-      doc: "One entry per row. A `(prefix: .., suffix: ..)` dictionary (both keys optional) renders the prefix, an underline extending to the end of the line, and the suffix sitting on the line at its right end; any other entry is content rendered verbatim as its own row.",
+      doc: "The rows of the block. A dictionary `(prefix: .., suffix: ..)` (both optional) draws the prefix, a line to write on, and the suffix. Any other content is shown as is, as a row of its own.",
       default: DEFAULT_NAME_FIELDS,
       meta: (default-shown: "((prefix: [Name:]), (prefix: [Student ID:]))"),
     ),
@@ -262,19 +266,23 @@
 
 #let _EXAM = declare_function(
   "exam",
-  doc: "Lay out an exam: number its questions, parts, and subparts, draw them, and total their points for `points-table` and the other point counts. Written as a [show rule](https://typst.app/docs/reference/styling/#show-rules), `#show: exam` (or `#show: exam.with(..)`, with options), it makes the rest of the document the exam.\n\nIt also applies `e.prepare()`, which the exam's references need.",
+  doc: "Define an exam with questions/parts/subparts. This is the main entry point for examy, and is usually invoked as a [show rule](https://typst.app/docs/reference/styling/#show-rules) (e.g. `#show: exam` or `#show: exam.with(..)`).
+  
+  This function automatically invokes `e.prepare()`, which elembic needs to make cross references work.",
   fields: (
     e.field(
       "questions",
       e.types.union(content, function),
-      doc: "The questions: content holding `question`s (with their `part`s and `subpart`s, and anything else between them).\n\nOr a function that returns them, for an answer key that differs from the exam in what it holds, not only in its solutions. The function is called with one argument, a function of its own, conventionally named `solutions-only`: `questions: solutions-only => [..]`. Within the questions, `solutions-only(x)` is `x` on the answer key and `none` on the exam, and `solutions-only(x, otherwise: y)` is `y` on the exam.\n\nUnlike `solution`, it draws what it is given as it is, not as a solution, and that can be any part of the questions: a part of its own on the key, a different `height` for an answer box (`height: solutions-only(auto, otherwise: 3cm)`), a whole question. A question only on the key renumbers the questions after it; to avoid that, give it `number: none`, or put what the key adds in a part.\n\nThe key is told from the exam as `show-solutions` tells it: by `config`'s `show-solutions`, unless the `--input show-solutions=..` command-line option overrides it.\n\nAlso accepted by name, `questions: [..]`, as in examy 0.4 and earlier.",
+      doc: "Content of the exam built out of Typst content and `#question[..]` blocks.
+      
+      Alternatively, a function `(solutions-only) => [..]` that returns the content. `solutions-only(x, otherwise: y)` gives `x` if solutions are shown and `y` otherwise. Unlike `#solution[..]`, which returns a Typst `context`, `solutions-only()` returns what it is given and so can be used anywhere.",
       required: true,
       named: false,
     ),
   ),
   rest: (
     name: "options",
-    doc: "Any of `config`'s options, by name, e.g. `#show: exam.with(show-solutions: false, points-position: \"end\")`. They apply to everything inside the exam: its questions, and whatever comes before them in it, such as a cover page or a points table. Each is checked as `config` checks it; see `config` for every option and its default.",
+    doc: "Any of `config`'s options (e.g. `#show: exam.with(show-solutions: false)`).",
     fields: _OPTIONS,
   ),
 )

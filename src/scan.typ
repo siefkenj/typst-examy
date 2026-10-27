@@ -4,6 +4,7 @@
 
 #import "markers.typ": marker_value, rubric_value
 #import "prelude.typ": PREFIX, e
+#import "constants.typ": BATCH
 
 /// The eid of examy's `answer-box`, which elembic makes from an element's
 /// prefix and name alone: read from one declared under the same, as
@@ -104,19 +105,24 @@
 /// them; inside the others, the items `inside` gives, of an array its
 /// items. With `first: true`, only the first one found. Walked with a stack
 /// of its own, not by recursing, for content nested deeper than Typst lets
-/// functions recurse (see `unwrap`).
+/// functions recurse (see `unwrap`), in batches, for content longer than
+/// Typst lets a loop run (see `BATCH`).
 #let _find(c, match, inside: _inside, first: false) = {
   let out = ()
   let stack = (c,)
   while stack.len() > 0 {
-    let c = stack.pop()
-    if type(c) == array {
-      stack += c.rev()
-    } else if match(c) {
-      out.push(c)
-      if first { break }
-    } else {
-      stack += inside(c).rev()
+    let round = 0
+    while stack.len() > 0 and round < BATCH {
+      round += 1
+      let c = stack.pop()
+      if type(c) == array {
+        stack += c.rev()
+      } else if match(c) {
+        out.push(c)
+        if first { return out }
+      } else {
+        stack += inside(c).rev()
+      }
     }
   }
   out
@@ -215,6 +221,11 @@
   smallcaps,
   footnote,
 )
+
+/// Element functions of what runs in a paragraph's lines as text does (see
+/// `is_plain_text`): `_INLINE_FUNCS` but `box`, and spaces, quotes,
+/// symbols, and metadata, which is invisible.
+#let _PLAIN_FUNCS = _INLINE_FUNCS.filter(f => f != box) + ([ ].func(), smartquote, [#sym.dot].func(), metadata)
 
 /// How `c` begins, for placing a gutter label beside its first line:
 /// `none` when `c` is invisible/transparent (spaces, metadata; keep looking),
@@ -335,6 +346,27 @@
   false
 }
 
+/// Whether `c` holds only what runs in a paragraph's lines as text does:
+/// text and its styling, inline math and code, and metadata. Not a box, or
+/// anything else laid out at a width of its own, which the paragraph's
+/// width sets, not its line's: an element elembic draws, such as an inline
+/// `solution`, is drawn by a `context`, and so not either. But a box of a
+/// fixed width, or of nothing visible (a probe for a position, say), is.
+#let is_plain_text(c) = {
+  let inline_only(x) = (math.equation, raw).contains(x.func()) and not x.at("block", default: false)
+  // Its width a length, kept as a `relative` of no ratio.
+  let fixed(w) = type(w) == length or type(w) == relative and w.ratio == 0%
+  let fixed_box(x) = (
+    x.func() == box and (fixed(x.at("width", default: auto)) or is_whitespace_content(x.at("body", default: none)))
+  )
+  let leaf(x) = _PLAIN_FUNCS.contains(x.func()) or inline_only(x) or fixed_box(x)
+  let other(x) = type(x) == content and unwrap(x) == none and not leaf(x)
+  // Not into math, code, or those boxes, which hold no boxes taking the
+  // paragraph's width.
+  let inside(x) = if type(x) == content and (inline_only(x) or fixed_box(x)) { () } else { _inside(x) }
+  _find(c, other, inside: inside, first: true).len() == 0
+}
+
 /// Elements that are always block-level, and so end the paragraph before
 /// them and start a fresh one after. Anything not listed counts as inline:
 /// mistaking a block for inline content merely leaves a solution
@@ -349,6 +381,11 @@
   list,
   enum,
   terms,
+  // What a list is written as: `- item` makes a `list.item`, which becomes
+  // part of a `list` only when it is laid out.
+  list.item,
+  enum.item,
+  terms.item,
   heading,
   image,
   align,
@@ -358,6 +395,9 @@
   colbreak,
   pagebreak,
   v,
+  // Since Typst 0.15, any `place` ends the paragraph it is in, floating or
+  // not, aligned or not.
+  place,
   rect,
   square,
   circle,
@@ -375,6 +415,59 @@
   // Inline unless their `block` flag is set.
   if (math.equation, raw, quote).contains(f) { return c.at("block", default: false) }
   false
+}
+
+/// `c` cut where its first paragraph ends, looking through `styled` and
+/// `sequence`: `(before, after)`, `after` starting with the paragraph break
+/// or block-level element that ends it; `after` is `none` when the paragraph
+/// does not end in `c`, and `before` is `none` when it ends at once. Each
+/// `styled` cut keeps its styles on both sides; a sequence is rebuilt from
+/// its own children, as joining them would splice elembic's rules into it.
+///
+/// Found with a stack of its own, not by recursing, for content nested
+/// deeper than Typst lets functions recurse (see `unwrap`), in batches (see
+/// `BATCH`); then cut along the way down to it, from the bottom up.
+#let split_first_par(c) = {
+  // Each entry: a piece of content, how deep it is, and its index among
+  // its siblings.
+  let todo = ((c: c, d: 0, i: 0),)
+  // The `styled` and `sequence` the piece met last is in, outermost first,
+  // each with the index of the child of it that the way goes down.
+  let path = ()
+  let found = none
+  while todo.len() > 0 and found == none {
+    let round = 0
+    while todo.len() > 0 and round < BATCH {
+      round += 1
+      let t = todo.pop()
+      if type(t.c) != content { continue }
+      if path.len() > t.d { path = path.slice(0, t.d) }
+      if t.d > 0 { path.at(-1).i = t.i }
+      if ends_par(t.c) {
+        found = t.c
+        break
+      }
+      let f = t.c.func()
+      if f != SEQUENCE_FUNC and f != STYLED_FUNC { continue }
+      let kids = if f == SEQUENCE_FUNC { t.c.children } else { (t.c.child,) }
+      path.push((c: t.c, i: none))
+      for (i, k) in kids.enumerate().rev() { todo.push((c: k, d: t.d + 1, i: i)) }
+    }
+  }
+  if found == none { return (c, none) }
+  let (before, after) = (none, found)
+  for p in path.rev() {
+    if p.c.func() == STYLED_FUNC {
+      before = if before != none { STYLED_FUNC(before, p.c.styles) }
+      after = STYLED_FUNC(after, p.c.styles)
+    } else {
+      let kids = p.c.children
+      let b = (..kids.slice(0, p.i), before).filter(x => x != none)
+      before = if b != () { SEQUENCE_FUNC(b) }
+      after = SEQUENCE_FUNC((after, ..kids.slice(p.i + 1)))
+    }
+  }
+  (before, after)
 }
 
 /// Whether `c` runs over more than one paragraph: it holds a paragraph break
@@ -408,21 +501,19 @@
 /// box (which holds a rule on its solutions) and every solution. A rule is
 /// looked through as `unwrap` does, to the content it is applied to alone,
 /// so that nothing in it is reached twice.
-#let _inside_kept(x) = if type(x) == dictionary {
-  x.values()
-} else if type(x) != content {
-  ()
-} else if unwrap(x) != none {
-  unwrap(x)
-} else if x.func() == metadata {
-  let label = x.at("label", default: none)
-  if label == <__elembic_element_tag> and type(x.value) == dictionary and "fields" in x.value {
-    x.value.fields.values()
-  } else if label in _ELEMBIC_RULE_TAGS and type(x.value) == dictionary and "doc" in x.value {
-    (x.value.doc,)
-  } else { (x.value,) }
-} else {
-  x.fields().values()
+#let _inside_kept(x) = {
+  if type(x) == dictionary { return x.values() }
+  if type(x) != content { return () }
+  let kids = unwrap(x)
+  if kids != none { return kids }
+  if x.func() != metadata { return x.fields().values() }
+  // A rule's tag `unwrap` does not take apart with its rule: one spliced
+  // into the middle of a sequence.
+  if _is_rule_tag(x) { return (x.value.doc,) }
+  let v = x.value
+  if x.at("label", default: none) == <__elembic_element_tag> and type(v) == dictionary and "fields" in v {
+    v.fields.values()
+  } else { (v,) }
 }
 
 /// Whether `c` holds a rubric marker anywhere at all, also in the fields of
@@ -507,29 +598,34 @@
   let todo = ((c: c, n: none),)
   let results = ()
   while todo.len() > 0 {
-    let t = todo.pop()
-    let c = t.c
-    let f = if type(c) == content { c.func() }
-    if t.n == none {
-      if f == SEQUENCE_FUNC or f == STYLED_FUNC {
-        let kids = if f == SEQUENCE_FUNC { c.children } else { (c.child,) }
-        todo.push((c: c, n: kids.len()))
-        for k in kids.rev() { todo.push((c: k, n: none)) }
+    // In batches (see `BATCH`).
+    let round = 0
+    while todo.len() > 0 and round < BATCH {
+      round += 1
+      let t = todo.pop()
+      let c = t.c
+      let f = if type(c) == content { c.func() }
+      if t.n == none {
+        if f == SEQUENCE_FUNC or f == STYLED_FUNC {
+          let kids = if f == SEQUENCE_FUNC { c.children } else { (c.child,) }
+          todo.push((c: c, n: kids.len()))
+          for k in kids.rev() { todo.push((c: k, n: none)) }
+        } else {
+          results.push((c, false))
+        }
+        continue
+      }
+      let glued = results.slice(results.len() - t.n)
+      results = results.slice(0, results.len() - t.n)
+      let kids = glued.map(g => g.first())
+      if f == STYLED_FUNC {
+        let (child, changed) = glued.first()
+        results.push((if changed { STYLED_FUNC(child, c.styles) } else { c }, changed))
+      } else if glued.any(g => g.last()) or kids.any(k => rubric_value(k) != none) {
+        results.push((_glue_kids(kids), true))
       } else {
         results.push((c, false))
       }
-      continue
-    }
-    let glued = results.slice(results.len() - t.n)
-    results = results.slice(0, results.len() - t.n)
-    let kids = glued.map(g => g.first())
-    if f == STYLED_FUNC {
-      let (child, changed) = glued.first()
-      results.push((if changed { STYLED_FUNC(child, c.styles) } else { c }, changed))
-    } else if glued.any(g => g.last()) or kids.any(k => rubric_value(k) != none) {
-      results.push((_glue_kids(kids), true))
-    } else {
-      results.push((c, false))
     }
   }
   results.first().first()

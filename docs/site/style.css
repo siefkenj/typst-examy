@@ -433,6 +433,16 @@ h1 .kind {
 
 /* The Configuration page's tables: an option's name on one line. */
 .config-options td:first-child code { white-space: nowrap; }
+/* Its default and type, below it, slightly indented, wrapping to the
+   name's width. */
+.config-options td:first-child { min-width: 10rem; }
+.config-options .option-meta { margin-top: .2rem; padding-left: .6rem; width: 0; min-width: calc(100% - .6rem); }
+.config-options .option-meta .arg-default { white-space: nowrap; }
+.config-options td:first-child .option-meta .arg-type span { white-space: nowrap; }
+.config-options .option-pretty { padding-left: .6rem; }
+.config-options .option-pretty pre { margin: .1rem 0 .2rem; padding: 0; border: 0; background: none; overflow: visible; font-size: .82rem; }
+.config-options td:first-child .option-pretty pre code { white-space: pre; }
+.config-options td:first-child .option-meta code { white-space: normal; overflow-wrap: anywhere; font-size: .82rem; }
 
 /* The playground's entry in the guide's list (in the sidebar, and in the
    menu on a small screen): an edit icon after it, in the link's color,

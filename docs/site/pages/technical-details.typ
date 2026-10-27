@@ -1,128 +1,96 @@
 #import "../template.typ": *
 
-examy is written entirely in Typst. This page explains what happens when an exam is compiled. You
-don't need it to write exams, but it explains why some things must be written the way they are, what
-some error messages mean, and how examy relates to
-#link("https://typst.app/universe/package/elembic")[elembic], the package it is built on.
+Examy is written entirely in Typst, heavily relying on #link(
+  "https://typst.app/universe/package/elembic",
+)[elembic] for managing settings and options. Understanding this document is not needed for using
+examy, but might be of interest.
 
-== Why not boxes
+== No nested boxes
 
 A straightforward implementation of examy would wrap each question/part/subpart in a box and apply
-an appropriate inset. Unfortunately, `#pagebreak()` cannot work inside a
-#typst-link("reference/layout/box/")[box] and, worse still, boxes can only negotiate
-#typst-link("reference/layout/fraction/")[fractional units] if they are peers of each other. So, the
-box approach would make it impossible to have a part and a subpart both share the remaining space on
-the page.
+an appropriate inset. Unfortunately, `#pagebreak()` cannot work inside a #typst-link(
+  "reference/layout/box/",
+)[box] and, worse still, boxes can only negotiate #typst-link(
+  "reference/layout/fraction/",
+)[fractional units] if they are peers of each other. So, the box approach would make it impossible
+to have a part and a subpart both share the remaining space on the page.
 
 Instead, examy flattens all question/part/subpart contents and tags the start and end of each block
 with #typst-link("reference/introspection/metadata/")[`metadata`]. The flat stream is then parsed,
 indentation level is tracked, and peer boxes are produced, so that `#pagebreak()` and `fr` units can
-negotiate space. The rest of this page follows those steps.
+negotiate space.
 
-== Questions are markers
+== Step 1: Questions are annotated with metadata
 
 #api("question"), #api("part"), and #api("subpart") don't draw anything themselves. Each one returns
-its body unchanged, between two invisible markers (`metadata` values) that record where the
-question/part/subpart begins and ends, along with its arguments: points, number, label, rubric, and
-so on. A part is a part only because its markers sit inside its question's markers. Nesting is
-determined by position, not by which function was called, which is why `question`, `part`, and
-`subpart` take the same arguments.
+its body unchanged but between two invisible markers (`metadata` values) that record the points,
+number, label, rubric, etc. associated with the question/part/subpart.
 
-Each one also carries a check, beside its first marker, which the exam removes when it reads the
-markers. A question that no exam lays out still has its check, which shows a warning in red where
-the question is. That catches a question outside any exam, and one inside an exam but in content the
-exam can't see into, such as a question built inside a #typst-link("reference/context/")[`context`].
-Either would otherwise be drawn as plain text, without a number. A script can find these warnings
-with ```sh typst eval --in exam.typ 'query(<examy-warning>)'```. The
-```sh --input _debug_panic=panic``` command-line option turns them into errors that stop the
-compile, for a build that must not produce a document with one, and
-```sh --input _debug_panic=none``` leaves the check out altogether.
+Additionally, a test is inserted into the content stream. This test is later removed if the exam is
+well-formed, but it allows the query ```sh typst eval --in exam.typ 'query(<examy-warning>)'``` to
+report information about a malformed exam.
 
-== The exam lays them out
+== Step 2: Layout
 
-#api("exam") receives the questions as one piece of content and draws them in four steps: tokenize,
-parse, plan, and render.
+#api("exam", arg: "[]") receives the question stream (with `metadata` tags already inserted). It
+then runs through the following steps.
 
-/ Tokenize: The content is scanned for markers and page breaks. Only content that contains one is
-  taken apart, and only two kinds of content can be: plain sequences, and the result of a
-  #typst-link("reference/styling/#set-rules")[`set`] or
-  #typst-link("reference/styling/#show-rules")[`show` rule] (whose styles are remembered and applied
-  again afterwards). Everything else is kept whole, which keeps lists, equations, and spacing intact. A part inside anything else, such as a list item, a
-  box, or a table, can't be found in order, so it is an error: "Questions, parts, and subparts may
-  only appear at the top level of their parent's body".
+/ Tokenize: The question stream is scanned for examy's `metadata` and `#pagebreak()`s. The stream is
+  split to give special handling to breaks as well as #typst-link(
+    "reference/styling/#set-rules",
+  )[`set`] and #typst-link(
+    "reference/styling/#show-rules",
+  )[`show` rules]. Warning markers are also removed from the stream. Everything else is kept whole.
+  From here on, a question/part/subpart inside a box (e.g., list item, box, table, etc.) is an
+  error.
 
-/ Parse: The tokens become a list of questions/parts/subparts, each with its level, number, address
-  (2 (a) is question 2, part 1), points, and the total of its parts. This step works on plain data,
-  without Typst #typst-link("reference/introspection/counter/")[counters] or layout, so all the
-  numbers are known before anything is drawn. That is why a reference can point forward, and why
-  #api("points-table") can come before the exam.
+/ Parse: The tokens become a tree of questions/parts/subparts with their numbers, points, and
+  options pre-computed. This allows for a global analysis of the exam (e.g., for use in #api(
+    "points-table",
+    arg: "()",
+  )) without appealing to `context` or `query`s.
 
-/ Plan: Typst cannot break a page inside a nested block, and `fr` heights are only shared out at the
-  top level of the page. A question with neither is drawn as one block, with its parts nested inside.
-  A question with a `#pagebreak()` or an `fr` answer box is cut into blocks that sit side by side at
-  the top level, each indented to look nested, so the break and the `fr` work as they do outside an
-  exam.
+/ Plan: A question with no `#pagebreak()` and no `fr` answer box is drawn using nested blocks. Any
+  other question is split into peer blocks, each indented to appear as if it is nested.
 
-/ Render: Each block is drawn with its number in the gutter and its points badge. A labelled
-  question/part/subpart leaves an anchor for references, and the exam records its point totals for
-  `points-table`, #api("num-points"), and the rest, which can read them anywhere in the document.
+/ Render: Each block is drawn with its number and points badge. Labelled questions/parts/subparts
+  get a typst label that can be used for `@name` references, and the point information recorded for
+  #api(
+    "points-table",
+    arg: "()",
+  ), #api("num-points"), etc.
 
 #note[
   _Note._ The downside of this parsing is that "click back" in tools like #link(
     "https://github.com/Myriad-Dreamin/tinymist",
-  )[tinymist], from the rendered exam to its source, can be broken. (Usually it works to click a
-  sub-boxed item, like an equation.)
+  )[tinymist] can be broken since the source stream has been parsed and reconstructed. (Usually it
+  works to click a sub-boxed item, like an equation.)
 ]
 
 == Settings and elembic
 
-elembic adds custom elements to Typst: elements with typed fields that can be changed with elembic's
-own `set` and `show` rules (`e.set_`, `e.show_`). examy re-exports it as #api("e") and uses it in
-two ways.
+The global #api("config") object as well as question references is controlled by elembic, which is
+re-exported as #api("e").
 
-/ Settings: The global #api("config") is an element that is never drawn; its fields are examy's
-  options. `#show: e.set_(config, ..)` is a `set` rule for it, so a setting applies from where it is
-  made to the end of its block, and a later rule only changes the options it names. Options given to
-  the exam, as in `#show: exam.with(..)`, are applied the same way, around the exam's content. examy reads the
-  options with `e.get`, which, like Typst's `context`, gives the values in effect where it is placed.
-  This is why #api("show-solutions") takes `get`. The exam reads the options that lay out its
-  questions where it starts, and takes the values a rule inside it sets from the rule itself, for
-  the questions in its scope. A few, such as `numbering`, hold for the whole exam, and a rule inside
-  it may not set them.
+/ Settings: The global #api("config") is an elembic element that is never drawn; its fields are
+  examy's options. `#show: e.set_(config, ..)` works like a Typst `set` rule, applying until the end
+  of its block, and `#show: exam.with(..)` applies its options the same way. Options are read with
+  `e.get`, which, like Typst's `context`, gives the values in effect where it is placed. This is why
+  #api("show-solutions", arg: "(get)") takes `get`.
 
-/ References: Each labelled question/part/subpart leaves an invisible elembic element, its anchor.
-  elembic lets an element decide how references to it are drawn, so the anchor can show "1 (a)" or
-  "(a)" depending on where the reference is. `#show: e.prepare()` installs the rules that make this
-  work. The exam applies it to its own content, so a document only needs it for references from
-  outside the exam.
+  The exam reads its options where it starts. A `config` rule inside the exam applies to the
+  questions in its scope, except for `numbering`, `numbering-full`, `strings`, and `show-rubrics`,
+  which hold for the whole exam.
 
-#api("solution") is an elembic element too, but #api("exam"), `question`, `part`, `subpart`, and
-the other functions are plain functions. An elembic element is drawn later, by a show rule, and
-`exam` needs to see the markers in its questions as soon as it receives them. These functions still
-declare their arguments with elembic's `e.field`, so every call is checked, and the reference is
-generated from the same declarations.
+/ References: Each labelled question/part/subpart leaves an invisible elembic element as its anchor.
+  Elembic lets an element decide how references to it are drawn, so a reference can show "1 (a)" or
+  just "(a)" depending on where it is. `#show: e.prepare()` sets this up. The exam applies it to its
+  own content, so a document only needs it for references from outside the exam.
 
-#api("answer-box") is an elembic element as well, so that set rules can give its fields, and an exam
-draws its boxes itself. When it receives its questions, it reads the boxes' fields and the
-`answer-box-` options where it starts, with `get`. It then goes through the questions, applying the
-`e.set_` and `e.apply` rules on answer boxes and on those options that it meets, to draw each box
-from its call's own arguments, its fields, and the options, in that order. That is done once, in the
-exam's own `e.get`, so that the exam can read every box's height and width as it reads any other
-`box` or #typst-link("reference/layout/block/")[`block`], which it needs to share out `fr` heights
-and to place question numbers. A box inside an element the exam doesn't go through, such as
-#typst-link("reference/layout/align/")[`align`], draws itself, and the exam leaves a note of its
-`fr` height beside it. It also follows an `e.reset`, drawing the boxes after it as if no rules had
-been set. Elembic's other rules on answer boxes inside an exam, such as `e.show_`, are an error,
-since the exam does not follow them.
-
-Use the `e` that examy exports rather than importing elembic yourself, since it is the version examy
-was made with. examy's elements are named after its version, so two versions of examy in one
-document don't share settings.
-
-== Command line and data
-The ```sh --input show-solutions=..``` and ```sh --input show-rubrics=..``` command-line options are
-read from #typst-link("reference/foundations/sys/")[`sys.inputs`] and override `config`. Rubrics in
-a margin are placed with #typst-link("reference/layout/place/")[`place`], so they take up no space,
-and the exam is laid out the same with or without them. Every exam with rubrics also stores them in
-the document as data, labelled ```typ <examy-rubric>```, for ```sh typst eval``` to read out
-(see #page-link("rubrics.html")[Rubrics]).
+While #api("solution") and #api("answer-box") are elembic elements, the #api("exam", arg: "[..]"),
+#api(
+  "question",
+  arg: "[..]",
+), #api("part", arg: "[..]"), and #api("subpart", arg: "[..]") commands are plain Typst functions.
+However, during the _Render_ phase of examy, these items are typeset using elembic elements (and so
+can respond to elembic's set rules).

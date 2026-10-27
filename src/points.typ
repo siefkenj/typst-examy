@@ -5,7 +5,7 @@
 /// come from markers the exam leaves where each division's points are drawn.
 
 #import "prelude.typ": *
-#import "config.typ": config, DEFAULT_NUMBERING
+#import "config.typ": DEFAULT_NUMBERING, config
 #import "refs.typ": level_numberings, reference_body
 #import "signature.typ": declare_function, define
 
@@ -122,7 +122,9 @@
   for r in rows + ((level: 1, end: true),) {
     if r.level == 1 {
       if question != none {
-        out += if held == () { (column(question, question.total_points, question.total_bonus_points),) } else { held }
+        out += if held == () {
+          (column(question, question.total_points, question.total_bonus_points),)
+        } else { held }
       }
       if r.at("end", default: false) { break }
       question = r
@@ -199,7 +201,8 @@
 #let conflict_warning(badge) = {
   let name = _LEVEL_NAMES.at(badge.level - 1, default: "subpart")
   let parts = _LEVEL_NAMES.at(badge.level, default: "subpart") + "s"
-  text(fill: red)[examy: this #name has points of its own (#badge.own) and points on its #parts (#badge.parts); with `points-show-totals`, give points to one or the other.]
+  text(fill: red)[examy: this #name has points of its own (#badge.own) and points on its #parts
+    (#badge.parts); with `points-show-totals`, give points to one or the other.]
 }
 
 // Each count comes twice: as a number, `get-num-..()`, to compute or test
@@ -208,7 +211,7 @@
 
 #let _GET_NUM_QUESTIONS = declare_function(
   "get-num-questions",
-  doc: "The total number of questions in the exam, as a number, to compute or test with. Needs [context](https://typst.app/docs/reference/context/): `context get-num-questions()`. To show it, `num-questions` needs none.",
+  doc: "The total number of questions, as a number. Must be used inside of a [context](https://typst.app/docs/reference/context/) block. Use `#num-questions` for a ready-to-display alternative.",
 )
 
 /// The total number of questions in the exam (see DOCS). Needs context.
@@ -219,7 +222,7 @@
 
 #let _GET_NUM_POINTS = declare_function(
   "get-num-points",
-  doc: "The total number of regular (non-bonus, non-practice) points, as a number, to compute or test with, e.g. a pass mark: `context calc.ceil(get-num-points() * .6)`. Needs [context](https://typst.app/docs/reference/context/). To show it, `num-points` needs none.",
+  doc: "The total number of regular points (not counting bonus and practice points), as a number. Must be used inside of a [context](https://typst.app/docs/reference/context/) block. Use `#num-points` for a ready-to-display alternative.",
 )
 
 /// The total number of regular points (see DOCS). Needs context.
@@ -230,14 +233,16 @@
 
 #let _GET_NUM_BONUS_POINTS = declare_function(
   "get-num-bonus-points",
-  doc: "The total number of bonus points, as a number, to compute or test with. Needs [context](https://typst.app/docs/reference/context/): `context if get-num-bonus-points() > 0 [..]`. To show it, `num-bonus-points` needs none.",
+  doc: "The total number of bonus points, as a number. Must be used inside of a [context](https://typst.app/docs/reference/context/) block. Use `#num-bonus-points` for a ready-to-display alternative.",
 )
 
 /// The total number of bonus points (see DOCS). Needs context.
 #let get_num_bonus_points = define(_GET_NUM_BONUS_POINTS, it => {
   let data = exam_points_data()
   if data == none { 0 } else {
-    data.map(q => if q.total_bonus_points == none { 0 } else { q.total_bonus_points }).sum(default: 0)
+    data
+      .map(q => if q.total_bonus_points == none { 0 } else { q.total_bonus_points })
+      .sum(default: 0)
   }
 })
 
@@ -272,7 +277,9 @@
   for m in _points_markers() {
     let page = m.location().page()
     let key = str(page)
-    if key not in pages { pages.insert(key, (page: page, location: m.location(), points: 0, bonus: 0)) }
+    if key not in pages {
+      pages.insert(key, (page: page, location: m.location(), points: 0, bonus: 0))
+    }
     if m.value.intent == none { pages.at(key).points += m.value.points }
     if m.value.intent == "bonus" { pages.at(key).bonus += m.value.points }
   }
@@ -281,18 +288,18 @@
 
 #let _GET_NUM_POINTS_PAGE = declare_function(
   "get-num-points-page",
-  doc: "The number of points on a page, as a number, to compute or test with: the points of each question, part, and subpart that starts on it. Needs [context](https://typst.app/docs/reference/context/), e.g. in a page footer: `context if get-num-points-page() > 0 [..]`. To show the current page's, `num-points-page` needs none.",
+  doc: "The number of points on a page (of the questions/parts/subparts that start on it), as a number. Must be used inside of a [context](https://typst.app/docs/reference/context/) block. Use `#num-points-page` for a ready-to-display alternative.",
   fields: (
     e.field(
       "page",
       e.types.smart(int),
-      doc: "The page, as its physical page number (counted from 1, whatever its numbering shows), in the document it is read in; `auto` is the current page.",
+      doc: "The physical page number (counted from 1). Setting to `auto` uses the current page.",
       default: auto,
     ),
     e.field(
       "bonus",
       bool,
-      doc: "Count the bonus points on the page instead of the regular ones.",
+      doc: "Whether to count bonus points instead of regular points.",
       default: false,
     ),
   ),
@@ -313,22 +320,14 @@
 
 #let _PAGE_SCORE_BOX = declare_function(
   "page-score-box",
-  doc: "A box for the grader to write the score of the current page in, \"Score: ____ / 7\", made for a page footer: `#set page(footer: align(right, page-score-box()))`. Draws nothing on a page without points.",
-  fields: (
-    e.field(
-      "strings",
-      e.types.dict(content),
-      doc: "Its word, by the key `config`'s `strings` gives it under, `score`: `strings: (score: [Punkte])`. Left out, it is `config`'s.",
-      default: (:),
-    ),
-  ),
+  doc: "A box for the grader to write the page's score in (e.g. \"Score: ____ / 7\"). Meant for a page footer (e.g. `#set page(footer: align(right, page-score-box()))`). Shows nothing on a page without points. The word \"Score\" can be localized with `config`'s `strings`.",
 )
 
 /// A score box for the current page (see DOCS).
 #let page_score_box = define(_PAGE_SCORE_BOX, it => e.get(get => {
   let points = get_num_points_page()
   if points == 0 { return }
-  let strings = get(config).strings + it.strings
+  let strings = get(config).strings
   box(stroke: .5pt, inset: (x: .6em, y: .4em))[
     #strings.score: #box(width: 2.5em, stroke: (bottom: .5pt), outset: (bottom: .15em)) / #points
   ]
@@ -387,50 +386,47 @@
   if per == none or o.direction == "vertical" {
     table_of(entries)
   } else {
-    assert(per > 0, message: "examy: points-table: `max-columns` must be positive, found " + str(per))
+    assert(
+      per > 0,
+      message: "examy: points-table: `max-columns` must be positive, found " + str(per),
+    )
     entries.chunks(per).map(table_of).join()
   }
 }
 
 #let _POINTS_TABLE = declare_function(
   "points-table",
-  doc: "A scoring table with a column per question plus a total. Works anywhere in the document, even before the exam.\n\nEach argument left `auto` is `config`'s option of the same name, `points-table-..`, so that all of a document's tables can be set at once.",
+  doc: "A table of the points per question, with a total. Works anywhere in the document, even before the exam. Arguments set to `auto` use `config`'s `points-table-*` options.",
   fields: (
     e.field(
       "direction",
       e.types.union(auto, "horizontal", "vertical"),
-      doc: "`\"horizontal\"`, with a column per question, or `\"vertical\"`, with a row per question. `auto`: `config`'s `points-table-direction`.",
+      doc: "Determines the layout of the table: `\"horizontal\"` (a column per question) or `\"vertical\"` (a row per question).",
       default: auto,
     ),
     e.field(
       "by",
       e.types.union(auto, "question", "part", "subpart", "page"),
-      doc: "What to total the points by: `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"`. By part, each part has a column of its points and its subparts'; a question with points of its own has a column of them too, before its parts', and one with no parts with points has a column of its points. By subpart likewise, each part or question with points of its own having a column of them. Every point is in one column, so the total is the same either way. A column is labelled as a reference to its question or part reads, and links to it. By page, a page without points is left out. `auto`: `config`'s `points-table-by`.",
+      doc: "The table lists the points per question by default. However, this can be changed to list the points by `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"`.",
       default: auto,
     ),
     e.field(
       "score",
       e.types.union(auto, bool),
-      doc: "Whether to add an empty Score row (a column, when vertical) for the grader to fill in. `auto`: `config`'s `points-table-score`.",
+      doc: "Whether the table includes an empty row for a grader to fill in.",
       default: auto,
     ),
     e.field(
       "bonus",
       e.types.union(auto, bool),
-      doc: "Whether to add a Bonus row (a column, when vertical) with the bonus points, when the exam has any. `auto`: `config`'s `points-table-bonus`.",
+      doc: "Whether the table includes a row for the bonus points (only visible if the exam has bonus points).",
       default: auto,
     ),
     e.field(
       "max-columns",
       e.types.union(auto, int, none),
-      doc: "The most questions (or pages) a horizontal table shows side by side; more are split into several tables, one below the other, with the total in the last. `none` keeps them all in one table. `auto`: `config`'s `points-table-max-columns`.",
+      doc: "The maximum number of columns in a horizontal table. A wider table wraps to multiple rows. Use `none` for no limit.",
       default: auto,
-    ),
-    e.field(
-      "strings",
-      e.types.dict(content),
-      doc: "Its words, by the keys `config`'s `strings` gives them under (`question`, `page`, `points`, `bonus`, `score`, `total`), in place of `config`'s: `strings: (total: [Gesamt])`. Only the keys given are replaced.",
-      default: (:),
     ),
   ),
 )
@@ -442,7 +438,7 @@
   // Each option as given, else `config`'s.
   let pick(key) = if it.at(key) == auto { cfg.at("points-table-" + key) } else { it.at(key) }
   let o = (
-    strings: cfg.strings + it.strings,
+    strings: cfg.strings,
     direction: pick("direction"),
     by: pick("by"),
     score: pick("score"),
@@ -467,7 +463,9 @@
         // its label to: the markers after its start, before the next's.
         let starts = (:)
         for m in query(DIVISION_MARKER) {
-          if EXAMS_STARTED.at(m.location()).first() == i + 1 { starts.insert(repr(m.value), m.location()) }
+          if EXAMS_STARTED.at(m.location()).first() == i + 1 {
+            starts.insert(repr(m.value), m.location())
+          }
         }
         table_columns(rows, level).map(c => {
           let at = starts.at(repr(c.address), default: none)
@@ -489,16 +487,16 @@
 #let DOCS = (
   "points-table": _POINTS_TABLE,
   "num-questions": (
-    desc: "The total number of questions in the exam, shown: `#num-questions`. Works anywhere in the document. To compute or test with it, `get-num-questions()` gives it as a number.",
+    desc: "Displays the number of questions in the exam. Works anywhere in the document. Use `get-num-questions()` instead, if you need a number to compute with.",
   ),
   "num-points": (
-    desc: "The total number of regular (non-bonus, non-practice) points, shown: `#num-points`. Works anywhere in the document. To compute or test with it, `get-num-points()` gives it as a number.",
+    desc: "Displays the total points (not counting bonus and practice points). Works anywhere in the document. Use `get-num-points()` instead, if you need a number to compute with.",
   ),
   "num-bonus-points": (
-    desc: "The total number of bonus points, shown: `#num-bonus-points`. Works anywhere in the document. To compute or test with it, `get-num-bonus-points()` gives it as a number.",
+    desc: "Displays the total bonus points. Works anywhere in the document. Use `get-num-bonus-points()` instead, if you need a number to compute with.",
   ),
   "num-points-page": (
-    desc: "The number of points on the current page, shown: the points of each question, part, and subpart that starts on it, e.g. in a page footer. To compute or test with it, or for another page or the bonus points, `get-num-points-page()` gives it as a number.",
+    desc: "Displays the points on the current page (e.g. in a page footer). Use `get-num-points-page()` instead, if you need a number to compute with, or to access the number of points on a different page.",
   ),
   "get-num-questions": _GET_NUM_QUESTIONS,
   "get-num-points": _GET_NUM_POINTS,

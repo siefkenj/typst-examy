@@ -26,12 +26,12 @@
 
 #let _SHOW_SOLUTIONS = declare_function(
   "show-solutions",
-  doc: "Whether solutions are shown, `true` or `false`: the `--input show-solutions=..` command-line override if given, otherwise `config`'s `show-solutions`. Use it to conditionally render content that `#solution[..]` cannot wrap (e.g. one curve of a plot).",
+  doc: "Whether solutions are shown, taking the `--input show-solutions=..` command-line option into account. Use it for content that `#solution[..]` cannot wrap (e.g. one curve of a plot): `e.get(get => if show-solutions(get) [..])`.",
   fields: (
     e.field(
       "get",
       function,
-      doc: "The accessor provided by `e.get(get => ..)`.",
+      doc: "The `get` function given by `e.get(get => ..)`.",
       required: true,
       meta: (hint: "call it inside `e.get(get => ..)` and pass it `get`"),
     ),
@@ -132,7 +132,7 @@
 #let solution = e.element.declare(
   "solution",
   prefix: PREFIX,
-  doc: "Declare a solution to a question, part, or subpart; this is only rendered if the config option to show solutions is enabled.",
+  doc: "A solution to a question/part/subpart, shown only when solutions are shown (see `config`'s `show-solutions`).",
   display: it => {
     e.get(get => {
       // Hidden, a solution still leaves its rubrics where it stands
@@ -196,25 +196,25 @@
     e.field(
       "width",
       e.types.option(e.types.union(auto, relative)),
-      doc: "Width of the solution box. `auto` shrink-wraps it to its content; `none` lets the context choose (`answer-box` fills its width for a solution standing alone in a paragraph, otherwise it shrink-wraps).",
+      doc: "The width of the solution's box. Setting to `auto` fits the content; `none` lets the surrounding content decide (e.g. a solution on its own in an `#answer-box[..]` fills its width).",
       default: none,
     ),
     e.field(
       "color",
       e.types.union(auto, color),
-      doc: "The color the solution is drawn in. `auto` is `config`'s `solution-color`; when that is `auto` too, it is derived from the solution's background (see `config`'s `solution-color`).",
+      doc: "The color of the text of the solution. Setting to `auto` uses `config`'s `solution-color`.",
       default: auto,
     ),
     e.field(
       "background-color",
       e.types.union(auto, color),
-      doc: "The color behind the solution. `auto` is `config`'s `solution-background-color`; when that is `auto` too, it is derived from the solution's `color` by lightening.",
+      doc: "The background color for the solution. Setting to `auto` uses `config`'s `solution-background-color`.",
       default: auto,
     ),
     e.field(
       "otherwise",
       e.types.option(content),
-      doc: "What is shown in the solution's place when solutions are not: a blank to fill in, some lines to write on. In an `answer-box` with no `height`, the answer key draws the solution over it, in the space it takes, so the key lays out exactly like the exam; elsewhere, the solution replaces it.",
+      doc: "Content shown in place of the solution when solutions are hidden (e.g. lines to write on).",
       default: none,
     ),
     // Internal: how `answer-box` asks a solution standing alone in a paragraph

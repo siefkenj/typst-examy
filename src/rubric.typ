@@ -21,24 +21,26 @@
 
 #let _RUBRIC = declare_function(
   "rubric",
-  doc: "A rubric item, or a group of them, for grading the question, part, or subpart it belongs to: written in its `rubric:` field, or in its body (a solution, say) where the criterion is met, which a dotted line traces it back to. Drawn only when `config`'s `show-rubrics` says so, and invisible otherwise: it takes no room either way.\n\nA rubric whose body holds other rubrics is a group: the text before its first item is the group's title (its first paragraph; any more is a note under it), and the rubrics are its items. Groups can hold groups.",
+  doc: "A rubric item, or a group of items, for grading a question/part/subpart. Rubrics can be written in the question's `rubric` argument, or anywhere in its body (e.g. in a solution), where a dotted line traces them back to. Rubrics are only shown when `config`'s `show-rubrics` is set, and take up no space.
+
+  A rubric containing other rubrics is a group: its first paragraph is the group's title, and the rubrics inside are its items. Other text is shown as a note.",
   fields: (
     e.field(
       "body",
       e.types.union(content, str),
-      doc: "What the item is given for, or a group's title and items.",
+      doc: "The criterion for the item, or a group's title and items.",
       required: true,
     ),
     e.field(
       "points",
       e.types.union(int, float, none),
-      doc: "What the item changes the score by: positive for credit, negative for a deduction, `0` for feedback only. Rubric points are not counted in any total.",
+      doc: "The points awarded (positive) or deducted (negative). Rubric points are not added to any total.",
       default: none,
     ),
     e.field(
       "annotation",
       e.types.union(none, content, str),
-      doc: "A short note for the grader, set small at the right of the rubric's first line: beside a group's title, e.g. `annotation: [pick one]`, or beside an item's criterion. It changes nothing but what is shown.",
+      doc: "A short note for the grader, shown at the right of the rubric (e.g. `annotation: [pick one]`).",
       default: none,
     ),
   ),
@@ -616,7 +618,7 @@
 
 #let _RUBRIC_LIST = declare_function(
   "rubric-list",
-  doc: "Every rubric of the exam, each in its card, one after another: a grading guide of its own, e.g. on pages after the exam, or in a document that includes it. Works anywhere in the document, whatever `show-rubrics` says.",
+  doc: "Lists every rubric of the exam, whatever `show-rubrics` is set to (e.g. as a grading guide after the exam).",
 )
 
 /// Every rubric of the exam, each in its card, one after another (see

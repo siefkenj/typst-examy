@@ -816,7 +816,7 @@
   raw(shown.join("\n"), lang: "typ", block: true)
   doc(x.desc)
   if x.kind == "alias" {
-    par[Same as #raw(alias_code(x), lang: "typc"); takes the same arguments as #api(x.alias-of).]
+    par[Alias for #raw(alias_code(x), lang: "typc");; see #api(x.alias-of).]
   }
   if x.args.len() > 0 {
     let title = if x.kind == "element" and not x.show-signature [Fields] else [Arguments]
@@ -855,10 +855,76 @@
 /// it lists (see `config-options-check`).
 #let _CONFIG_OPTIONS_LISTED = <docs-config-options-listed>
 
-/// A table of some of `config`'s options, each a link to its reference, with
-/// its description.
+/// A table of some of `config`'s options, each a link to its reference with
+/// its default and type below it, and its description.
 #let config-options(..names) = {
   let args = entry("config").args
+  // A default on one line, or, when that is long (`strings`'), as written,
+  // over several lines.
+  let one-line(d) = d.replace(regex("\\(\\s*\n\\s*"), "(").replace(regex(",?\\s*\n\\s*\\)"), ")").replace(regex("\\s*\n\\s*"), " ")
+  let is-long(a) = one-line(a.default).len() > 24
+  let default-of(a) = if is-long(a) { a.default } else { one-line(a.default) }
+  // The name, and its default and type below it, slightly indented. They
+  // wrap (the type at its `|`s), so a long one does not widen the column
+  // past the name (or the widest piece of them).
+  let name-cell(a) = _either(
+    () => {
+      let meta(body) = html.elem("div", attrs: (class: "option-meta"), html.elem("div", attrs: (class: "arg-default"), body))
+      api("config", field: a.name)
+      if not a.required {
+        if is-long(a) {
+          meta[default:]
+          // Outside the `option-meta`s, so that the column fits it.
+          html.elem("div", attrs: (class: "option-pretty"), raw(default-of(a), lang: "typc", block: true))
+        } else {
+          meta[default: #raw(default-of(a), lang: "typc")]
+        }
+      }
+      if a.type != none {
+        // Each alternative, with its `|`, in one piece.
+        let ts = a.type.split(" | ")
+        let alts = ts.enumerate().map(((i, t)) => html.elem("span", if i < ts.len() - 1 { t + " |" } else { t }))
+        meta[type: #html.elem("code", attrs: (class: "arg-type"), alts.join(" "))]
+      }
+    },
+    () => context {
+      let name = api("config", field: a.name)
+      let indent = .6em.to-absolute()
+      let small(body) = text(size: .8em, fill: luma(90), body)
+      // Each line, with the pieces it wraps between, which the column must
+      // be wide enough for. A label stays with the start of what it labels.
+      let lines = ()
+      if not a.required {
+        let labelled(s) = small[default:#sym.space.nobreak#raw(s, lang: "typc")]
+        let d = default-of(a)
+        if is-long(a) {
+          // Not wrapped: as wide as its widest line.
+          let body = box(small(raw(d, lang: "typc")))
+          lines += ((small[default:], ()), (body, (body,)))
+        } else {
+          let ws = d.split(" ")
+          lines.push((labelled(d), (labelled(ws.first()),) + ws.slice(1).map(w => small(raw(w)))))
+        }
+      }
+      if a.type != none {
+        // Each alternative stays in one piece with its `|`.
+        let alts = a.type.split(" | ")
+        let alts = alts.enumerate().map(((i, t)) => box(raw(if i < alts.len() - 1 { t + " |" } else { t })))
+        let labelled(body) = small[type:#sym.space.nobreak#body]
+        lines.push((labelled(alts.join(" ")), (labelled(alts.first()),) + alts.slice(1).map(small)))
+      }
+      // At least wide enough for a short type on one line, as `content | none`.
+      let width = calc.max(
+        8em.to-absolute(),
+        measure(name).width - indent,
+        ..lines.map(((_, pieces)) => pieces).flatten().map(p => measure(p).width),
+      )
+      // The leading of their smaller size, not the text around them.
+      set par(justify: false, leading: .5em)
+      // Kept on one page with its row's start.
+      block(breakable: false, stack(spacing: .5em, name, ..lines.map(((x, _)) => pad(left: indent, block(width: width, x)))))
+    },
+  )
   let t = table(
     stroke: none,
     columns: (auto, 1fr),
@@ -868,7 +934,7 @@
       .map(n => {
         let a = args.find(a => a.name == n)
         assert(a != none, message: "config-options: `config` has no option `" + n + "`")
-        (api("config", field: n), doc(a.doc))
+        (name-cell(a), doc(a.doc))
       })
       .flatten(),
   )

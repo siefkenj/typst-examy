@@ -38,7 +38,6 @@
   numbers to compute with (`get-num-points()` and the others).
 - Numbering: `numbering` and `numbering-full`, for the whole exam or for one
   question and its parts, and `strings` to translate the words examy prints.
-  A points table and a page's score box take `strings` too.
 - Answer boxes: set rules (`#show: e.set_(answer-box, ..)`), `stroke`,
   `fill`, `radius`, `outset` and `clip`, a fractional width (`width: 1fr`),
   and `config` options for every box's size and look (`answer-box-*`).

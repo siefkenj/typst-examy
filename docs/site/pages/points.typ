@@ -188,10 +188,6 @@ Examy includes some fixed strings which can be localized via the `strings` optio
   the display of "points" in a question, use `points-format`
 ]
 
-A single table takes `strings` too, which replaces only the words it gives, e.g.
-`#points-table(strings: (total: [Gesamt]))`. So does #api("page-score-box", arg: "()"), for its
-`score`.
-
 == Computing with points
 
 The globally accessible variables #api("num-points", arg: ""), #api("num-bonus-points", arg: "") and

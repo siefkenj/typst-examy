@@ -532,12 +532,14 @@
 
 #let _CHOICE = declare_function(
   "choice",
-  doc: "A round or square bubble (used for multiple-choice questions) followed by the choice it labels. The two are kept whole, like a single word: a choice that wraps starts a line of its own, with its bubble on its first line and its further lines hanging under its content, not under the bubble.\n\nOn the answer key (when solutions are shown) a bubble marked `correct` is filled in and checked in the solution color, and its content is set in that color; otherwise it is drawn empty, so the same source gives both the exam and its key.\n\nFor a list of choices, use `choices`.",
+  doc: "A single bubble (round or square) followed by the choice it labels. For a list of choices, use `#choices[..]`.
+  
+  When solutions are shown, a `correct: true` bubble is filled in to indicate it is a correct choice.",
   fields: (
     e.field(
       "body",
       e.types.union(none, content, str, int, float),
-      doc: "The choice the bubble labels, shown after it. Omit it, or leave it empty (`#choice[]`), for a bare bubble, e.g. one in a table or a grid of its own.",
+      doc: "The text of the choice, shown after the bubble. Leave it out (e.g. `#choice[]`) for a bubble on its own.",
       named: false,
       default: none,
       meta: (
@@ -549,7 +551,7 @@
     e.field(
       "bubble",
       e.types.union(e.types.literal("circle"), e.types.literal("square"), function),
-      doc: "The shape of the bubble: round for \"select one\", square for \"select all that apply\".",
+      doc: "The shape of the bubble: `\"circle\"` for \"select one\", `\"square\"` for \"select all that apply\".",
       default: "circle",
       // Typst's own `circle` and `square` are taken too, and examy's
       // `bubble` and `square-bubble` (see `choice`), but not documented.
@@ -558,46 +560,40 @@
     e.field(
       "correct",
       bool,
-      doc: "Whether this choice is part of the answer, and so is filled in and checked when solutions are shown.",
+      doc: "Whether this choice is correct; has an effect only when solutions are shown.",
       default: false,
       meta: (hint: "write `true` or `false`"),
     ),
     e.field(
       "outset",
       e.types.union(auto, length, dictionary),
-      doc: "The space the bubble keeps around itself. A length sets the gap after the bubble, between it and its content (`outset: .6em`); a dictionary sets any of `left`, `right`, `top`, `bottom`, `x`, `y` and `rest`, as the [`inset` of a box](https://typst.app/docs/reference/layout/box/#parameters-inset) does, and leaves the sides it does not name as `config`'s `bubble-outset` has them.\n\n`auto` is `config`'s `bubble-outset`, whose default parts the bubble from whatever follows — its content, an answer box, the next choice — so a gap need not be written at the call site.",
+      doc: "The space around the bubble, specified like a [`box`'s `inset`](https://typst.app/docs/reference/layout/box/#parameters-inset).",
       default: auto,
       meta: (check: v => outset_error("choice", v, allow-auto: true), default-shown: repr(_OUTSET)),
     ),
     e.field(
       "size",
       e.types.smart(length),
-      doc: "The diameter of a round bubble, or the side of a square one. `auto` is "
-        + repr(_BUBBLE_SIZE)
-        + " round and "
-        + repr(_SQUARE_SIZE)
-        + " square (a little smaller across than the circle, so the two read alike), or as `config`'s `bubble-size` scales them; relative to the font size, so a bubble scales with the surrounding text.",
+      doc: "The diameter of a bubble. Setting to `auto` uses `config`'s `bubble-size`.",
       default: auto,
       meta: (hint: "such as `1.2em` or `12pt`"),
     ),
     e.field(
       "stroke",
       e.types.smart(length),
-      doc: "The thickness of the bubble's outline. `auto` is `config`'s `bubble-stroke`, which is `"
-        + repr(DEFAULT_BUBBLE_STROKE)
-        + "` unless it is set. Must not be negative; an outline thick enough to cover a filled-in bubble's check mark is drawn thinner (see `bubble-stroke`).",
+      doc: "The outline thickness of the bubble. Setting to `auto` uses `config`'s `bubble-stroke`.",
       default: auto,
     ),
     e.field(
-      "color",
+      "solution-color",
       e.types.union(auto, color),
-      doc: "The color a correct bubble is outlined and checked in, and its content set in, on the answer key. `auto` is `config`'s `solution-color`; when that is `auto` too, it is derived from `background-color`, as a solution's is.",
+      doc: "The primary color for a correct bubble; i.e., the color of its outline, check mark, and text when filled in. Setting to `auto` uses `config`'s `solution-color`.",
       default: auto,
     ),
     e.field(
-      "background-color",
+      "solution-background-color",
       e.types.union(auto, color),
-      doc: "The fill of a correct bubble on the answer key. `auto` is `config`'s `solution-background-color`; when that is `auto` too, it is derived from `color` by lightening.",
+      doc: "The background color for a correct bubble when filled in. Setting to `auto` uses `config`'s `solution-background-color`.",
       default: auto,
     ),
   ),
@@ -628,8 +624,8 @@
     size: it.size,
     outset: it.outset,
     stroke: it.stroke,
-    color: it.color,
-    background: it.background-color,
+    color: it.solution-color,
+    background: it.solution-background-color,
   )
 })
 
@@ -659,6 +655,6 @@
 /// (keyed by export name).
 #let DOCS = (
   choice: _CHOICE,
-  bubble: (alias-of: "choice", with: (bubble: "circle"), desc: "A round bubble, for \"select one\"."),
+  bubble: (alias-of: "choice", with: (bubble: "circle"), desc: "A round bubble (for \"select one\" multiple choice)."),
   "square-bubble": (alias-of: "choice", with: (bubble: "square"), desc: "A square bubble, for \"select all that apply\"."),
 )

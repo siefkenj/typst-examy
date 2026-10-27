@@ -25,6 +25,6 @@
 /// (keyed by export name).
 #let DOCS = (
   presets: (
-    desc: "Institution-specific argument sets. Currently `presets.utoronto.name-fields`: the University of Toronto name-block rows (NAME / Email address / UTORid), for `#name-block(fields: presets.utoronto.name-fields)`. (`name_fields`, its name in 0.4 and earlier, still works, but is deprecated.)",
+    desc: "Settings for specific institutions. Currently only `presets.utoronto.name-fields`, the University of Toronto rows for `#name-block(fields: presets.utoronto.name-fields)` (`name_fields` is a deprecated alias).",
   ),
 )

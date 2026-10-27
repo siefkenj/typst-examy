@@ -43,7 +43,15 @@
 
 /// What an answer box's outline and background take, as `box`'s `stroke`
 /// and `fill` do: `answer-box`'s fields and the options that give them.
-#let BOX_STROKE = e.types.union(none, length, color, gradient, tiling, e.types.exact(stroke), dictionary)
+#let BOX_STROKE = e.types.union(
+  none,
+  length,
+  color,
+  gradient,
+  tiling,
+  e.types.exact(stroke),
+  dictionary,
+)
 #let BOX_FILL = e.types.union(none, color, gradient, tiling)
 
 /// How questions, parts, and subparts are numbered when `numbering` is not
@@ -88,7 +96,9 @@
   e.types.wrap(
     base,
     check: _ => d => e.types.cast(words(d), base).first(),
-    cast: _ => d => e.types.cast(words(d), base).last() + formats(d).map(k => (k, d.at(k))).to-dict(),
+    cast: _ => d => (
+      e.types.cast(words(d), base).last() + formats(d).map(k => (k, d.at(k))).to-dict()
+    ),
     // Still a dictionary, folded as before: a rule's keys over the last's.
     output: prev => prev,
     fold: prev => prev,
@@ -99,7 +109,7 @@
 #let config = e.element.declare(
   "config",
   prefix: PREFIX,
-  doc: "Global configuration for an exam",
+  doc: "Examy's options. Set them with `#show: exam.with(..)` or `#show: e.set_(config, ..)`, and read them with `e.get(get => get(config).exam-name)`.",
   display: it => panic(
     "Config should not be displayed directly; instead use `e._set` to set properties on it.",
   ),
@@ -113,69 +123,73 @@
     e.field(
       "institution",
       e.types.option(content),
-      doc: "The institution name, shown by `maketitle`",
+      doc: "The institution name shown by `#maketitle()`",
     ),
     e.field(
       "exam-name",
       e.types.option(content),
-      doc: "The name of the exam, shown by `maketitle`",
+      doc: "The name of the exam (e.g. Midterm 1) shown by `#maketitle()`",
     ),
     e.field(
       "term",
       e.types.option(content),
-      doc: "The term of the exam (e.g. Fall 2026), shown by `maketitle`",
+      doc: "The term of the exam (e.g. Fall 2026) shown by `#maketitle()`",
     ),
     e.field(
       "duration",
       e.types.option(e.types.union(duration, content)),
-      doc: "The length of the exam, shown by `maketitle`: a [`duration`](https://typst.app/docs/reference/foundations/duration/), shown in minutes (`duration(minutes: 110)` as \"110 Minutes\"), or content, shown as it is (`[1 h 50 min]`)",
+      doc: "The length of the exam shown by `#maketitle()`. [`Duration`](https://typst.app/docs/reference/foundations/duration/)s are shown in minutes (e.g. `duration(hours: 1, minutes: 50)` shows as \"110 Minutes\"). Pass content for complete control over what is shown (e.g., pass `[1 h 50 min]`)",
     ),
     e.field(
       "show-rubrics",
       e.types.union(auto, bool),
-      doc: "Whether to show the rubrics of questions, parts, and subparts (see `rubric`). `auto` shows them where solutions are shown, on the answer key; the `--input show-rubrics=..` command-line option overrides it. A rubric that is not shown takes no room, so the exam lays out the same either way",
+      doc: "Whether to show rubrics (see `#rubric[..]`). Setting to `auto` shows rubrics whenever solutions are shown. The `--input show-rubrics=..` command-line option overrides this setting.",
       default: false,
     ),
     e.field(
       "rubric-position",
       e.types.union("margin-right", "margin-left", "end"),
-      doc: "Where a division's rubric is drawn.\n\n`\"margin-right\"` or `\"margin-left\"`: in the page margin, level with the division's first line, below the rubric before it when they would overlap. Widen the margin to make room for it (see `rubric-width`).\n\n`\"end\"`: after the division, its parts included, in the flow, taking room of its own",
+      doc: "Determines where rubrics are displayed.
+
+      `\"margin-right\"` or `\"margin-left\"`: in the page margin, next to the question/part/subpart they belong to (see `rubric-width`).
+
+      `\"end\"`: after the question/part/subpart, taking up space on the page. When set to `\"end\"`, visible rubrics will take up space in the document.",
       default: "margin-right",
     ),
     e.field(
       "rubric-trace",
       e.types.union(auto, bool),
-      doc: "Whether a rubric written in a division's body is traced by a dotted line from where it is written to its item in the rubric. `auto` traces them in the margins and not at the `\"end\"`",
+      doc: "Whether to draw a dotted line from each rubric item written in a question's text to the rubric. Setting to `auto` draws lines only for rubrics in the margin.",
       default: auto,
     ),
     e.field(
       "rubric-width",
       e.types.union(auto, length),
-      doc: "The width of a rubric in the margin. `auto` fills the page margin it is in, less a gap on either side",
+      doc: "The width of rubrics in the margin. Setting to `auto` fills the margin.",
       default: auto,
     ),
     e.field(
       "solution-color",
       e.types.union(auto, color),
-      doc: "The color solutions are drawn in: the text of a solution, the outline and check mark of a filled-in bubble. `auto` derives it from `solution-background-color`, or falls back to the package default if that is `auto` too",
+      doc: "The primary color for solutions; i.e., the color of the text of a solution or the outline and check mark of a filled-in bubble. Setting to `auto` derives it from `solution-background-color`",
       default: auto,
     ),
     e.field(
       "solution-background-color",
       e.types.union(auto, color),
-      doc: "The color behind a solution, and the fill of a filled-in bubble. `auto` derives it from `solution-color` by lightening",
+      doc: "The background color for a solution. Setting to `auto` derives it from `solution-color` by lightening",
       default: auto,
     ),
     e.field(
       "bubble-stroke",
       length,
-      doc: "The outline thickness of the bubbles drawn by `choice`, `bubble`, `square-bubble` and `choices`. An `em` length scales with the text around each bubble. Must not be negative; an outline thick enough to cover a filled-in bubble's check mark (about a fifth of the bubble's size) is drawn thinner, at the most that leaves the check mark clear",
+      doc: "The outline thickness of bubbles drawn by `#choice[..]`, `#bubble()`, `#square-bubble()`, and `#choices[..]`.",
       default: DEFAULT_BUBBLE_STROKE,
     ),
     e.field(
       "bubble-label-font",
       e.types.union(str, array),
-      doc: "The font the labels inside bubbles (`choices`' `enumerate`) are set in: a font name, or a list of them to fall back through, as [`text`'s `font`](https://typst.app/docs/reference/text/text/#parameters-font) takes. The default is the monospaced font bundled with Typst",
+      doc: "The font of the labels inside bubbles (see `choices-enumerate`).",
       default: DEFAULT_BUBBLE_LABEL_FONT,
       // Set as a whole: the default folding of arrays would append to it.
       folds: false,
@@ -183,19 +197,19 @@
     e.field(
       "bubble-size",
       e.types.union(auto, length),
-      doc: "The diameter of the round bubbles drawn by `choice`, `bubble`, `square-bubble` and `choices`, unless one is given `size`. A square bubble is drawn a little smaller across, in the same proportion as by default, so the two still read alike. `auto` is `1em`; an `em` length scales with the text around each bubble",
+      doc: "The diameter of bubbles drawn by `#choice[..]`, `#bubble()`, `#square-bubble()`, and `#choices[..]`. Setting to `auto` uses `1em` (which scales with the surrounding text).",
       default: auto,
     ),
     e.field(
       "bubble-outset",
       e.types.union(length, dictionary),
-      doc: "The space bubbles keep around themselves, unless one is given `outset`, as `choice`'s `outset` takes it: a length for the gap after the bubble, or a dictionary of sides (`left`, `right`, `top`, `bottom`, `x`, `y`, `rest`), the sides it does not name keeping their defaults",
+      doc: "The space around each bubble, specified like `#choice[..]`'s `outset`: a length (the gap after the bubble) or a dictionary of sides (`left`, `right`, `top`, `bottom`, `x`, `y`, `rest`).",
       default: DEFAULT_BUBBLE_OUTSET,
     ),
     e.field(
       "choices-enumerate",
       e.types.union(bool, str, function, array),
-      doc: "How `choices` labels its bubbles, unless it is given `enumerate` itself: `false` for no labels, `true` for A, B, C, …, a numbering pattern or function, as [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering) takes (`\"a\"`, `\"1\"`, `\"(i)\"`), or an array of labels, one per choice in turn (`(\"x\", \"y\", \"z\")`)",
+      doc: "Determines how `#choices[..]` labels its bubbles. Setting to `false` results in no labels; `true` results in A, B, C, …. A numbering pattern, function, or array of labels can be used (e.g., `\"a\"` or `(\"x\", \"y\", \"z\")`).",
       default: false,
       // Set as a whole: the default folding of arrays would append to it.
       folds: false,
@@ -203,61 +217,61 @@
     e.field(
       "choices-inline",
       bool,
-      doc: "Whether `choices` runs its choices together, side by side in a paragraph of their own, unless it is given `inline` or `columns`. Cannot be combined with `choices-columns`",
+      doc: "Show `#choices[..]` inline in a paragraph. If you would like a grid of choices, consider using `choices-columns` instead.",
       default: false,
     ),
     e.field(
       "choices-columns",
       e.types.option(int),
-      doc: "How many equal columns `choices` sets its choices in, unless it is given `inline` or `columns`. `none` sets them one per line. Cannot be combined with `choices-inline`",
+      doc: "Split `#choices[..]` into the specified number of columns. Setting to `none` results in a single column (i.e., each choice on its own line). Cannot be combined with `choices-inline`.",
       default: none,
     ),
     e.field(
       "choices-gap",
       e.types.union(auto, length, fraction),
-      doc: "The space between two choices of `choices`, unless it is given `gap`; see its `gap` for what `auto` and the others mean",
+      doc: "The space between items in a `#choices[..]` block. Setting to `auto` uses the usual line spacing for choices on separate lines, and `1.5em` for choices side by side. A fraction (e.g. `1fr`) spreads side-by-side choices across the line.",
       default: auto,
     ),
     e.field(
       "answer-box-height",
       e.types.union(auto, .._RELATIVE, fraction, none),
-      doc: "The `height` of an `answer-box` that is not given one, by its call or a set rule on `answer-box`. `none` sizes a box by what the exam shows in it, and a blank one takes `answer-box-default-height`; see `answer-box`'s `height` for the others",
+      doc: "The default height of an `#answer-box[..]`. When `none`, a non-empty box is sized to fit its contents, excluding `#solution[..]`s. When `auto` a non-empty box will fit its content including `#solution[..]`s. An empty box gets `answer-box-default-height`.",
       default: none,
     ),
     e.field(
       "answer-box-width",
       e.types.union(auto, .._RELATIVE, fraction),
-      doc: "The `width` of an `answer-box` that is not given one, by its call or a set rule on `answer-box`. `auto` is the full width for a box with a fractional height (`1fr`), and `answer-box-default-width` otherwise",
+      doc: "The default width of an `#answer-box[..]`. When `auto`, a box is `answer-box-default-width` wide, or full width if its height is fractional (e.g. `1fr`).",
       default: auto,
     ),
     e.field(
       "answer-box-stroke",
       BOX_STROKE,
-      doc: "The `stroke` of an `answer-box` that is not given one, by its call or a set rule on `answer-box`: its outline, as [`box`'s `stroke`](https://typst.app/docs/reference/layout/box/#parameters-stroke) takes it. `none` leaves blank space, and `(bottom: .5pt)` draws a single rule to write on",
+      doc: "The outline stroke of an `#answer-box[..]`, specified like a [`box`'s `stroke`](https://typst.app/docs/reference/layout/box/#parameters-stroke) (e.g. `(bottom: .5pt)` for a single line to write on).",
       default: .5pt,
     ),
     e.field(
       "answer-box-fill",
       BOX_FILL,
-      doc: "The `fill` of an `answer-box` that is not given one, by its call or a set rule on `answer-box`: its background, as [`box`'s `fill`](https://typst.app/docs/reference/layout/box/#parameters-fill) takes it, e.g. `luma(245)`",
+      doc: "The background fill of an `#answer-box[..]`, specified like a [`box`'s `fill`](https://typst.app/docs/reference/layout/box/#parameters-fill) (e.g. `luma(245)`).",
       default: none,
     ),
     e.field(
       "answer-box-default-height",
       length,
-      doc: "The height of an `answer-box` that is blank on the exam and has a `height` of `none`, unless it is given `default-height`",
+      doc: "The height of an empty `#answer-box[..]` with an otherwise unspecified height.",
       default: 2cm,
     ),
     e.field(
       "answer-box-default-width",
       length,
-      doc: "The width of an `answer-box` with a `width` of `auto` and a height that is not a fraction, unless it is given `default-width`",
+      doc: "The width of an `#answer-box[..]` with a width of `auto`, unless its height is a fractional unit (e.g. `2fr`).",
       default: 2cm,
     ),
     e.field(
       "numbering",
       e.types.union(str, function, e.types.array(e.types.union(str, function))),
-      doc: "How questions, parts, and subparts are numbered, as [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering) takes it: a pattern such as `\"1.a.i.\"`, whose counting symbols number the levels in turn (the last one any deeper levels), or a function of the number. Or an array of them, one per level, e.g. `(\"Problem 1.\", \"(a)\", \"i.\")`, levels past its end numbered `\"1.\"`.\n\nA reference drops a pattern's trailing `.`, so `@label` reads \"Problem 1 (a)\"; a function's result is used as it is",
+      doc: "Determines how questions, parts, and subparts are numbered. This option behaves like [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering), taking a numbering pattern (e.g. `\"1.a.i.\"`) or a function that generates a label. In addition, `numbering` also accepts an array of numbering patterns (e.g. `(\"Problem 1.\", \"(a)\", \"i.\")`), with the left-most pattern applying to the highest level (almost always the `#question[]`).",
       default: DEFAULT_NUMBERING,
       // Set as a whole: the default folding of arrays would append to it.
       folds: false,
@@ -265,73 +279,85 @@
     e.field(
       "indent",
       length,
-      doc: "How far the body of a question, part, or subpart is indented from the one it is in, unless it is given `indent`",
+      doc: "The indentation level to use for a question/part/subpart",
       default: DEFAULT_INDENT,
     ),
     e.field(
       "numbering-full",
       bool,
-      doc: "Whether a part or subpart is numbered with the numbers of the divisions it is in, as [`enum`'s `full`](https://typst.app/docs/reference/model/enum/#parameters-full) does: `\"1.a.\"` numbers part (a) of question 1 \"1.a.\", and a function is given every level's number, `(1, 1)`. With an array of `numbering`s, a level's entry numbers it so if it has a counting symbol for each level (`(\"1.\", \"1.a.\")`); otherwise it is the number above it followed by its own, after a thin space and without the trailing `.` or `,` of the one above (\"1 (a)\"), unless every level is a number in digits, which keep their punctuation (\"1.1.\"). A reference then reads as the full number too, \"1.a\", and a question whose body starts with a part shows only the part's number on their shared line, which holds its own. A level whose numbers are not all counted (a division given `number: [..]` or `none`, or one inside it) is numbered on its own",
+      doc: "Similar to [`enum`'s `full`](https://typst.app/docs/reference/model/enum/#parameters-full), if set, ensures that question/part/subparts get globally unique identifiers (e.g., part (a) of question 1 would be labeled as \"1.a.\"). This also affects `@name` references to questions.",
       default: false,
     ),
     e.field(
       "strings",
       _STRINGS_TYPE,
-      doc: "The words examy prints itself, keyed by `question`, `page`, `points`, `bonus`, `score`, and `total`. Only the keys given are replaced, e.g. `strings: (total: [Gesamt])`. The points badge's words are set by `points-format` and `bonus-points-format`",
+      doc: "Words that can be localized to different languages. These include `question`, `page`, `points`, `bonus`, `score`, and `total`. Any subset of these may be set.
+      
+      Note: the words in points badges are set by `points-format` and `bonus-points-format`",
       default: DEFAULT_STRINGS,
     ),
     e.field(
       "points-format",
       e.types.union(auto, function),
-      doc: "How the points badge of a question, part, or subpart is drawn: a function taking the number of points and returning content, e.g. `p => [[#p]]` or `p => [(#p Punkte)]`. `auto` is \"(1 point)\", \"(2 points)\". Bonus points are drawn by `bonus-points-format`",
+      doc: "A function `(points) => [content]` that determines how points are visibly displayed. Defaults to a function that renders `(X points)`. Other examples include `p => [[#p]]` or `p => [(#p Punkte)]`.",
       default: auto,
     ),
     e.field(
       "bonus-points-format",
       e.types.union(auto, function),
-      doc: "How the points badge of a question, part, or subpart with `intent: \"bonus\"` is drawn, as `points-format` draws the others: a function taking the number of points and returning content, e.g. `p => [[#p bonus]]` or `p => [(#p Bonuspunkte)]`. `auto` is \"(1 bonus point)\", \"(2 bonus points)\"",
+      doc: "A function `(bonus-points) => [content]` that determines how bonus points are visibly displayed. Defaults to a function that renders `(X bonus points)`.",
       default: auto,
     ),
     e.field(
       "points-position",
       e.types.union("start", "margin-left", "margin-right", "end"),
-      doc: "Where the points badge is drawn.\n\n`\"start\"`: before the first word of the body.\n\n`\"margin-left\"` or `\"margin-right\"`: in the page margin, level with the body's first line. The margin must be wide enough to hold it.\n\n`\"end\"`: flush right, after all of the body's own text (answer boxes included) and before its first part. After an `fr` box, the box gives up a line to it",
+      doc: "Determines where the points are visibly displayed.
+      
+      `\"start\"`: before the question text.
+      
+      `\"margin-left\"` or `\"margin-right\"`: in the page margin.
+      
+      `\"end\"`: right-aligned, after the question text",
       default: "start",
     ),
     e.field(
       "points-show-totals",
       bool,
-      doc: "Whether a question or part whose parts have points shows their total in its own badge: a question with two parts of 2 points each shows \"(4 points)\". The total is only shown; it is not counted again. A question with points of its own as well as on its parts shows a warning in red in place of its badge, as the two cannot both be its total",
+      doc: "When set to `true`, a question/part/subpart whose parts/subparts have points shows a total even when it is not given points itself: the sum of the points of its parts/subparts. One with no points of its own and none in its parts/subparts still shows none.
+      
+      For example, `#question[#part(points: 2)[]]` shows `1. (2 points)`, with `(a) (2 points)` on the line below.
+      
+      When set, a question that is assigned points while its parts/subparts are too shows a warning in red in place of its points.",
       default: false,
     ),
     e.field(
       "points-table-direction",
       e.types.union("horizontal", "vertical"),
-      doc: "The layout of `points-table`, unless it is given `direction`: `\"horizontal\"` with a column per question, or `\"vertical\"` with a row per question",
+      doc: "Determines the layout of `#points-table()`: `\"horizontal\"` (a column per question) or `\"vertical\"` (a row per question).",
       default: "horizontal",
     ),
     e.field(
       "points-table-by",
       e.types.union("question", "part", "subpart", "page"),
-      doc: "What `points-table` totals the points by, unless it is given `by`: `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"` (see `points-table`)",
+      doc: "A `#points-table()` lists the points per question by default. However, this can be changed to list the points by `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"`.",
       default: "question",
     ),
     e.field(
       "points-table-score",
       bool,
-      doc: "Whether `points-table` has an empty Score row (a column, when vertical) for the grader to fill in, unless it is given `score`",
+      doc: "Whether `#points-table()` includes an empty row for a grader to fill in.",
       default: false,
     ),
     e.field(
       "points-table-bonus",
       bool,
-      doc: "Whether `points-table` has a Bonus row (a column, when vertical) with the bonus points, when the exam has any, unless it is given `bonus`",
+      doc: "Whether `#points-table()` includes a row for the bonus points (only visible if the exam has bonus points).",
       default: false,
     ),
     e.field(
       "points-table-max-columns",
       e.types.option(int),
-      doc: "The most questions (or pages) a horizontal `points-table` shows side by side, unless it is given `max-columns`; more are split into several tables, one below the other, with the total in the last. `none` keeps them all in one table",
+      doc: "The maximum number of columns in a horizontal `#points-table()`. A wider table wraps to multiple rows. Use `none` for no limit.",
       default: none,
     ),
     // The name `solution-color` had in 0.3 and earlier, when it colored only the
@@ -340,7 +366,7 @@
     e.field(
       "solution-text-color",
       e.types.union(auto, color),
-      doc: "Deprecated: the old name of `solution-color`, still accepted. Ignored when `solution-color` is set",
+      doc: "Deprecated: alias of `solution-color`. Use `solution-color` instead.",
       default: auto,
     ),
     // Internal: set while `answer-box` lays out its body as the exam shows
@@ -440,7 +466,9 @@
     // render.typ): as a share of the page (`none`), as `_fr-unit` each, or,
     // on a page of no fixed height, where a share comes to nothing, as tall
     // as what they hold (`auto`).
-    fr-unit: if cfg._fr-unit != none { cfg._fr-unit } else if page.height == auto { auto } else { none },
+    fr-unit: if cfg._fr-unit != none { cfg._fr-unit } else if page.height == auto { auto } else {
+      none
+    },
     // `shown` is resolved by the exam, which knows whether solutions are shown
     // (see `show_rubrics`), and `present`, whether it has rubrics at all, and
     // so `drawn`, whether they are drawn, and `traced`, whether their leaders
@@ -514,7 +542,10 @@
     let kind = r.at("kind", default: none)
     if kind == "apply" {
       stack += r.at("rules", default: ()).rev()
-    } else if kind in ("set", "cond-set") and r.at("element", default: (:)).at("eid", default: none) == e.eid(config) {
+    } else if (
+      kind in ("set", "cond-set")
+        and r.at("element", default: (:)).at("eid", default: none) == e.eid(config)
+    ) {
       found.push(r)
     }
   }

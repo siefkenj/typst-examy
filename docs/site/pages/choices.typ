@@ -113,9 +113,9 @@ Relevant options are:
 / `bubble-outset`: The space around every bubble, as `outset` gives it.
 
 A single `choice` takes `size`, `stroke`, and `outset` itself, and a single `choices` takes
-`stroke` and `label-font`. Each wins over the global option. Both also take `color` and
-`background-color`, which set the colors of a correct bubble on the answer key in place of
-`solution-color` and `solution-background-color`.
+`stroke` and `label-font`. Each wins over the global option. Both also take `solution-color` and
+`solution-background-color`, which set the colors of a correct bubble on the answer key in place of
+the global options of the same names.
 
 
 == Custom layouts

@@ -7,7 +7,7 @@
 // the visual record at the end can show it as written.
 #import "/src/scan.typ": (
   extract_height, has_rubric, is_break, is_whitespace_content, rubric_markers, scan,
-  starts_inline, trim_leading_space,
+  split_first_par, starts_inline, trim_leading_space,
 )
 #import "/src/markers.typ": begin_marker, end_marker, height_hint
 #import "/src/divisions.typ": part, question
@@ -140,6 +140,31 @@
   assert(repr(trimmed.func()) == "styled")
 }
 
+// --- split_first_par: whether anything is before the cut, and after it ---
+// What is before it never ends a paragraph, and what is after it starts
+// with what ends one.
+#let split_shape(c) = {
+  let (before, after) = split_first_par(c)
+  if before != none { assert.eq(split_first_par(before).last(), none, message: repr(before)) }
+  if after != none { assert.eq(split_first_par(after).first(), none, message: repr(after)) }
+  (before != none, after != none)
+}
+#let SPLIT_FIRST_PAR = check("split_first_par", split_shape, (
+  ("one paragraph", (true, false)),
+  ("first\n\nsecond", (true, true)),
+  ("#parbreak()text", (false, true)),
+  ("text #block[a block] more", (true, true)),
+  // Through styles, the cut keeping them on both sides.
+  ("#set text(fill: red)\nfirst\n\nsecond", (true, true)),
+  // Since Typst 0.15, any `place` ends the paragraph, floating or not.
+  ("before #place(right, dx: 1in)[note] after", (true, true)),
+  ("before #place(top, float: true)[note] after", (true, true)),
+))
+// Nested deeper than Typst lets a function recurse: a `styled` for each of
+// 300 set rules.
+#let DEEP = "a " + "#set text(size: 10pt)\n" * 300 + "b\n\nc"
+#assert.eq(split_shape(ev(DEEP)), (true, true))
+
 #let WHITESPACE = check("is_whitespace_content", is_whitespace_content, (
   (" ", true),
   ("#parbreak()", true),
@@ -214,3 +239,15 @@
 #record([`starts_inline`: whether a body begins inline (`none`: invisible).], starts_inline, STARTS_INLINE)
 #record([`trim_leading_space`: the body with its leading space removed.], c => repr(trim_leading_space(c)), TRIM, fmt: x => x)
 #record([`is_whitespace_content`: nothing visible.], is_whitespace_content, WHITESPACE)
+#record(
+  [`split_first_par`: whether anything is before the first paragraph's end, and after it.],
+  split_shape,
+  SPLIT_FIRST_PAR,
+)
+#rule[`split_first_par`, nested deeper than Typst lets a function recurse]
+#cases(
+  ([Source], [Expected], [Got]),
+  raw("a ⏎ " + "#set text(size: 10pt)⏎" + " (300 times) b⏎⏎c"),
+  raw(repr((true, true))),
+  raw(repr(split_shape(ev(DEEP)))),
+)
