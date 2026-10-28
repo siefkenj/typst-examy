@@ -4,7 +4,7 @@
   bubble, check_enumerate, choice_label, draw_choice, enumerate_count_error, enumerate_error, shape_error, shape_name,
   square_bubble,
 )
-#import "../signature.typ": UNSET, declare_function, define, unset_or
+#import "../signature.typ": declare_function, define
 #import "../markers.typ": excerpt
 
 /// The default space between two choices side by side, inline or in columns
@@ -253,60 +253,66 @@
     e.field(
       "inline",
       e.types.union(auto, bool),
-      doc: "Show the choices inline in a paragraph. If you would like a grid of choices, consider using `columns` instead.",
+      doc: "Show the choices inline in a paragraph. If you would like a grid of choices, consider using `columns` instead. Setting to `auto` uses `config`'s `choices-inline`.
+
+      Note: `inline` and `columns` are taken together: giving either one ignores both of `config`'s `choices-inline` and `choices-columns`.",
       default: auto,
-      meta: (hint: "write `true` or `false`"),
+      meta: (config: "choices-inline", hint: "write `true` or `false`"),
     ),
     e.field(
       "columns",
-      unset_or(int, none),
-      doc: "Split the choices into the specified number of columns. Setting to `none` results in a single column (i.e., each choice on its own line). Cannot be combined with `inline`.",
-      default: UNSET,
+      e.types.union(auto, int, none),
+      doc: "Split the choices into the specified number of columns. Setting to `none` results in a single column (i.e., each choice on its own line). Cannot be combined with `inline`. Setting to `auto` uses `config`'s `choices-columns`.",
+      default: auto,
       meta: (
+        config: "choices-columns",
         hint: "give a number of columns, such as `columns: 2`",
         check: v => if type(v) == int and v < 1 {
           "choices: `columns` must be a number of columns, such as `columns: 2`, got " + repr(v)
         },
-        default-shown: "none",
       ),
     ),
     e.field(
       "gap",
-      unset_or(auto, length, fraction),
-      doc: "The space between the choices. Setting to `auto` uses the usual line spacing for choices on separate lines, and `1.5em` for choices side by side. A fraction (e.g. `1fr`) spreads side-by-side choices across the line.",
-      default: UNSET,
-      meta: (hint: "give a length, such as `1em`", default-shown: "auto"),
+      e.types.union(auto, length, fraction),
+      doc: "The space between the choices. A fraction (e.g. `1fr`) spreads side-by-side choices across the line. Setting to `auto` uses `config`'s `choices-gap`.",
+      default: auto,
+      meta: (config: "choices-gap", hint: "give a length, such as `1em`"),
     ),
     e.field(
       "stroke",
       e.types.smart(length),
       doc: "The outline thickness of the bubbles. Setting to `auto` uses `config`'s `bubble-stroke`.",
       default: auto,
+      meta: (config: "bubble-stroke"),
     ),
     e.field(
       "label-font",
       e.types.union(auto, str, array),
-      doc: "The font of the labels inside the bubbles, relevant when `enumerate: true` is set.",
+      doc: "The font of the labels inside the bubbles, relevant when `enumerate: true` is set. Setting to `auto` uses `config`'s `bubble-label-font`.",
       default: auto,
+      meta: (config: "bubble-label-font"),
     ),
     e.field(
       "solution-color",
       e.types.union(auto, color),
       doc: "The primary color for the correct bubbles; i.e., the color of their outlines, check marks, and text when filled in. Setting to `auto` uses `config`'s `solution-color`.",
       default: auto,
+      meta: (config: "solution-color"),
     ),
     e.field(
       "solution-background-color",
       e.types.union(auto, color),
       doc: "The background color for the correct bubbles when filled in. Setting to `auto` uses `config`'s `solution-background-color`.",
       default: auto,
+      meta: (config: "solution-background-color"),
     ),
     e.field(
       "enumerate",
       e.types.union(auto, bool, str, function, array),
       doc: "Determines how the bubbles are labelled. Setting to `false` results in no labels; `true` results in A, B, C, …. A numbering pattern, function, or array of labels can be used (e.g., `\"a\"` or `(\"x\", \"y\", \"z\")`). Setting to `auto` uses `config`'s `choices-enumerate`.",
       default: auto,
-      meta: (check: v => enumerate_error(v, "choices", allow-auto: true)),
+      meta: (config: "choices-enumerate", check: v => enumerate_error(v, "choices", allow-auto: true)),
     ),
   ),
   aliases: _CORRECT_ALIASES
@@ -342,9 +348,9 @@
     let cfg = get(config)
     // The layout, as the call gives it, or else as `config` does: the two
     // options together, as they cannot be combined.
-    let given = it.inline != auto or it.columns != UNSET
+    let given = it.inline != auto or it.columns != auto
     let (inline, columns) = if given {
-      (it.inline == true, if it.columns == UNSET { none } else { it.columns })
+      (it.inline == true, if it.columns == auto { none } else { it.columns })
     } else { (cfg.choices-inline, cfg.choices-columns) }
     let layout = if given { "choices: `inline` and `columns`" } else { "config: `choices-inline` and `choices-columns`" }
     assert(
@@ -356,7 +362,7 @@
       message: "config: `choices-columns` must be a number of columns, such as `choices-columns: 2`, got "
         + repr(columns),
     )
-    let (gap, gap_name) = if it.gap == UNSET { (cfg.choices-gap, "config: a fractional `choices-gap`") } else {
+    let (gap, gap_name) = if it.gap == auto { (cfg.choices-gap, "config: a fractional `choices-gap`") } else {
       (it.gap, "choices: a fractional `gap`")
     }
     assert(

@@ -98,6 +98,31 @@
   assert(calc.abs((tall - 2cm).to-absolute().pt()) < .5, message: repr(tall))
 }
 
+// --- `_fr-unit: 1fr`: in a block of fixed height on a page of no fixed
+// height, `fr` boxes share the block, as on a page of fixed height ---
+#let in-block(way) = block(height: 4cm, stroke: .5pt + luma(200), {
+  show: e.set_(config, ..if way == "unit" { (_fr-unit: 1fr) })
+  [#metadata((case: 3, way: way, top: true))<block-top>]
+  exam[
+    #question[Room below. #answer-box(width: 100%, height: 1fr)[]]
+    #question[#mark(3, way)Next.]
+  ]
+})
+#page(height: auto)[
+  #rule[A page of no fixed height, `_fr-unit: 1fr`: the box fills the 4cm block, "Next." at its bottom.]
+  #in-block("unit")
+]
+#pagebreak()
+#rule[The same block on a page of fixed height, without `_fr-unit`.]
+#in-block("other")
+#context {
+  let below(way) = {
+    let top = query(<block-top>).find(m => m.value.way == way).location().position().y
+    at(3, way).y - top
+  }
+  assert.eq(below("unit"), below("other"), message: "case 3")
+}
+
 #for (i, (desc, doc)) in CASES.enumerate() {
   for way in ("unit", "other") {
     pagebreak()

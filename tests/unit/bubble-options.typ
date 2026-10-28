@@ -170,9 +170,14 @@
   choices(gap: 1em, three),
 )
 #alike(
-  [and a call's `gap: auto` wins over it.],
+  [and a call's `gap: auto` takes it;],
   { show: e.set_(config, choices-gap: 1em); choices(gap: auto, three) },
-  choices(three),
+  choices(gap: 1em, three),
+)
+#alike(
+  [as a call's `columns: auto` takes `choices-columns`.],
+  { show: e.set_(config, choices-columns: 2); choices(columns: auto, three) },
+  choices(columns: 2, three),
 )
 #context assert.ne(measure(choices(gap: 1em, three)), measure(choices(three)), message: "a gap spaces them")
 

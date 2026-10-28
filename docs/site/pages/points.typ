@@ -142,14 +142,14 @@ Multiple points tables can be included in an exam, and a points table can be cus
   width: 9cm,
 )
 
-By default, a points table has a column per question. Specifying `by:` as `"part"` or `subpart` will
-create columns for each part or subpart instead.
+By default, a points table has a column per question. Specifying `granularity:` as `"part"` or
+`"subpart"` will create columns for each part or subpart instead.
 
 #example(
   ```typ
   #show: exam
 
-  #points-table(by: "part")
+  #points-table(granularity: "part")
 
   #question(points: 2)[What is $2 + 2$?]
   #question[

@@ -1,10 +1,10 @@
 // The options a question, part, or subpart takes for itself, beside the
-// exam's: `numbering`, `rubric-position`, `rubric-trace` and `rubric-width`,
-// for itself and the divisions in it unless they give their own, and
-// `indent`, for itself, `config`'s `indent` where it gives none.
+// exam's: `numbering`, for itself and the divisions in it unless they give
+// their own, and `indent`, for itself, `config`'s `indent` where it gives
+// none. (A `config` rule around them sets `rubric-position`: see
+// tests/unit/scoped-config.typ.)
 #import "/src/lib.typ": *
 #import "/src/points.typ": _exam_rows
-#import "/src/rubric.typ": AREA
 #import "/tests/record.typ": rule
 
 #set page(width: 6in, height: auto, margin: (x: 1.5in, y: .5in))
@@ -108,40 +108,6 @@
       }
     }
   }
-}
-
-// --- rubric options: a question's, and its parts' ---
-#probed(
-  "rubrics",
-  [`rubric-position: "end"` on question 2, its part's rubric too; question 3's part in the left margin, by its own
-    option.],
-  [
-    #question(rubric: rubric(points: 1)[First.])[One.]
-    #question(rubric-position: "end", rubric: rubric(points: 1)[Second.])[
-      Two. #part(rubric: rubric(points: 1)[Its part.])[A part.]
-    ]
-    #question(rubric: rubric(points: 1)[Third.])[
-      Three. #part(rubric-position: "margin-left", rubric-width: 2cm, rubric: rubric(points: 1)[Left.])[A part.]
-    ]
-  ],
-  show-rubrics: true,
-  rubric-position: "margin-right",
-)
-#context {
-  let exam = query(AREA).map(m => m.value.id.exam).dedup()
-  assert.eq(exam.len(), 1, message: "one exam has rubrics")
-  let sides = query(AREA).map(m => m.value).map(a => (a.id.address, a.side))
-  assert.eq(
-    sides.sorted(key: s => repr(s.first())),
-    (
-      ((0,), "margin-right"),
-      ((1,), "end"),
-      ((1, 0), "end"),
-      ((2,), "margin-right"),
-      ((2, 0), "margin-left"),
-    ).sorted(key: s => repr(s.first())),
-    message: repr(sides),
-  )
 }
 
 // --- `indent`: `config`'s, and a division's own ---

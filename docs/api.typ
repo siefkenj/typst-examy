@@ -79,24 +79,37 @@
   if v.em == 0 { written } else { repr(v.em) + "em + " + written }
 }
 
+/// The names of `config`'s options.
+#let CONFIG_OPTIONS = e.data(lib.config).at("user-fields").keys()
+
 /// One argument, from an `e.field` (an element's or a function's):
-/// `(name, type, doc, required, named, variadic, default)`, where `type` and
-/// `default` are written as Typst code (`default` is `none` for a required
-/// argument). `variadic` is false: only a function's `rest` is (see
+/// `(name, type, doc, required, named, variadic, default, config)`, where
+/// `type` and `default` are written as Typst code (`default` is `none` for a
+/// required argument), and `config` is the `config` option its default
+/// comes from, if any. `variadic` is false: only a function's `rest` is (see
 /// EXPORTS).
 /// A field's `meta` can give either as it is to be shown, as `type-shown` or
-/// `default-shown`: a type that takes more than is documented, say.
-#let field_to_arg(f) = (
-  name: f.name,
-  type: f.meta.at("type-shown", default: describe_type(f.typeinfo)),
-  required: f.required,
-  named: f.named,
-  variadic: false,
-  default: if f.required { none } else {
-    f.meta.at("default-shown", default: show_value(f.at("default", default: none)))
-  },
-  doc: _sentence(f.doc),
-)
+/// `default-shown`: a type that takes more than is documented, say. Its
+/// `config` names the option (see `config` in `meta`, e.g. src/points.typ).
+#let field_to_arg(f) = {
+  let option = f.meta.at("config", default: none)
+  assert(
+    option == none or option in CONFIG_OPTIONS,
+    message: "argument `" + f.name + "`: its `config` meta, " + repr(option) + ", is not an option of `config`",
+  )
+  (
+    name: f.name,
+    type: f.meta.at("type-shown", default: describe_type(f.typeinfo)),
+    required: f.required,
+    named: f.named,
+    variadic: false,
+    default: if f.required { none } else {
+      f.meta.at("default-shown", default: show_value(f.at("default", default: none)))
+    },
+    doc: _sentence(f.doc),
+    config: option,
+  )
+}
 
 /// The arguments of a set of fields, leaving out internal ones.
 #let _args(fields) = fields.filter(f => not f.at("internal", default: false)).map(field_to_arg)
@@ -147,6 +160,7 @@
             named: true,
             variadic: true,
             default: none,
+            config: none,
           ))
         }
       } else if entry.alias-of != none {

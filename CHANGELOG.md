@@ -28,14 +28,16 @@
 - `#show: exam` makes the rest of the document the exam, and `exam` takes any
   `config` option: `#show: exam.with(show-solutions: true)`.
 - Rubrics: `rubric` items and groups, drawn in the margin or after each
-  question with `show-rubrics`, `rubric-list` for a grading guide, and the
-  rubrics as data (`<examy-rubric>`) to export as JSON.
+  question with `show-rubrics`, with a dotted line from where each item is
+  written (`rubric-trace`, or an item's own `trace`), `rubric-list` for a
+  grading guide, and the rubrics as data (`<examy-rubric>`) to export as
+  JSON.
 - Points: badges in the margin or at the end (`points-position`), drawn by
   `points-format` and `bonus-points-format`; totals of parts
-  (`points-show-totals`); points tables by question, part, subpart or page,
-  vertical, with Score and Bonus rows, split over several rows of columns;
-  points per page (`num-points-page`, `page-score-box`); and the counts as
-  numbers to compute with (`get-num-points()` and the others).
+  (`points-show-totals`); points tables by question, part, subpart or page
+  (`granularity`), vertical, with Score and Bonus rows, split over several
+  rows of columns; points per page (`num-points-page`, `page-score-box`); and
+  the counts as numbers to compute with (`get-num-points()` and the others).
 - Numbering: `numbering` and `numbering-full`, for the whole exam or for one
   question and its parts, and `strings` to translate the words examy prints.
 - Answer boxes: set rules (`#show: e.set_(answer-box, ..)`), `stroke`,
@@ -74,6 +76,7 @@
 - `answer-box`'s `default_height` and `default_width`: use `default-height`
   and `default-width`.
 - `presets.utoronto.name_fields`: use `presets.utoronto.name-fields`.
+- `solution`'s `boxed`: ignored. Solutions are always drawn in a box.
 
 ### Fixed
 

@@ -193,7 +193,7 @@
 // each once, also behind a set rule.
 #let KEPT_CASES = (
   ("#solution[x #rubric(points: 1)[A]]", 0, 1),
-  ("#{ show: e.set_(solution, boxed: false); solution[x #rubric(points: 1)[A]] }", 0, 1),
+  ("#{ show: e.set_(solution, width: 2cm); solution[x #rubric(points: 1)[A]] }", 0, 1),
   ("#solution[x #rubric(points: 1)[A]] #parbreak() #solution[y #rubric(points: 2)[B]]", 0, 2),
 )
 #for (src, default, kept) in KEPT_CASES {

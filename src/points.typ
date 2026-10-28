@@ -396,37 +396,42 @@
 
 #let _POINTS_TABLE = declare_function(
   "points-table",
-  doc: "A table of the points per question, with a total. Works anywhere in the document, even before the exam. Arguments set to `auto` use `config`'s `points-table-*` options.",
+  doc: "A table of the points per question, with a total.",
   fields: (
     e.field(
       "direction",
       e.types.union(auto, "horizontal", "vertical"),
-      doc: "Determines the layout of the table: `\"horizontal\"` (a column per question) or `\"vertical\"` (a row per question).",
+      doc: "Determines the layout of the table: `\"horizontal\"` (a column per question) or `\"vertical\"` (a row per question). Setting to `auto` uses `config`'s `points-table-direction`.",
       default: auto,
+      meta: (config: "points-table-direction"),
     ),
     e.field(
-      "by",
+      "granularity",
       e.types.union(auto, "question", "part", "subpart", "page"),
-      doc: "The table lists the points per question by default. However, this can be changed to list the points by `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"`.",
+      doc: "By default, table shows one cell per question. This can be changed to show one cell per `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"`. Setting to `auto` uses `config`'s `points-table-granularity`.",
       default: auto,
+      meta: (config: "points-table-granularity"),
     ),
     e.field(
       "score",
       e.types.union(auto, bool),
-      doc: "Whether the table includes an empty row for a grader to fill in.",
+      doc: "Whether the table includes an empty row for a grader to fill in. Setting to `auto` uses `config`'s `points-table-score`.",
       default: auto,
+      meta: (config: "points-table-score"),
     ),
     e.field(
       "bonus",
       e.types.union(auto, bool),
-      doc: "Whether the table includes a row for the bonus points (only visible if the exam has bonus points).",
+      doc: "Whether the table includes a row for the bonus points (only visible if the exam has bonus points). Setting to `auto` uses `config`'s `points-table-bonus`.",
       default: auto,
+      meta: (config: "points-table-bonus"),
     ),
     e.field(
       "max-columns",
       e.types.union(auto, int, none),
-      doc: "The maximum number of columns in a horizontal table. A wider table wraps to multiple rows. Use `none` for no limit.",
+      doc: "The maximum number of columns in a horizontal table. A wider table wraps to multiple rows. Use `none` for no limit. Setting to `auto` uses `config`'s `points-table-max-columns`.",
       default: auto,
+      meta: (config: "points-table-max-columns"),
     ),
   ),
 )
@@ -440,13 +445,13 @@
   let o = (
     strings: cfg.strings,
     direction: pick("direction"),
-    by: pick("by"),
+    granularity: pick("granularity"),
     score: pick("score"),
     bonus: pick("bonus"),
     max-columns: pick("max-columns"),
   )
   let strings = o.strings
-  let (entries, heading) = if o.by == "page" {
+  let (entries, heading) = if o.granularity == "page" {
     (
       _points_by_page()
         .filter(p => p.points > 0 or p.bonus > 0)
@@ -458,7 +463,7 @@
     (
       if found == none { () } else {
         let (i, rows) = found
-        let level = ("question", "part", "subpart").position(x => x == o.by) + 1
+        let level = ("question", "part", "subpart").position(x => x == o.granularity) + 1
         // Where each division of that exam starts, by its address, to link
         // its label to: the markers after its start, before the next's.
         let starts = (:)
@@ -476,7 +481,7 @@
     )
   }
   if entries.len() == 0 {
-    let missing = if o.by == "page" { "points" } else { "questions" }
+    let missing = if o.granularity == "page" { "points" } else { "questions" }
     return text(fill: red, "WARNING: No " + missing + " found! Can't make a points table.")
   }
   _points_table(entries, heading, o)

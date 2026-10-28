@@ -38,23 +38,13 @@
 /// A label nothing has (see `resolve_boxes`).
 #let _NEVER = <examy-answer-box-never>
 
-/// What `height` and `width` hold when nothing gives them, to be taken from
-/// `config`. Every value they take means something (`none` and `auto`
-/// included), so that a box given one keeps it whatever `config` says.
-#let _UNSET = <examy-answer-box-unset>
-
-/// `type`, or `_UNSET`: accepted as `type` is, with its errors, and named as
-/// it is, so that neither the reference nor an error mentions `_UNSET`. A
-/// value given over `_UNSET` replaces it, and one given over another is
-/// folded into it as `type` folds them (a `stroke`'s sides).
-#let _unset_or(type) = e.types.wrap(
-  e.types.union(e.types.literal(_UNSET), type),
-  name: type.name,
-  input: ("any",),
-  check: _ => x => x == _UNSET or e.types.cast(x, type).first(),
-  error: _ => x => e.types.cast(x, type).last(),
+/// `type`, or `auto` for `config`'s: a value given over `auto` replaces it,
+/// as `auto` given over a value does, and one given over another is folded
+/// into it as `type` folds them (a `stroke`'s sides).
+#let _smart(type) = e.types.wrap(
+  e.types.union(auto, type),
   fold: prev => if prev == none { none } else {
-    (outer, inner) => if outer == _UNSET or inner == _UNSET { inner } else if prev == auto {
+    (outer, inner) => if outer == auto or inner == auto { inner } else if prev == auto {
       outer + inner
     } else {
       prev(outer, inner)
@@ -66,9 +56,6 @@
 /// 0.4.0, before the rest of examy was kebab-case.
 #let _OLD_NAMES = ("default-height": "default_height", "default-width": "default_width")
 
-/// Whether `value`, given to `field`, leaves it to `config`: `_UNSET`, or
-/// `auto` for `default-height` and `default-width`, which take no other.
-#let _left(field, value) = value == _UNSET or value == auto and field.starts-with("default")
 
 /// `args`, the fields a call gives a box, with those given by their old
 /// names (see `_OLD_NAMES`) under their names now, unless also given by
@@ -95,13 +82,13 @@
     if it.at(name) == auto { it.insert(name, it.at(old)) }
   }
   for (option, field) in CONFIG_FIELDS {
-    if _left(field, it.at(field)) { it.insert(field, cfg.at(option)) }
+    if it.at(field) == auto { it.insert(field, cfg.at(option)) }
   }
   it
 }
 
 /// Whether a box's fields leave any of them to `config`.
-#let _needs_config(it) = CONFIG_FIELDS.values().any(field => _left(field, it.at(field)))
+#let _needs_config(it) = CONFIG_FIELDS.values().any(field => it.at(field) == auto)
 
 /// The options of `CONFIG_FIELDS` in force, for use inside `e.get(get => ..)`.
 #let config_options(get) = {
@@ -127,23 +114,21 @@
     ),
     e.field(
       "width",
-      _unset_or(e.types.union(auto, .._RELATIVE, fraction)),
-      doc: "The width of the box. Set to a fraction (e.g. `1fr`) to fill the rest of the line. Defaults to `config`'s `answer-box-width`.",
-      default: _UNSET,
-      meta: (default-shown: "auto"),
+      e.types.union(auto, .._RELATIVE, fraction),
+      doc: "The width of the box. Set to a fraction (e.g. `1fr`) to fill the rest of the line. Setting to `auto` uses `config`'s `answer-box-width`.",
+      default: auto,
+      meta: (config: "answer-box-width"),
     ),
     e.field(
       "height",
-      _unset_or(e.types.union(auto, .._RELATIVE, fraction, none)),
-      doc: "The height of the box. Defaults to `config`'s `answer-box-height`. Can be any length unit including fractional units (e.g. `1fr`), along with two special values:
-      
+      e.types.union(auto, .._RELATIVE, fraction, none),
+      doc: "The height of the box. Setting to `auto` uses `config`'s `answer-box-height`. Can be any length unit including fractional units (e.g. `1fr`), along with a special value:
+
       `none`: if non-empty, fits the box's content, ignoring `#solution[..]`s. This value ensures an exam and answer key have the same layout.
-      
-      `auto`: if non-empty, fits the box's content, including solutions.
-      
+
       An empty box with height `none` gets a height of `default-height`.",
-      default: _UNSET,
-      meta: (default-shown: "none"),
+      default: auto,
+      meta: (config: "answer-box-height"),
     ),
     // `.33em` is half the cap height of a typical serif face: the box is
     // centered on the center line of a capital letter, which is what
@@ -165,26 +150,28 @@
       e.types.smart(length),
       doc: "The height of the box when it is empty and its height is otherwise unspecified. Setting to `auto` uses `config`'s `answer-box-default-height`.",
       default: auto,
+      meta: (config: "answer-box-default-height"),
     ),
     e.field(
       "default-width",
       e.types.smart(length),
       doc: "The width of the box when its width is `auto`, unless its height is a fractional unit (e.g. `2fr`). Setting to `auto` uses `config`'s `answer-box-default-width`.",
       default: auto,
+      meta: (config: "answer-box-default-width"),
     ),
     e.field(
       "stroke",
-      _unset_or(BOX_STROKE),
-      doc: "The outline stroke of the box, specified like a [`box`'s `stroke`](https://typst.app/docs/reference/layout/box/#parameters-stroke) (e.g. `(bottom: .5pt)` for a single line to write on).",
-      default: _UNSET,
-      meta: (default-shown: ".5pt"),
+      _smart(BOX_STROKE),
+      doc: "The outline stroke of the box, specified like a [`box`'s `stroke`](https://typst.app/docs/reference/layout/box/#parameters-stroke) (e.g. `(bottom: .5pt)` for a single line to write on). Setting to `auto` uses `config`'s `answer-box-stroke`.",
+      default: auto,
+      meta: (config: "answer-box-stroke"),
     ),
     e.field(
       "fill",
-      _unset_or(BOX_FILL),
-      doc: "The background color of the box, specified like a [`box`'s `fill`](https://typst.app/docs/reference/layout/box/#parameters-fill) (e.g. `luma(245)`). Defaults to `config`'s `answer-box-fill`.",
-      default: _UNSET,
-      meta: (default-shown: "none"),
+      e.types.union(auto, BOX_FILL),
+      doc: "The background color of the box, specified like a [`box`'s `fill`](https://typst.app/docs/reference/layout/box/#parameters-fill) (e.g. `luma(245)`). Setting to `auto` uses `config`'s `answer-box-fill`.",
+      default: auto,
+      meta: (config: "answer-box-fill"),
     ),
     e.field(
       "radius",
@@ -245,10 +232,10 @@
   // double-count the fr height).
   let is_block = type(it.height) == fraction
   let height = it.height
-  // With no height given, solutions take no height, so the answer key lays
-  // out exactly like the exam: the box is sized by what the exam shows, and
-  // nothing after it moves. Any explicit height, even `auto`, opts out, and
-  // the box holds its solutions as usual.
+  // With a height of `none`, solutions take no height, so the answer key
+  // lays out exactly like the exam: the box is sized by what the exam shows,
+  // and nothing after it moves. Any height of its own opts out, and the box
+  // holds its solutions as usual.
   let no_height = height == none
   // What the body holds, walked once for both the sizing below and the
   // widening of its solutions.
@@ -763,7 +750,7 @@
           continue
         }
         let hints = inside
-          .filter(((args, _, _, sized)) => "height" not in args and not sized)
+          .filter(((args, _, _, sized)) => args.at("height", default: auto) == auto and not sized)
           .map(((args, fields, cfg, _)) => _configured(_given(fields, args), cfg).height)
           .filter(h => type(h) == fraction)
           .map(height_hint)

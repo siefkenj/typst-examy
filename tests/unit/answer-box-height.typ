@@ -3,8 +3,9 @@
 // the exam (empty, or holding only its solution) takes `default-height`, so
 // the student has room to write. Also: the `solution:` argument appears only
 // on the answer key; with no height given, solutions take no height, so the
-// key lays out exactly like the exam; and any explicit height, even `auto`,
-// opts out of that, so the box holds its solutions.
+// key lays out exactly like the exam; and a height of its own opts out of
+// that, so the box holds its solutions. `height: auto` is `config`'s
+// `answer-box-height`, `none` unless configured.
 //
 // Every box checked is also drawn, under a description of what is expected
 // of it, so the rendered test reads as its own documentation: the exam
@@ -190,10 +191,14 @@
     answer-box(width: 100%, height: 3cm, five_choices),
     equals: 3cm,
   )
-  // `auto` always fits the content, even none.
-  check("Empty, `height: auto`: fits nothing.", answer-box(width: 100%, height: auto)[], under: 1cm)
+  // `auto` is `config`'s `answer-box-height`: `none`, unless configured.
   check(
-    "Five choices, `height: auto`: fits them.",
+    "Empty, `height: auto`: as `none`, " + DEFAULT_TEXT + " tall.",
+    answer-box(width: 100%, height: auto)[],
+    equals: DEFAULT,
+  )
+  check(
+    "Five choices, `height: auto`: as `none`, fits them.",
     answer-box(width: 100%, height: auto, five_choices),
     equals: fitting(five_choices),
   )
@@ -235,12 +240,6 @@
     answer-box(width: 100%, solution: [#metadata(none)<shown-solution>42])[$x =$],
     equals: () => measure(without, width: COLUMN).height,
   )
-  // With `height: auto`, the box grows to hold it.
-  #check(
-    "Solutions on, `height: auto`: the box grows to hold the `solution:` argument.",
-    answer-box(width: 100%, height: auto, solution: [42])[$x =$],
-    over: () => measure(without, width: COLUMN).height + 5pt,
-  )
   // In a box of fixed height, it fills the rest, and the box keeps its height.
   #check(
     "Solutions on, `height: 3cm`: the `solution:` argument fills the rest; 3cm tall.",
@@ -260,8 +259,8 @@
   solutions aren't shown.]
 // Each box is drawn twice, the exam on the left and the key on the right,
 // and the two must be the same height: a solution takes no height, whatever
-// the box holds and wherever the solution sits in it. An explicit height,
-// even `auto`, opts out: then the key's box grows to hold its solutions.
+// the box holds and wherever the solution sits in it. A height of its own
+// opts out: then the box holds its solutions in that height.
 #let HALF = (COLUMN - 12pt) / 2
 #let in_mode(key, b) = {
   show: e.set_(config, show-solutions: key)
@@ -344,39 +343,11 @@
   answer-box(width: 100%)[The limit is #solution[#lorem(12)], so it converges.],
   same: false,
 )
-// An explicit height opts out.
-#exam_and_key(
-  "`height: auto`: the box grows to hold the `solution:` argument.",
-  answer-box(width: 100%, height: auto, solution: [$x = 4$])[Solve $2x = 8$.],
-  same: false,
-)
-#exam_and_key(
-  "`height: auto`: the box grows to hold a solution in its own paragraph.",
-  answer-box(width: 100%, height: auto)[Why does it converge?
-
-    #solution[By the ratio test.]
-  ],
-  same: false,
-)
 // A width of its own does not lift a solution mid-sentence out of its line:
 // it stays a box in the line, which it makes no taller.
 #exam_and_key(
   "An inline solution with a width of its own stays in its line.",
   answer-box(width: 100%)[The capital is #solution(width: 1.5cm)[Paris], of course.],
-)
-#exam_and_key(
-  "An unboxed solution in its own paragraph takes no height either.",
-  answer-box(width: 100%)[Prompt.
-
-    #solution(boxed: false)[An answer.
-
-      Second para.]
-  ],
-)
-#v(1.2cm)
-#exam_and_key(
-  "An unboxed solution mid-sentence.",
-  answer-box(width: 100%)[The capital is #solution(boxed: false)[Paris], of course.],
 )
 // Inside an `align` the box cannot see the solution, but a display equation
 // sets it apart all the same: it is placed, and keeps its fill.
@@ -426,26 +397,20 @@
   answer-box(width: 100%)[#context lorem(120)],
   over: DEFAULT + 1cm,
 )
-// A box decides for its own solutions, whatever box it sits in.
-#exam_and_key(
-  "A `height: auto` box inside a box with no height holds its solution.",
-  answer-box(width: 100%)[Outer prompt. #answer-box(width: 100%, height: auto)[Inner.
-
-      #solution[Grows.]
-    ]],
-  same: false,
-)
 
 // --- where a solution that takes no height is drawn ---
 // It is drawn exactly where it would be if it took space. Each row is one box
 // drawn twice, both on the answer key: on the left with no height given, so
-// its solution takes none; on the right with `height: auto`, so its solution
-// takes space as usual, which is the reference. The solution must start the
+// its solution takes none; on the right with a height of its own, so its
+// solution takes space as usual, which is the reference. The solution must start the
 // same distance below the top of the box on both sides; all that differs is
 // that the left box does not grow, and what follows the solution moves up
 // under it. Typst spaces a solution differently depending on what is around
 // it, so there is a row for each case. Pinned by a marker at the top of each
 // box and one at the start of each solution.
+// The reference boxes' height: room for what they hold, so that their
+// solutions take space as usual.
+#let REF_HEIGHT = 4cm
 #let drawn_at(name, height, body, sol) = answer-box(width: 100%, height: height)[
   #metadata(none)#label("top-" + name)#body(solution[#metadata(none)#label("sol-" + name)#sol])
 ]
@@ -460,7 +425,7 @@
     desc: [Last in the box, after text],
     box: h => drawn_at(
       "last-" + h,
-      if h == "none" { none } else { auto },
+      if h == "none" { none } else { REF_HEIGHT },
       p => [Why does it converge?
 
         #p
@@ -473,7 +438,7 @@
     desc: [Between two prompts: on the left, (ii) moves up under it],
     box: h => drawn_at(
       "middle-" + h,
-      if h == "none" { none } else { auto },
+      if h == "none" { none } else { REF_HEIGHT },
       p => [(i) Find $f'(x)$.
 
         #p
@@ -488,7 +453,7 @@
     desc: [Last in the box, after a list (a block, which is spaced differently from text)],
     box: h => drawn_at(
       "after-list-" + h,
-      if h == "none" { none } else { auto },
+      if h == "none" { none } else { REF_HEIGHT },
       p => [
         - An item.
 
@@ -502,7 +467,7 @@
     desc: [Last in the box, after a block (spaced by the document's block spacing)],
     box: h => drawn_at(
       "after-block-" + h,
-      if h == "none" { none } else { auto },
+      if h == "none" { none } else { REF_HEIGHT },
       p => [
         #block(width: 100%, height: 5mm, stroke: .5pt + gray)
 
@@ -520,7 +485,7 @@
       set par(spacing: 2em)
       drawn_at(
         "par-spacing-" + h,
-        if h == "none" { none } else { auto },
+        if h == "none" { none } else { REF_HEIGHT },
         p => [
           #block(width: 100%, height: 5mm, stroke: .5pt + gray)
 
@@ -542,7 +507,7 @@
       set block(spacing: .5em)
       drawn_at(
         "after-context-" + h,
-        if h == "none" { none } else { auto },
+        if h == "none" { none } else { REF_HEIGHT },
         p => [
           #context [A prompt, in a `context`.]
 
@@ -560,7 +525,7 @@
       set block(spacing: .5em)
       drawn_at(
         "after-block-context-" + h,
-        if h == "none" { none } else { auto },
+        if h == "none" { none } else { REF_HEIGHT },
         p => [
           #block(context block(width: 100%, height: 5mm, stroke: .5pt + gray))
 
@@ -573,11 +538,11 @@
   (
     name: "arg",
     desc: [The `solution:` argument],
-    box: h => arg_at(h, if h == "none" { none } else { auto }),
+    box: h => arg_at(h, if h == "none" { none } else { REF_HEIGHT }),
   ),
 )
 #pagebreak()
-#heading(level: 2)[Setting height to auto will cause solutions to take up space]
+#heading(level: 2)[A box with a height of its own holds its solutions]
 #[
   #show: e.set_(config, show-solutions: true)
   #grid(
@@ -585,7 +550,7 @@
     column-gutter: 12pt,
     row-gutter: 6pt,
     strong[No height given: \ the solution takes none],
-    strong[`height: auto`: \ the solution takes space (reference)],
+    strong[`height: 4cm`: \ the solution takes space (reference)],
     ..POSITIONS
       .map(p => (
         grid.cell(
@@ -610,7 +575,7 @@
     message: name
       + ": a solution taking no height should be drawn "
       + repr(offset("auto"))
-      + " below the start of its box, as with `height: auto`, got "
+      + " below the start of its box, as with a height of its own, got "
       + repr(offset("none")),
   )
 }
@@ -620,7 +585,7 @@
 // its block begins, and, taking no height, all begin at the same place, each
 // drawn over the one before. They are drawn as one run instead, stacked as
 // the flow would stack them. Each row is drawn as in the grid above, with no
-// height on the left and `height: auto` on the right, and every solution in
+// height on the left and a height of its own on the right, and every solution in
 // it, the `solution:` argument too, must land the same distance below the
 // top of its box on both sides.
 #let s(id, t) = solution[#metadata(none)#label("run-sol-" + id)#t]
@@ -672,7 +637,7 @@
   let id = r.name + "-" + h
   answer-box(
     width: 100%,
-    height: if h == "none" { none } else { auto },
+    height: if h == "none" { none } else { 6cm },
     solution: if r.arg != none [#metadata(none)#label("run-sol-" + id)#r.arg],
   )[#metadata(none)#label("run-top-" + id)#(r.body)(id)]
 }
@@ -684,7 +649,7 @@
     columns: (HALF, HALF),
     column-gutter: 12pt,
     row-gutter: 6pt,
-    strong[No height given], strong[`height: auto` (reference)],
+    strong[No height given], strong[`height: 6cm` (reference)],
     ..RUNS
       .map(r => (
         grid.cell(colspan: 2, block(above: 10pt, line(length: 100%, stroke: .5pt + gray)) + emph(r.desc)),
@@ -704,7 +669,7 @@
   let (got, want) = (offsets("none"), offsets("auto"))
   assert(
     got.len() == want.len() and got.zip(want).all(((a, b)) => calc.abs((a - b).pt()) < 0.5),
-    message: r.name + ": solutions with nothing between them should be stacked as with `height: auto`, at "
+    message: r.name + ": solutions with nothing between them should be stacked as with a height of its own, at "
       + repr(want) + " below the top of the box, got " + repr(got),
   )
 }

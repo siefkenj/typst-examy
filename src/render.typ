@@ -12,7 +12,6 @@
   display_number, division_anchor, enum_numbering, level_numberings, reference_body, update_current_address,
 )
 #import "rubric.typ": _margin, owner_update, rubric_area, rubric_end_area, rubric_head, rubric_leaders, stacked_badges
-#import "signature.typ": UNSET
 
 /// Half-em gap between a gutter label and the body text.
 #let LABEL_GAP = .5em
@@ -27,6 +26,16 @@
 /// as "(m)", moves right by a little, and the part's first line with it).
 #let LABEL_SEP = .35em
 
+/// The label of the metadata giving how far an exam's badges in the left
+/// margin move (see `exam_badge_shift`), which they read where they are drawn
+/// (see `_margin_badges`).
+#let BADGE_SHIFT = label("_examy_badge_shift")
+
+/// The label of the metadata giving the widths of a question's gutter labels
+/// and badges in the left margin, measured where the exam draws it (see
+/// `_shift_parts`, and `render`).
+#let QUESTION_WIDTHS = label("_examy_question_widths")
+
 /// How far left the badges in the left margin move (see `_margin_badges`),
 /// so that each keeps `LABEL_SEP` from the gutter labels of the exam, which
 /// run out past the text's edge into the margin when its indent is smaller
@@ -34,9 +43,10 @@
 /// None with an indent that leaves room for every label. `labels` are every
 /// gutter label of the exam (see `exam_badge_shift`).
 ///
-/// The labels are measured once for the exam, in its context (see
-/// `render`), not in each badge's: measuring every label for each badge takes
-/// time growing with the square of the exam's length. But a badge and the
+/// The labels are measured once for each question, where the exam draws it
+/// (see `render`), not in each badge's context: measuring every label for
+/// each badge takes time growing with the square of the exam's length. But a
+/// badge and the
 /// labels are drawn at the text size where they are, which a `set text`
 /// inside the exam changes. So each label's width is kept in `em` (see
 /// `_label_of`), and how far it runs left as a length of an absolute part
@@ -112,10 +122,7 @@
       if value == auto and key == "bonus-points-format" { value = p => default_points_format(p, bonus: true) }
       own.insert(key, value)
     }
-    for (key, unset) in (numbering: auto, rubric-position: auto, rubric-trace: UNSET, rubric-width: UNSET) {
-      let value = f.at(key, default: unset)
-      if value != unset { own.insert(key, value) }
-    }
+    if f.numbering != auto { own.insert("numbering", f.numbering) }
     if "numbering" in own {
       // Its parent's, if it has them: `own` starts as the parent's.
       let above = own.at("numberings", default: (auto,) * (it.level - 1))
@@ -131,7 +138,13 @@
 /// of the exam's. Always given the exam's, not another division's.
 #let opts_of(d, opts) = {
   let own = d.at("own", default: none)
-  if own == none { return opts }
+  // A rubric item of its own given `trace: true` (see `mark_rubrics`) is
+  // traced whatever its rubrics are.
+  let asked = opts.rubric.drawn and d.at("rubric_trace", default: false)
+  if own == none {
+    if asked { opts.rubric.traced = true }
+    return opts
+  }
   if "numbering" in own { opts.numbering = own.numbering }
   for key in ("points-format", "bonus-points-format", "points-position", "points-show-totals") {
     if key in own { opts.insert(key, own.at(key)) }
@@ -143,7 +156,7 @@
   // position too.
   let trace = own.at("rubric-trace", default: r.trace-given)
   r.trace = if trace == auto { r.position != "end" } else { trace }
-  r.traced = r.drawn and r.trace
+  r.traced = r.drawn and r.trace or asked
   opts.rubric = r
   opts
 }
@@ -226,10 +239,16 @@
     place(top + right, dx: MARGIN_GAP + _OVERFLOW, dy: dy, body)
   } else {
     // Clear of gutter labels that run out into the margin (see
-    // `_badge_shift`).
-    let shift = opts.at("badge-shift", default: none)
-    let body = if shift == none { body } else {
-      context move(dx: _badge_shift_at(shift.lefts, shift.widest), body)
+    // `_badge_shift`), as far as the exam (`at`, see `render`) says it found
+    // the last time it was laid out: read here, where it is used, so that
+    // when it changes, only the badges are laid out again.
+    let at = opts.at("badge-shift-at", default: none)
+    let body = if at == none { body } else {
+      context {
+        let found = query(BADGE_SHIFT).find(m => m.value.at == at)
+        let shift = if found != none { found.value.shift }
+        if shift == none { body } else { move(dx: _badge_shift_at(shift.lefts, shift.widest), body) }
+      }
     }
     place(top + left, dx: -indent - MARGIN_GAP - _OVERFLOW, dy: dy, body)
   }
@@ -277,22 +296,65 @@
   i != none and line.slice(i + 1).any(d => _counted(items_of(items).at(d)))
 }
 
+/// The top-level division that division `idx` is in, or `idx` itself.
+#let _top(items, idx) = {
+  let cur = idx
+  while items_of(items).at(cur).parent != none { cur = items_of(items).at(cur).parent }
+  cur
+}
+
+/// Division `top` and the divisions in it, in order.
+#let _divisions_of(items, top) = {
+  let out = ()
+  let todo = (top,)
+  while todo.len() > 0 {
+    let d = todo.pop()
+    out.push(d)
+    for c in items_of(items).at(d).children.rev() { if items_of(items).at(c).kind == "division" { todo.push(c) } }
+  }
+  out
+}
+
+/// The width of `body`, drawn by division `drawer`, in `em` of the text
+/// size there. Measured in the context the exam draws `drawer`'s question
+/// in (see `render`), which has every rule of the exam's around the
+/// question: `opts.measured-at` says which question that is, and how many of
+/// its styles that context has (`depth`); without it, the exam's own context,
+/// which has none. The styles of `drawer` past those are applied again, but
+/// not its elembic rules (see `apply_styles`), which are for examy's
+/// elements, not the text of a label or a badge. (The exam's rules around a
+/// question cannot all be applied inside `measure`: they may hold a
+/// `#set page(..)`.)
+#let _width_at(items, body, drawer, opts) = {
+  let size = text.size
+  let top = _top(items, drawer)
+  let at = opts.at("measured-at", default: none)
+  let stack = stack_of(items_of(items).at(drawer).styles)
+  let depth = if at != none and at.value.top == top { at.value.depth } else { stack_of(items_of(items).at(top).styles).len() }
+  let styles = stack.slice(calc.min(depth, stack.len())).filter(s => type(s.apply) != function)
+  measure(apply_styles({ set text(size: size); body }, styles)).width / size * 1em
+}
+
 /// The gutter label of division `d`, on its first line (`line`, its
 /// divisions outermost first; see `_first_line`), as it is drawn:
 /// `(division, number, x, width)`, `x` where its division's text starts,
 /// which its label ends `LABEL_GAP` short of, and `width` the label's, in
-/// `em`, so that it holds at the text size the label is drawn at. `none` for
-/// a division whose number is left out (see `_covered`), or that has none.
+/// `em` (see `_width_at`), so that it holds at the text size the label is
+/// drawn at, in the font of the line's innermost division, whose block all
+/// its labels are drawn in (see `_gutter_labels`). `none` for a division
+/// whose number is left out (see `_covered`), or that has none.
 ///
-/// Measured in the exam's context (see `render`), once, rather than in a
-/// `context` where the label is drawn: one in a line moves its inline math
-/// by a hair (see `rubric_area`), and in each badge, measuring every label
-/// for each would take time growing with the square of the exam's length.
+/// Measured in the context the exam draws the question in (see `render`),
+/// around all of it, rather than in a `context` where the label is drawn: one
+/// in a line moves its inline math by a hair (see `rubric_area`), and in each
+/// badge, measuring every label for each would take time growing with the
+/// square of the exam's length.
 #let _label_of(items, d, line, opts) = {
   if _covered(items, d, line, opts) { return none }
   let number = _label_number(items, d, opts)
   if number == none { return none }
-  (division: d, number: number, x: cumulative_indent(items, d), width: measure(number).width / text.size * 1em)
+  let width = _width_at(items, number, line.last(), opts)
+  (division: d, number: number, x: cumulative_indent(items, d), width: width)
 }
 
 /// The gutter labels on a line that several share (`line`, see
@@ -302,7 +364,8 @@
 /// How lengths worked out from the labels on a line (`labels`, see
 /// `_line_labels`) are compared: as they are when all are in `em`, which
 /// holds at any text size (as with the default indent); otherwise resolved
-/// at the size the exam starts at (in its context, see `render`).
+/// at the size where the exam draws the question (in that context, see
+/// `render`).
 #let _resolver(labels) = if labels.all(l => l.x.abs == 0pt) { x => x } else { x => x.to-absolute() }
 
 /// How far right of where it would end the `k`th of the labels on a line
@@ -511,6 +574,11 @@
       if it.parent != none {
         items.at(it.parent).insert("rubric", true)
         items.at(it.parent).insert("rubric_text", true)
+        // An item given `trace: true` is traced whatever the division's
+        // rubrics are (see `opts_of`).
+        if rubric_markers(it.body, kept: true).any(m => m.value.at("trace", default: auto) == true) {
+          items.at(it.parent).insert("rubric_trace", true)
+        }
       }
       any = true
     } else if it.kind == "division" and it.fields.rubric != none {
@@ -759,7 +827,7 @@
     render_chunks(items, chunk_run, o, base: it_styles.len())
     end_badge
     if end and o.rubric.position == "end" and _drawn(it, opts) { _rubric_end(it, opts) }
-    if traced { rubric_leaders(it.address, (it.address,), o.rubric.position) }
+    if traced { rubric_leaders(it.address, (it.address,), o.rubric.position, trace: o.rubric.trace) }
   }
 
   apply_styles(
@@ -796,14 +864,17 @@
     items_of(items).at(seg.items.at(0)).body.at("above", default: auto)
   } else { auto }
   // The rubrics it takes in from segments dropped before it (see plan.typ),
-  // and the divisions of those in it, whose leaders it draws.
+  // and the divisions of those in it whose leaders it draws, with their
+  // `opts.rubric`: each traced as its own division's are (see `opts_of`),
+  // not as its owner's.
   let carried = seg.at("rubrics", default: ()).map(i => items_of(items).at(i))
-  let owners = ()
-  if o.rubric.traced {
-    for i in seg.items {
-      if items_of(items).at(i).at("rubric", default: false) { owners.push(owner.address) }
-    }
-    owners = (owners + carried.map(c => c.owner)).dedup()
+  let traced = ()
+  if o.rubric.traced and seg.items.any(i => items_of(items).at(i).at("rubric", default: false)) {
+    traced.push((owner.address, o.rubric))
+  }
+  for c in carried.filter(c => c.at("rubric", default: false)) {
+    let r = opts_of(items_of(items).at(c.parent), opts).rubric
+    if r.traced and not traced.any(t => t.first() == c.owner) { traced.push((c.owner, r)) }
   }
 
   let body = {
@@ -816,7 +887,7 @@
     let dy = if _labels_above(labels, inline_label, seg.indent) { 0pt } else { dy }
     // First, before the paragraph it is level with (see `render_nested`).
     if seg.label_divisions.len() > 0 { _margin_badges(items, seg.label_divisions, seg.indent, opts, dy: dy) }
-    if owners.len() > 0 { rubric_head(owner.address) }
+    if traced.len() > 0 { rubric_head(owner.address) }
     if opts.rubric.drawn {
       for d_idx in seg.label_divisions {
         let d = items_of(items).at(d_idx)
@@ -849,7 +920,7 @@
       end_badge = none
     }
     end_badge
-    if owners.len() > 0 { rubric_leaders(owner.address, owners, o.rubric.position) }
+    for (address, r) in traced { rubric_leaders(owner.address, (address,), r.position, trace: r.trace) }
   }
 
   let segment(height, above) = block(width: 100%, inset: (left: seg.indent), height: height, sticky: seg.sticky, above: above, {
@@ -972,26 +1043,51 @@
   if styles != none { stack_of(styles) }
 }
 
-/// How far the badges an exam draws in the left margin move, clear of its
-/// gutter labels (see `_badge_shift`): `(lefts, widest)`, `widest` the
-/// widest of those badges, on one line (see `_margin_badge_body`), in `em`,
-/// as the labels' widths are (see `_label_of`). Each label is where it is
-/// drawn unless a shared line moves it right (see `_label_push`), which
-/// takes it farther from the margin. `none` when none move: when no badge is
-/// drawn in the left margin, or the indent leaves room for every label; then
-/// the badges are not measured. Needs context.
-#let exam_badge_shift(items, opts) = {
-  let divisions = range(items_of(items).len()).filter(i => items_of(items).at(i).kind == "division")
-  if not divisions.any(d => _badge_position(items_of(items).at(d), opts) == "margin-left") { return none }
-  let lines = divisions.map(d => (d, _first_line(items, d, opts)))
-  let lefts = _badge_shift(lines.map(((d, line)) => _label_of(items, d, line, opts)).filter(l => l != none))
-  if lefts == none { return none }
-  let size = text.size
+/// The divisions that may draw the badges in the margin of a line (`line`,
+/// its divisions outermost first): its innermost, or, stacked with the
+/// rubrics, its outermost (see `render_nested`), or its innermost again,
+/// whose segment draws them all after a break (see `render_segment`).
+#let _badge_drawers(line, opts) = if _badges_stacked(opts, "margin-left") { (line.first(), line.last()).dedup() } else { (line.last(),) }
+
+/// The widths of question `top`'s gutter labels and of its badges in the
+/// left margin, as `exam_badge_shift` takes them: `(labels, widths)`,
+/// `labels` each label's `(x, width)` (see `_label_of`), and `widths` each
+/// badge's, on one line (see `_margin_badge_body`), in `em`. Needs the
+/// context the exam draws the question in (see `_width_at`).
+#let _shift_parts(items, top, opts) = {
+  let lines = _divisions_of(items, top).map(d => (d, _first_line(items, d, opts)))
+  let labels = lines.map(((d, line)) => _label_of(items, d, line, opts)).filter(l => l != none).map(l => (x: l.x, width: l.width))
+  // Each in the font of each division that may draw it.
   let widths = lines
     .map(((_, line)) => line)
     .filter(line => _margin_side(items, line, opts) == "margin-left")
-    .map(line => measure(_margin_badge_body(items, line, opts)).width / size * 1em)
-  (lefts: lefts, widest: calc.max(0em, ..widths))
+    .map(line => _badge_drawers(line, opts).map(drawer => _width_at(items, _margin_badge_body(items, line, opts), drawer, opts)))
+    .flatten()
+  (labels: labels, widths: widths)
+}
+
+/// How far the badges an exam draws in the left margin move, clear of its
+/// gutter labels (see `_badge_shift`): `(lefts, widest)`, `widest` the
+/// widest of those badges, in `em`, as the labels' widths are. Each label is
+/// where it is drawn unless a shared line moves it right (see
+/// `_label_push`), which takes it farther from the margin. `none` when none
+/// move: when the indent leaves room for every label. Needs the exam's
+/// context.
+///
+/// A question drawn inside rules of the exam's is measured where the exam
+/// draws it, and its widths given in `measured`, by its index (see
+/// `render`); one not measured yet is left out. Any other is measured here,
+/// in the exam's context, which is the one it is drawn in.
+#let exam_badge_shift(items, opts, measured: (:)) = {
+  let tops = range(items_of(items).len()).filter(i => items_of(items).at(i).kind == "division" and items_of(items).at(i).parent == none)
+  let parts = tops.map(t => if str(t) in measured { measured.at(str(t)) } else if (
+    stack_of(items_of(items).at(t).styles).len() > 0
+  ) { (labels: (), widths: ()) } else {
+    _shift_parts(items, t, opts)
+  })
+  let lefts = _badge_shift(parts.map(p => p.labels).flatten())
+  if lefts == none { return none }
+  (lefts: lefts, widest: calc.max(0em, ..parts.map(p => p.widths).flatten()))
 }
 
 /// Render a full instruction list. `opts` are the layout options resolved
@@ -1007,15 +1103,30 @@
 /// as a document may have more rules than Typst lets functions recurse.
 #let render(items, instructions, opts: DEFAULT_EXAM_OPTIONS, root: none, base: 0) = {
   let items = hold(items)
-  // Found once, at the top (a frame's instructions are rendered with them),
-  // in the exam's context (see `_exam_body`).
-  if "badge-shift" not in opts { opts.insert("badge-shift", exam_badge_shift(items, opts)) }
+  // Where the exam is, at the top (a frame's instructions are rendered with
+  // it), in its context (see `_exam_body`), when it draws badges in the left
+  // margin: how far they move is worked out here (see `exam_badge_shift`),
+  // from the widths of each question's labels, measured where the exam
+  // draws it (see below), the last time it was laid out; and given to the
+  // badges as metadata, which they read where they are drawn, not in the
+  // options, so that what else the exam draws is laid out once, not again
+  // when the widths come in.
+  let at = none
+  let shift = none
+  if root == none and range(items_of(items).len()).any(i => (
+    items_of(items).at(i).kind == "division" and _badge_position(items_of(items).at(i), opts) == "margin-left"
+  )) {
+    at = here()
+    let measured = query(QUESTION_WIDTHS).filter(m => m.value.at == at).map(m => (str(m.value.top), m.value.parts))
+    shift = [#metadata((at: at, shift: exam_badge_shift(items, opts, measured: measured.to-dict())))#BADGE_SHIFT]
+    opts.insert("badge-shift-at", at)
+  }
   let ends = _end_segments(items, instructions, opts)
   let rubric_ends = if opts.rubric.drawn and "end" in opts.rubric.positions {
     _rubric_ends(items, instructions, opts, root: root)
   } else { (:) }
   // Instruction `n`, drawn inside styles `depth` deep.
-  let one(n, depth) = {
+  let one(n, depth, opts) = {
     let instr = instructions.at(n)
     if instr.kind == "verbatim" {
       // Between divisions: a rubric here is no division's (see `OWNER`).
@@ -1060,6 +1171,8 @@
   // The styles open, outermost first, each with what is drawn in it so far;
   // the first, of none, holds what is drawn with only `base` styles.
   let open = ((style: none, parts: ()),)
+  // The questions whose widths are measured (see below).
+  let measured = (:)
   // Close the innermost open style: what it holds, styled, goes into the
   // one around it.
   let close(open) = {
@@ -1079,9 +1192,26 @@
       while open.len() > keep { open = close(open) }
       for s in styles.slice(calc.min(base + keep - 1, styles.len())) { open.push((style: s, parts: ())) }
     }
+    // At the top, a question inside rules of the exam's is drawn in a
+    // `context` inside them, where its labels and badges are measured as
+    // they are drawn, in the font the rules give, say, or in capitals (see
+    // `_width_at`); around all of it, not in a line. The widths for the
+    // badge shift are measured once, inside its own styles (see above).
     let depth = base + open.len() - 1
-    open.at(-1).parts.push(one(n, depth))
+    let division = instr.at("root", default: instr.at("division", default: none))
+    let top = if root == none and division != none { _top(items, division) }
+    let top_depth = if top != none { stack_of(items_of(items).at(top).styles).len() } else { 0 }
+    if top_depth == 0 {
+      open.at(-1).parts.push(one(n, depth, opts))
+      continue
+    }
+    if at != none and str(top) not in measured {
+      measured.insert(str(top), true)
+      let o = (..opts, measured-at: metadata((top: top, depth: top_depth)))
+      open.at(top_depth - base).parts.push(context [#metadata((at: at, top: top, parts: _shift_parts(items, top, o)))#QUESTION_WIDTHS])
+    }
+    open.at(-1).parts.push(context one(n, depth, (..opts, measured-at: metadata((top: top, depth: depth)))))
   }
   while open.len() > 1 { open = close(open) }
-  open.first().parts.join()
+  shift + open.first().parts.join()
 }

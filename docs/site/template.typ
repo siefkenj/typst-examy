@@ -19,6 +19,10 @@
 
 #let REPOSITORY = toml("/typst.toml").package.repository
 
+/// The blue of the site's links and callouts, and of the manual's headings:
+/// `--accent` in the site's stylesheet too (see `output_css`).
+#let ACCENT = rgb("#1d5fb4")
+
 /// The PDF of the guide and the reference (manual.typ), published beside the
 /// pages by build.sh, by its path from the site's root.
 #let MANUAL_PDF = "examy-manual.pdf"
@@ -115,7 +119,7 @@
 #let note(kind: "note", body) = _either(
   () => html.elem("aside", attrs: (class: "callout " + kind), body),
   () => {
-    let color = if kind == "warning" { rgb("#c27c0e") } else { rgb("#1d5fb4") }
+    let color = if kind == "warning" { rgb("#c27c0e") } else { ACCENT }
     // Its emphasis and bold text in its own color, as on the site.
     show emph: set text(fill: color)
     show strong: set text(fill: color)
@@ -309,9 +313,10 @@
 })
 
 /// `OUTPUT` as CSS custom properties, for the site's stylesheet (see
-/// site.typ): its colors, and the wave as a tile of SVG to repeat down the
-/// middle of an output panel, the two shades meeting along it, and another
-/// to repeat across it, for when the papers are one above the other.
+/// site.typ), and `ACCENT` as `--accent`: its colors, and the wave as a
+/// tile of SVG to repeat down the middle of an output panel, the two shades
+/// meeting along it, and another to repeat across it, for when the papers
+/// are one above the other.
 #let output_css() = {
   let pt(x) = str(calc.round(x / 1pt, digits: 3))
   let (amp, step) = (OUTPUT.amp, OUTPUT.step)
@@ -425,7 +430,10 @@
       + "\")"
   )
   (
-    "/* Generated from OUTPUT in docs/site/template.typ. */\n:root {\n"
+    "/* Generated from OUTPUT and ACCENT in docs/site/template.typ. */\n:root {\n"
+      + "  --accent: "
+      + ACCENT.to-hex()
+      + ";\n"
       + "  --output-exam-shade: "
       + OUTPUT.exam-shade.to-hex()
       + ";\n"
@@ -729,21 +737,101 @@
   s.split(regex("\n\s*\n")).map(p => inline(p.trim())).join(parbreak())
 }
 
+/// A gear for a `config` option, `size` across, its middle `middle` above
+/// the baseline: a dashed ring for its teeth, sixteen dashes and gaps to a
+/// turn, around a ring for its body.
+#let _gear(size, middle, fill: ACCENT) = box(width: size, height: size, baseline: size / 2 - middle, {
+  let r = size / 2
+  let teeth = 2 * calc.pi * r * .72 / 16
+  place(center + horizon, circle(radius: r * .72, stroke: (paint: fill, thickness: r * .4, dash: (teeth, teeth))))
+  place(center + horizon, circle(radius: r * .58, stroke: r * .22 + fill))
+})
+
+/// An argument's default: its value, written as code, in a blue box, under a
+/// small "default" centered over it; and, when it comes from a `config`
+/// option (`option`), in the same box, a gear and the option's name in blue,
+/// linked to it.
+#let default-badge(default, option: none) = _either(
+  () => html.elem("span", attrs: (class: "default-badge"), html.elem("span", attrs: (class: "default-box"), {
+    html.elem("span", attrs: (class: "default-value"), {
+      html.elem("span", attrs: (class: "default-key"), [default])
+      raw(default, lang: "typc")
+    })
+    if option != none {
+      // The title on the link's whole text, as `link` takes no attributes.
+      let title = "When auto this setting is inherited from config's " + option
+      api("config", field: option, body: html.elem("span", attrs: (class: "default-config", title: title), raw(option)))
+    }
+  })),
+  () => context {
+    // Every piece's lines run between the same edges, whatever its font and
+    // size, so that the pieces are of one height and stand on one baseline,
+    // the text's.
+    let (up, down, pad) = (.75em.to-absolute(), .3em.to-absolute(), .2em.to-absolute())
+    set text(top-edge: up, bottom-edge: -down)
+    // The middle of the code's lowercase letters, which the gear is centered
+    // on. The code with no language, as the manual's other inline code (see
+    // `inline_code`), and so of the same size.
+    let x = measure(text(top-edge: "x-height", bottom-edge: "baseline", raw("x"))).height
+    let piece(stroke: none, body) = box(stroke: stroke, inset: (x: .4em, y: pad), body)
+    let value = piece(raw(default))
+    let boxed = box(stroke: .5pt + ACCENT, radius: 2pt, {
+      value
+      if option != none {
+        api("config", field: option, body: piece(
+          stroke: (left: .5pt + ACCENT.lighten(60%)),
+          text(fill: ACCENT)[#_gear(1.8 * x, x / 2)#h(.3em)#raw(option)],
+        ))
+      }
+    })
+    // "default" above the box, centered over the value, wider than it or not.
+    let key = text(size: .65em, fill: ACCENT, top-edge: "cap-height", bottom-edge: "baseline")[default]
+    let over = box(width: measure(value).width, height: measure(key).height, place(bottom + center, key))
+    // A stack's baseline is its bottom edge (see `answer-box`), which is
+    // raised to the text's, inside the box.
+    box(baseline: down + pad, stack(spacing: .2em, over, boxed))
+  },
+)
+
+/// The alternatives of a type as the reference writes it (`auto | length`),
+/// split where they are joined at its top level, not inside parentheses (as
+/// in `(str | function)[]`).
+#let _alternatives(type) = {
+  let parts = ("",)
+  let depth = 0
+  for (i, c) in type.clusters().enumerate() {
+    if c in ("(", "[") { depth += 1 } else if c in (")", "]") { depth -= 1 }
+    if c == "|" and depth == 0 { parts.push("") } else { parts.at(-1) += c }
+  }
+  parts.map(str.trim)
+}
+
 /// One argument of a reference entry, with the anchor `api(.., field:)` links
-/// to.
+/// to. A default that is one of the alternatives of its type (`auto` of
+/// `auto | length`) is shown once, as its badge, first among them; any other
+/// is shown after the type.
 #let _arg(owner, a) = {
   [#metadata(a.name)#_anchor(owner, arg: a.name)]
+  let has_default = not a.variadic and not a.required
+  let alts = if a.type == none { () } else { _alternatives(a.type) }
+  let inline = has_default and a.default in alts
+  // The type, less the default when its badge stands for it.
+  let rest = if inline { alts.filter(t => t != a.default) } else { alts }
+  let badge = if has_default { default-badge(a.default, option: a.config) }
   _either(
     () => html.elem("div", attrs: (class: "arg", id: owner + "." + a.name), {
       html.elem("div", attrs: (class: "arg-head"), {
         html.elem("code", attrs: (class: "arg-name"), arg_name(a))
-        if a.type != none { html.elem("code", attrs: (class: "arg-type"), a.type) }
+        if inline { badge }
+        if rest != () {
+          html.elem("code", attrs: (class: "arg-type"), (if inline { "| " } else { "" }) + rest.join(" | "))
+        }
         if a.variadic {
           html.elem("span", attrs: (class: "badge"), [any number])
         } else if a.required {
           html.elem("span", attrs: (class: "badge required"), [required])
-        } else {
-          html.elem("span", attrs: (class: "arg-default"), [default #raw(a.default, lang: "typc")])
+        } else if not inline {
+          badge
         }
         if not a.named { html.elem("span", attrs: (class: "badge"), [positional]) }
       })
@@ -753,13 +841,17 @@
       block(sticky: true, {
         strong(raw(arg_name(a)))
         h(.8em)
-        if a.type != none {
-          text(fill: luma(90), raw(a.type))
+        if inline {
+          text(size: .9em, badge)
+          h(.4em)
+        }
+        if rest != () {
+          text(fill: luma(90), raw((if inline { "| " } else { "" }) + rest.join(" | ")))
           h(.8em)
         }
-        text(size: .9em, if a.variadic [_any number_] else if a.required [_required_] else [
-          default #raw(a.default, lang: "typc")
-        ])
+        if a.variadic { text(size: .9em)[_any number_] } else if a.required {
+          text(size: .9em)[_required_]
+        } else if not inline { text(size: .9em, badge) }
         if not a.named { text(size: .9em)[ · _positional_] }
       })
       pad(left: 1.5em, doc(a.doc))
@@ -869,22 +961,32 @@
   // past the name (or the widest piece of them).
   let name-cell(a) = _either(
     () => {
-      let meta(body) = html.elem("div", attrs: (class: "option-meta"), html.elem("div", attrs: (class: "arg-default"), body))
       api("config", field: a.name)
-      if not a.required {
-        if is-long(a) {
-          meta[default:]
-          // Outside the `option-meta`s, so that the column fits it.
-          html.elem("div", attrs: (class: "option-pretty"), raw(default-of(a), lang: "typc", block: true))
-        } else {
-          meta[default: #raw(default-of(a), lang: "typc")]
-        }
-      }
-      if a.type != none {
-        // Each alternative, with its `|`, in one piece.
-        let ts = a.type.split(" | ")
-        let alts = ts.enumerate().map(((i, t)) => html.elem("span", if i < ts.len() - 1 { t + " |" } else { t }))
-        meta[type: #html.elem("code", attrs: (class: "arg-type"), alts.join(" "))]
+      // As in the reference (see `_arg`): a default that is one of the
+      // alternatives of the type is shown once, as its badge, first among
+      // them; any other short one after the type.
+      let long = not a.required and is-long(a)
+      let alts = if a.type == none { () } else { _alternatives(a.type) }
+      let inline = not a.required and not long and default-of(a) in alts
+      let rest = if inline { alts.filter(t => t != default-of(a)) } else { alts }
+      let badge = default-badge(default-of(a))
+      // Each alternative, the badge among them, in one piece with the `|`
+      // after it: the line wraps between them.
+      let bar = html.elem("code", attrs: (class: "arg-type"), "|")
+      let pieces = rest.map(t => html.elem("code", attrs: (class: "arg-type"), t))
+      if inline { pieces.insert(0, badge) }
+      let pieces = pieces.enumerate().map(((i, p)) => if i < pieces.len() - 1 { [#p #bar] } else { p })
+      if not a.required and not long and not inline { pieces.push(badge) }
+      html.elem("div", attrs: (class: "option-meta"), pieces.map(p => html.elem("span", p)).join(" "))
+      // Written over several lines, in a box of its own, outside the
+      // `option-meta`, so that the column fits it.
+      if long {
+        html.elem("div", attrs: (class: "option-pretty default-badge"), html.elem("div", attrs: (class: "default-box"), {
+          html.elem("div", attrs: (class: "default-value"), {
+            html.elem("span", attrs: (class: "default-key"), [default])
+            raw(default-of(a), lang: "typc", block: true)
+          })
+        }))
       }
     },
     () => context {

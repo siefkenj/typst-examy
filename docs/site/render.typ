@@ -307,9 +307,11 @@
   show raw.where(block: false, lang: none): it => raw(it.text, lang: "")
   show: e.set_(lib.config, show-solutions: solutions)
   set text(size: 11pt)
-  // In an example of no fixed height, an `fr` height (an answer box's, a
-  // question's) would come to nothing: each `1fr` is laid out as 1cm.
-  show: if height == none { e.set_(lib.config, _fr-unit: 1cm) } else { it => it }
+  // On a page of no fixed height, an `fr` height (an answer box's, a
+  // question's) would come to nothing: in an example of no fixed height,
+  // each `1fr` is laid out as 1cm; in one of a fixed height, as a share of
+  // it, as on a page of that height.
+  show: e.set_(lib.config, _fr-unit: if height == none { 1cm } else { 1fr })
   let height = if height == none { auto } else { height }
   let inset = if type(inset) == dictionary { inset } else { (left: inset) }
   // Each side as Typst's insets give it, by name, by axis, or `rest`, and

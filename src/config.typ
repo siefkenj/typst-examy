@@ -159,7 +159,7 @@
     e.field(
       "rubric-trace",
       e.types.union(auto, bool),
-      doc: "Whether to draw a dotted line from each rubric item written in a question's text to the rubric. Setting to `auto` draws lines only for rubrics in the margin.",
+      doc: "Whether to draw a dotted line from each rubric item written in a question's text to the rubric. Setting to `auto` draws lines only for rubrics in the margin. A rubric item's own `trace` overrides this.",
       default: auto,
     ),
     e.field(
@@ -234,8 +234,8 @@
     ),
     e.field(
       "answer-box-height",
-      e.types.union(auto, .._RELATIVE, fraction, none),
-      doc: "The default height of an `#answer-box[..]`. When `none`, a non-empty box is sized to fit its contents, excluding `#solution[..]`s. When `auto` a non-empty box will fit its content including `#solution[..]`s. An empty box gets `answer-box-default-height`.",
+      e.types.union(.._RELATIVE, fraction, none),
+      doc: "The default height of an `#answer-box[..]`. When `none`, a non-empty box is sized to fit its contents, excluding `#solution[..]`s. An empty box gets `answer-box-default-height`.",
       default: none,
     ),
     e.field(
@@ -337,7 +337,7 @@
       default: "horizontal",
     ),
     e.field(
-      "points-table-by",
+      "points-table-granularity",
       e.types.union("question", "part", "subpart", "page"),
       doc: "A `#points-table()` lists the points per question by default. However, this can be changed to list the points by `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"`.",
       default: "question",
@@ -380,11 +380,13 @@
       internal: true,
     ),
     // Internal: set by the documentation's examples, which are laid out in
-    // blocks of no fixed height, where `fr` heights would come to nothing.
+    // blocks on a page of no fixed height, where `fr` heights would come to
+    // nothing: in a block of no fixed height, a length; in one of a fixed
+    // height, `1fr`, so that they share it.
     e.field(
       "_fr-unit",
-      e.types.option(length),
-      doc: "The length an exam lays out each `1fr` of its own heights as (a segment's of `fr` answer boxes, a division's `height`), instead of a share of the page: `none` for a share, as usual.",
+      e.types.option(e.types.union(length, fraction)),
+      doc: "The length an exam lays out each `1fr` of its own heights as (a segment's of `fr` answer boxes, a division's `height`), instead of a share of the page: a fraction for a share of the block the exam is in, even on a page of no fixed height; `none` for a share of the page, as usual.",
       default: none,
       internal: true,
     ),
@@ -463,12 +465,12 @@
     points-position: cfg.points-position,
     points-show-totals: cfg.points-show-totals,
     // How the exam lays out its own `fr` heights (see `fr_height` in
-    // render.typ): as a share of the page (`none`), as `_fr-unit` each, or,
-    // on a page of no fixed height, where a share comes to nothing, as tall
-    // as what they hold (`auto`).
-    fr-unit: if cfg._fr-unit != none { cfg._fr-unit } else if page.height == auto { auto } else {
-      none
-    },
+    // render.typ): as a share of the page or of the block the exam is in
+    // (`none`), as `_fr-unit` each, or, on a page of no fixed height, where a
+    // share comes to nothing, as tall as what they hold (`auto`).
+    fr-unit: if type(cfg._fr-unit) == fraction { none } else if cfg._fr-unit != none { cfg._fr-unit } else if (
+      page.height == auto
+    ) { auto } else { none },
     // `shown` is resolved by the exam, which knows whether solutions are shown
     // (see `show_rubrics`), and `present`, whether it has rubrics at all, and
     // so `drawn`, whether they are drawn, and `traced`, whether their leaders
@@ -482,8 +484,8 @@
       positions: (),
       position: cfg.rubric-position,
       trace: if cfg.rubric-trace == auto { cfg.rubric-position != "end" } else { cfg.rubric-trace },
-      // As configured, for a division with a `rubric-position` of its own
-      // (see `opts_of` in render.typ).
+      // As configured, for a division under a `config` rule setting its
+      // `rubric-position` (see `opts_of` in render.typ).
       trace-given: cfg.rubric-trace,
       width: cfg.rubric-width,
     ),
@@ -513,7 +515,7 @@
 
 /// The options of `EXAM_WIDE_OPTIONS` that a question, part, or subpart
 /// takes for itself too, under the same name (see divisions.typ).
-#let DIVISION_OPTIONS = ("numbering", "rubric-position", "rubric-trace", "rubric-width", "indent")
+#let DIVISION_OPTIONS = ("numbering", "indent")
 
 /// The options of `EXAM_WIDE_OPTIONS` that a `config` set rule inside an
 /// exam may set: the exam applies them to the questions, parts, and subparts

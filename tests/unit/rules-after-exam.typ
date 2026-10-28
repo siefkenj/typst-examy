@@ -78,3 +78,16 @@
   assert.eq(pages.len(), 3)
   assert(pages.all(p => p == pages.first()), message: "one page for all, got " + repr(pages))
 }
+
+// The labels of a line a question shares with its part are measured inside
+// the rules around the question (see `_width_at`), where a
+// `#set page(..)` is no error, as it would be inside `measure`.
+#rule[A `#set page(..)` and a `#set text(font: ..)` around questions that share their first line with a part, badges in the left margin: no error, the labels and the badges measured in the font]
+#[
+  #show: exam.with(indent: 0pt, points-position: "margin-left")
+  #set page(margin: (left: 2.4in, rest: .4in), header: align(right, text(8pt)[_Header from the rule_]))
+  #set text(font: "DejaVu Sans Mono")
+  #question(points: 2)[#part(points: 1)[A part on the question's line.] #part(points: 1)[Another.]]
+  #set page(header: align(right, text(8pt)[_Another header_]))
+  #question(points: 2)[#part(points: 1)[A part on the question's line.] #part(points: 1)[Another.]]
+]

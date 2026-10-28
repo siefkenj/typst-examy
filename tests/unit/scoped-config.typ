@@ -1,9 +1,8 @@
 // `config` rules inside an exam, around some of its questions: the options
 // the exam applies question by question (`SCOPED_OPTIONS`) hold for the
 // questions, parts, and subparts in the rule's scope, and those after it
-// keep the exam's. A question's own arguments win over a rule around it,
-// and a rule inside a question over the question's own arguments, for its
-// parts. Checked by what is drawn, and where. (`numbering` is read once,
+// keep the exam's. A rule nearer a question wins over one further out, and
+// a rule inside a question holds for the parts after it. Checked by what is drawn, and where. (`numbering` is read once,
 // and its rule is an error: see tests/unit/rules-after-exam.typ.)
 #import "/src/lib.typ": *
 #import "/src/rubric.typ": AREA
@@ -87,28 +86,80 @@
   assert(t.contains("<2>"), message: t)
 }
 
-// --- a question's own argument over a rule around it, and a rule inside it
-// over its argument, for its parts ---
+// --- a rule nearer a question over one further out, and a rule inside it
+// for its parts ---
 #probed(
   "rubrics",
-  [`rubric-position: "margin-left"` around question 1, which gives `"end"`; its second part after a
-    rule inside it setting `"margin-left"` again.],
+  [`rubric-position: "margin-left"` for the exam, and `"end"` around question 1; its second part
+    after a rule inside it setting `"margin-right"`.],
   [
     #show: e.set_(config, rubric-position: "margin-left")
-    #question(rubric-position: "end", rubric: rubric(points: 1)[One.])[
-      #part(rubric: rubric(points: 1)[First part.])[A part.]
-      #show: e.set_(config, rubric-position: "margin-right")
-      #part(rubric: rubric(points: 1)[Second part.])[Another.]
+    #[
+      #show: e.set_(config, rubric-position: "end")
+      #question(rubric: rubric(points: 1)[One.])[
+        #part(rubric: rubric(points: 1)[First part.])[A part.]
+        #show: e.set_(config, rubric-position: "margin-right")
+        #part(rubric: rubric(points: 1)[Second part.])[Another.]
+      ]
     ]
     #question(rubric: rubric(points: 1)[Two.])[Two.]
   ],
   show-rubrics: true,
 )
+/// The rubrics' areas of the `n`th exam with rubrics on the page, each its
+/// division's address and side.
+#let sides(n) = {
+  let areas = query(AREA).map(m => m.value)
+  let exam = areas.map(a => a.id.exam).dedup().at(n)
+  areas.filter(a => a.id.exam == exam).map(a => (a.id.address, a.side))
+}
 #context {
-  let sides = query(AREA).map(m => m.value).map(a => (a.id.address, a.side))
+  let sides = sides(0)
   assert.eq(
     sides.sorted(key: s => repr(s.first())),
     (((0,), "end"), ((0, 0), "end"), ((0, 1), "margin-right"), ((1,), "margin-left")).sorted(key: s => repr(s.first())),
+    message: repr(sides),
+  )
+}
+
+// --- a rule around a question holds for its parts, and one around a part
+// for that part alone ---
+#probed(
+  "rubric-parts",
+  [`rubric-position: "end"` around question 2, its part's rubric too; `"margin-left"` around
+    question 3's first part, and its second part back in the right margin.],
+  [
+    #question(rubric: rubric(points: 1)[First.])[One.]
+    #[
+      #show: e.set_(config, rubric-position: "end")
+      #question(rubric: rubric(points: 1)[Second.])[
+        Two. #part(rubric: rubric(points: 1)[Its part.])[A part.]
+      ]
+    ]
+    #question(rubric: rubric(points: 1)[Third.])[
+      Three.
+      #[
+        #show: e.set_(config, rubric-position: "margin-left")
+        #part(rubric: rubric(points: 1)[Left.])[A part.]
+      ]
+      #part(rubric: rubric(points: 1)[Right.])[Another.]
+    ]
+  ],
+  show-rubrics: true,
+  rubric-position: "margin-right",
+)
+#context {
+  let sides = sides(1)
+  assert.eq(
+    sides.sorted(key: s => repr(s.first())),
+    (
+      ((0,), "margin-right"),
+      ((1,), "end"),
+      ((1, 0), "end"),
+      ((2,), "margin-right"),
+      ((2, 0), "margin-left"),
+      ((2, 1), "margin-right"),
+    ).sorted(key: s => repr(s.first())),
     message: repr(sides),
   )
 }

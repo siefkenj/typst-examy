@@ -1,10 +1,10 @@
-// `points-table(by: "part")` and `by: "subpart"`: which columns the table
-// has (`table_columns`). A division at the table's level has a column of its
-// points and its parts'; one above it, a column of its own points, if it has
-// any; a question with no column among its divisions, one of its own. Every
-// point is in one column, so the total is the same at every level. A column
-// is labelled exactly as a reference to its division reads ("??" where it
-// is unnumbered), and links to it.
+// `points-table(granularity: "part")` and `granularity: "subpart"`: which
+// columns the table has (`table_columns`). A division at the table's level
+// has a column of its points and its parts'; one above it, a column of its
+// own points, if it has any; a question with no column among its divisions,
+// one of its own. Every point is in one column, so the total is the same at
+// every level. A column is labelled exactly as a reference to its division
+// reads ("??" where it is unnumbered), and links to it.
 #import "/src/tokenize.typ": tokenize
 #import "/src/parse.typ": parse
 #import "/src/points.typ": DIVISION_MARKER, compute_points_data, table_columns
@@ -84,8 +84,8 @@
 #for (body, desc) in ((EXAMPLE, [The example]), (MIXED, [Mixed points])) {
   rule[#desc: by question, by part, by subpart (with a Bonus row). Each label links to its division.]
   exam[
-    #for by in ("question", "part", "subpart") {
-      align(center, points-table(by: by, bonus: true))
+    #for granularity in ("question", "part", "subpart") {
+      align(center, points-table(granularity: granularity, bonus: true))
       v(4pt)
     }
     #body

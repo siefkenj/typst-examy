@@ -567,34 +567,37 @@
     e.field(
       "outset",
       e.types.union(auto, length, dictionary),
-      doc: "The space around the bubble, specified like a [`box`'s `inset`](https://typst.app/docs/reference/layout/box/#parameters-inset).",
+      doc: "The space around the bubble, specified like a [`box`'s `inset`](https://typst.app/docs/reference/layout/box/#parameters-inset). Sides given replace those of `config`'s `bubble-outset`; the others are kept. Setting to `auto` uses `config`'s `bubble-outset`.",
       default: auto,
-      meta: (check: v => outset_error("choice", v, allow-auto: true), default-shown: repr(_OUTSET)),
+      meta: (config: "bubble-outset", check: v => outset_error("choice", v, allow-auto: true)),
     ),
     e.field(
       "size",
       e.types.smart(length),
       doc: "The diameter of a bubble. Setting to `auto` uses `config`'s `bubble-size`.",
       default: auto,
-      meta: (hint: "such as `1.2em` or `12pt`"),
+      meta: (config: "bubble-size", hint: "such as `1.2em` or `12pt`"),
     ),
     e.field(
       "stroke",
       e.types.smart(length),
       doc: "The outline thickness of the bubble. Setting to `auto` uses `config`'s `bubble-stroke`.",
       default: auto,
+      meta: (config: "bubble-stroke"),
     ),
     e.field(
       "solution-color",
       e.types.union(auto, color),
       doc: "The primary color for a correct bubble; i.e., the color of its outline, check mark, and text when filled in. Setting to `auto` uses `config`'s `solution-color`.",
       default: auto,
+      meta: (config: "solution-color"),
     ),
     e.field(
       "solution-background-color",
       e.types.union(auto, color),
       doc: "The background color for a correct bubble when filled in. Setting to `auto` uses `config`'s `solution-background-color`.",
       default: auto,
+      meta: (config: "solution-background-color"),
     ),
   ),
   aliases: (
@@ -656,5 +659,5 @@
 #let DOCS = (
   choice: _CHOICE,
   bubble: (alias-of: "choice", with: (bubble: "circle"), desc: "A round bubble (for \"select one\" multiple choice)."),
-  "square-bubble": (alias-of: "choice", with: (bubble: "square"), desc: "A square bubble, for \"select all that apply\"."),
+  "square-bubble": (alias-of: "choice", with: (bubble: "square"), desc: "A square bubble, used for \"select all that apply\"."),
 )

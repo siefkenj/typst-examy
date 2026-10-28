@@ -9,7 +9,8 @@ location where they are authored.
 
 All rubric items in a particular question/part/subpart are grouped together and shown in a single
 box in the margin. Rubric items set in the `rubric: ...` option of a question/part/subpart will not
-have a traceback line.
+have a traceback line. To hide or show the traceback line of a single rubric item, give it
+`trace: false` or `trace: true`; `config`'s `rubric-trace` sets this for all of them.
 
 // Shown as images of a paged rendering (`paged-name`), as a rubric's dotted
 // lines need to know where things are on the page.

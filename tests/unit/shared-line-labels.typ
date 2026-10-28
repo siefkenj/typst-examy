@@ -232,6 +232,35 @@
     false,
   ),
   (
+    "Indent 1.6em, a wider font set inside the exam, points-position \"margin-left\": the labels measured in it, \"(a)\" clear of \"1.\", and the badges clear of both",
+    (indent: 1.6em, points-position: "margin-left"),
+    c => [
+      #set text(font: "DejaVu Sans Mono")
+      #question(points: 2)[#part(points: 2)[#T(c, 2, 1)A part on the question's line.] #part[#T(c, 2, 2)Another.]]
+      #question[#T(c, 1, 2)A question with text first.]
+    ],
+    false,
+  ),
+  (
+    "No indent, `show text: upper` inside the exam, points-position \"margin-left\": the labels measured in capitals, as they are drawn, \"(A)\" clear of \"1.\", and the badges clear of both",
+    (indent: 0pt, points-position: "margin-left"),
+    c => [
+      #show text: upper
+      #question(points: 2)[#part(points: 2)[#T(c, 2, 1)A part on the question's line.] #part[#T(c, 2, 2)Another.]]
+      #question[#T(c, 1, 2)A question with text first.]
+    ],
+    false,
+  ),
+  (
+    "No indent, a wider font set inside the question, before an unnumbered part, points-position \"margin-left\": \"1.\" measured in it, as it is drawn on the part's line, and the badge clear of it",
+    (indent: 0pt, points-position: "margin-left"),
+    c => [
+      #question[#set text(font: "DejaVu Sans Mono"); #part(number: none, points: 2)[A part on the question's line.]]
+      #question[#T(c, 1, 2)A question with text first.]
+    ],
+    false,
+  ),
+  (
     "Default indent, a large word on the line \"1.\" and \"(a)\" share: both on its baseline",
     (:),
     c => [

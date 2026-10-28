@@ -61,18 +61,18 @@
 #rule[Every layout of the points table, counting the exam at the very end.]
 // --- every layout of the points table compiles and draws a table ---
 #for direction in ("horizontal", "vertical") {
-  for by in ("question", "page") {
+  for granularity in ("question", "page") {
     for (score, bonus, max) in ((false, false, none), (true, true, 2)) {
       show: e.set_(
         config,
         points-table-direction: direction,
-        points-table-by: by,
+        points-table-granularity: granularity,
         points-table-score: score,
         points-table-bonus: bonus,
         points-table-max-columns: max,
         strings: (total: [Sum]),
       )
-      rule[#direction, by #by#if score [, with a score row and a bonus row#if direction == "horizontal" [, at most 2 columns wide]]. ]
+      rule[#direction, by #granularity#if score [, with a score row and a bonus row#if direction == "horizontal" [, at most 2 columns wide]]. ]
       points-table()
     }
   }

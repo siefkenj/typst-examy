@@ -1,9 +1,11 @@
 // `config`'s `answer-box-height`, `answer-box-width`,
 // `answer-box-default-height`, `answer-box-default-width`,
 // `answer-box-stroke` and `answer-box-fill` give the fields of the answer
-// boxes that neither their call nor a set rule on `answer-box` gives. A box whose fields come from `config` lays out exactly as one given
-// the same fields on its call, and a box given a field, on its call or by a
-// set rule, keeps it whatever `config` says, `none` and `auto` included.
+// boxes that neither their call nor a set rule on `answer-box` gives, or
+// that they give as `auto`. A box whose fields come from `config` lays out
+// exactly as one given the same fields on its call, and a box given a field
+// other than `auto`, on its call or by a set rule, keeps it whatever
+// `config` says, `none` included.
 // Each case is laid out both ways, on a page of its own, and every mark
 // placed after a box must land in the same place. The outline and
 // background, which move nothing, are compared as the boxes are drawn:
@@ -55,11 +57,13 @@
     },
   ),
   (
-    "a box's own none and auto win over config's (the call way has no config)",
+    "a box's own none wins over config's, and its auto takes config's (the call way has no config)",
     way => exam(..on(way, "config", (answer-box-height: 3cm, answer-box-width: 50%)))[
-      #question[A prompt it fits: #answer-box(height: none, width: auto)[Explain:] #mark(3, way, 1)]
+      #question[A prompt it fits: #answer-box(height: none, width: 4cm)[Explain:] #mark(3, way, 1)]
       #question[Blank: #answer-box(height: none, width: 100%)[] #mark(3, way, 2)]
-      #question[On the key too: #answer-box(height: auto, width: 100%)[Hi] #mark(3, way, 3)]
+      #question[Config's: #answer-box(
+          ..if way == "config" { (height: auto, width: auto) } else { (height: 3cm, width: 50%) },
+        )[Hi] #mark(3, way, 3)]
     ],
   ),
   (
@@ -88,6 +92,18 @@
       [Name: #answer-box(width: 4cm, ..on(way, "call", (default-height: 1.5cm)))[] #mark(6, way, 1)]
       answer-box(..on(way, "call", (width: 100%, default-height: 1.5cm)))[]
       mark(6, way, 2)
+    },
+  ),
+  (
+    "a call's auto over a set rule on answer-box takes config's (the call way has no set rule)",
+    way => {
+      show: e.set_(config, answer-box-height: 2cm, answer-box-width: 60%)
+      show: e.set_(answer-box, ..on(way, "config", (height: 1cm, width: 100%)))
+      let given = if way == "config" { (height: auto, width: auto) } else { (height: 2cm, width: 60%) }
+      exam[
+        #question[Auto: #answer-box(..given)[] #mark(7, way, 1)]
+        #question[After. #mark(7, way, 2)]
+      ]
     },
   ),
 )
@@ -158,6 +174,15 @@
       ]
     },
   ),
+  (
+    "a call's auto over a set rule on answer-box takes config's (the call way has no set rule)",
+    way => {
+      show: e.set_(config, answer-box-stroke: 2pt + red, answer-box-fill: yellow)
+      show: e.set_(answer-box, ..on(way, "config", (stroke: (top: 1pt + green), fill: none)))
+      let given = if way == "config" { (stroke: auto, fill: auto) } else { (stroke: 2pt + red, fill: yellow) }
+      exam[#question[Auto: #answer-box(..given)[]]]
+    },
+  ),
 )
 
 #for (i, (desc, doc)) in STROKE_CASES.enumerate() {
@@ -184,4 +209,6 @@
   let strokes = of(2, "config").map(((stroke, _)) => stroke).filter(s => s not in (none, (:)))
   assert(strokes.len() > 0 and strokes.all(s => s.keys() == ("top",) and s.top.paint == green), message: repr(strokes))
   assert((none, none) in of(2, "config"), message: repr(of(2, "config")))
+  // Config's, not the set rule's.
+  assert(of(3, "config").any(((_, fill)) => fill == yellow), message: repr(of(3, "config")))
 }

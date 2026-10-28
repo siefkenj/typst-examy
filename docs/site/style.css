@@ -8,7 +8,8 @@
   --line: #e2e6ee;
   --bg: #ffffff;
   --bg-soft: #f6f8fb;
-  --accent: #1d5fb4;
+  /* --accent comes from ACCENT in template.typ, appended to this file by
+     site.typ. */
   --accent-soft: #e8f0fb;
   /* The same gray as the panel behind an example's exam (OUTPUT in
      template.typ, appended to this file by site.typ). */
@@ -334,8 +335,6 @@ td, th { border: 1px solid var(--line); padding: .35rem .7rem; text-align: left;
 .arg-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
 .arg-name { font-weight: 700; background: none; padding: 0; font-size: .95rem; }
 .arg-type { color: #7a3e9d; background: none; padding: 0; }
-.arg-default { color: var(--muted); font-size: .85rem; }
-.arg-default code { font-size: .82rem; }
 .badge {
   font-size: .72rem;
   font-weight: 600;
@@ -437,12 +436,17 @@ h1 .kind {
    name's width. */
 .config-options td:first-child { min-width: 10rem; }
 .config-options .option-meta { margin-top: .2rem; padding-left: .6rem; width: 0; min-width: calc(100% - .6rem); }
-.config-options .option-meta .arg-default { white-space: nowrap; }
-.config-options td:first-child .option-meta .arg-type span { white-space: nowrap; }
-.config-options .option-pretty { padding-left: .6rem; }
-.config-options .option-pretty pre { margin: .1rem 0 .2rem; padding: 0; border: 0; background: none; overflow: visible; font-size: .82rem; }
+/* The type wraps after its `|`s, and after the default's badge, which stands
+   for one of its alternatives (see `config-options`). */
+.config-options .option-meta > span { white-space: nowrap; }
+.config-options .option-meta .arg-type { font-size: .82rem; }
+/* A default wider than the column, as `numbering`'s, wraps in its badge. */
+.config-options .option-meta .default-badge, .config-options .option-meta .default-box { max-width: 100%; }
+.config-options td:first-child .option-meta .default-value code { white-space: normal; }
+.config-options .option-pretty { margin-left: .6rem; }
+.config-options .option-pretty .default-box { display: inline-block; }
+.config-options .option-pretty pre { margin: 0; padding: 0; border: 0; background: none; overflow: visible; font-size: .95em; line-height: 1.35; }
 .config-options td:first-child .option-pretty pre code { white-space: pre; }
-.config-options td:first-child .option-meta code { white-space: normal; overflow-wrap: anywhere; font-size: .82rem; }
 
 /* The playground's entry in the guide's list (in the sidebar, and in the
    menu on a small screen): an edit icon after it, in the link's color,
@@ -581,4 +585,28 @@ h1 .kind {
   .playground-page .toplinks { gap: .8rem; padding-bottom: 0; border-bottom: 0; font-size: .9rem; }
   .playground { grid-template-columns: minmax(0, 1fr); grid-template-rows: 70vh .75rem minmax(80vh, auto); }
   .playground-divider { visibility: hidden; }
+}
+
+/* An argument's default (see `default-badge` in template.typ): the value in
+   a blue box, under a small "default" centered over it in the room kept
+   above the box, and the `config` option it comes from beside it in the box,
+   in blue after a gear. */
+.default-badge { display: inline-block; margin-top: .75rem; font-size: .8rem; line-height: 1.1; }
+.default-box { display: inline-flex; align-items: stretch; border: 1px solid var(--accent); border-radius: 4px; }
+.default-value { position: relative; padding: .28em .5em; }
+.default-key { position: absolute; left: 50%; bottom: 100%; transform: translateX(-50%); margin-bottom: calc(.15rem + 1px);
+  font-size: .78em; line-height: 1; color: var(--accent); white-space: nowrap; }
+.default-badge code { background: none; padding: 0; font-size: .95em; }
+.default-badge a { display: inline-flex; }
+.default-badge a:hover { text-decoration: none; }
+.default-config { display: inline-flex; align-items: center; gap: .3em;
+  padding: .28em .5em; border-left: 1px solid #bcd2f0; color: var(--accent); }
+.default-badge a:hover .default-config code { text-decoration: underline; text-underline-offset: .2em; }
+.default-config code { color: var(--accent); }
+.default-config::before {
+  /* Lowered a little from the middle of the line onto the middle of the
+     code's lowercase letters. */
+  content: ""; flex: none; width: 1em; height: 1em; background: currentColor; position: relative; top: .08em;
+  -webkit-mask: var(--gear) center / contain no-repeat; mask: var(--gear) center / contain no-repeat;
+  --gear: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='5.6' fill='none' stroke='black' stroke-width='3.2' stroke-dasharray='2.199 2.199'/><circle cx='8' cy='8' r='4.6' fill='none' stroke='black' stroke-width='1.8'/></svg>");
 }

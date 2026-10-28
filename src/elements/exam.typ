@@ -38,24 +38,28 @@
       e.types.union(auto, content, none),
       doc: "The institution name. Setting to `auto` uses `config`'s `institution`; `none` hides it.",
       default: auto,
+      meta: (config: "institution"),
     ),
     e.field(
       "exam-name",
       e.types.union(auto, content, none),
       doc: "The name of the exam (e.g. Midterm 1). Setting to `auto` uses `config`'s `exam-name`; `none` hides it.",
       default: auto,
+      meta: (config: "exam-name"),
     ),
     e.field(
       "term",
       e.types.union(auto, content, none),
       doc: "The term of the exam (e.g. Fall 2026). Setting to `auto` uses `config`'s `term`; `none` hides it.",
       default: auto,
+      meta: (config: "term"),
     ),
     e.field(
       "duration",
       e.types.union(auto, none, duration, content),
       doc: "The length of the exam. [`Duration`](https://typst.app/docs/reference/foundations/duration/)s are shown in minutes (e.g. `duration(hours: 1, minutes: 50)` shows as \"110 Minutes\"). Pass content for complete control over what is shown (e.g., pass `[1 h 50 min]`). Setting to `auto` uses `config`'s `duration`; `none` hides it.",
       default: auto,
+      meta: (config: "duration"),
     ),
   ),
 )

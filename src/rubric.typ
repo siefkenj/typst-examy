@@ -21,7 +21,7 @@
 
 #let _RUBRIC = declare_function(
   "rubric",
-  doc: "A rubric item, or a group of items, for grading a question/part/subpart. Rubrics can be written in the question's `rubric` argument, or anywhere in its body (e.g. in a solution), where a dotted line traces them back to. Rubrics are only shown when `config`'s `show-rubrics` is set, and take up no space.
+  doc: "A rubric item, or a group of items, for grading a question/part/subpart. Rubrics can be written in the question's `rubric` argument or anywhere in its body. Rubrics are only shown when `config`'s `show-rubrics` is set and by default take up no space.
 
   A rubric containing other rubrics is a group: its first paragraph is the group's title, and the rubrics inside are its items. Other text is shown as a note.",
   fields: (
@@ -34,20 +34,36 @@
     e.field(
       "points",
       e.types.union(int, float, none),
-      doc: "The points awarded (positive) or deducted (negative). Rubric points are not added to any total.",
+      doc: "The points for this rubric item (positive or negative).",
       default: none,
     ),
     e.field(
       "annotation",
       e.types.union(none, content, str),
-      doc: "A short note for the grader, shown at the right of the rubric (e.g. `annotation: [pick one]`).",
+      doc: "A short note for the grader, shown at the top of the rubric (e.g. `annotation: [pick one]`).",
       default: none,
+    ),
+    e.field(
+      "trace",
+      e.types.union(auto, bool),
+      doc: "Whether to draw a dotted line from where this rubric item is written to the rubric. Setting to `auto` uses `config`'s `rubric-trace`.
+
+      An item inside a group is traced with its group: the line runs from where the group is written, and the group's `trace` decides whether it is drawn. The item's own `trace` is not used.
+
+      Note: items written in a question/part/subpart's `rubric` argument are never traced.",
+      default: auto,
+      meta: (config: "rubric-trace"),
     ),
   ),
 )
 
 /// A rubric item or group (see DOCS).
-#let rubric = define(_RUBRIC, it => rubric_marker((points: it.points, annotation: it.annotation, body: it.body)))
+#let rubric = define(_RUBRIC, it => rubric_marker((
+  points: it.points,
+  annotation: it.annotation,
+  body: it.body,
+  trace: it.trace,
+)))
 
 // ---------------------------------------------------------------------------
 // The data: rubric content as a tree
@@ -530,6 +546,13 @@
 // The leaders
 // ---------------------------------------------------------------------------
 
+/// Whether rubric `value` (its data) is traced: by its own `trace`, else
+/// by `trace`, its division's.
+#let is_traced(value, trace) = {
+  let own = value.at("trace", default: auto)
+  own == true or own == auto and trace
+}
+
 /// The leaders of the rubrics written in a block of division `address`'s
 /// content that belong to one of `owners` (its own, and those it takes in
 /// from segments dropped before it, see plan.typ), to their boxes in their
@@ -537,7 +560,7 @@
 /// text's edge, then to the box (at the `"end"`, down beside the text).
 /// Emitted at the end of the block, so that they are drawn over its content:
 /// drawn with the rubric, before the content, a solution's background would
-/// cover them. Takes no room.
+/// cover them. Takes no room. Only those traced (see `is_traced`).
 ///
 /// They are drawn from the top of the block, where its `rubric_head` is,
 /// rather than from where they are emitted: laid out in a `measure` (to size
@@ -546,13 +569,14 @@
 /// drawn from their own position would not match those on the page. A
 /// block that runs onto a later page has its top on another page, and there
 /// they are drawn from where they are emitted.
-#let rubric_leaders(address, owners, side) = context {
+#let rubric_leaders(address, owners, side, trace: true) = context {
   let here_loc = here()
   let head = query(selector(_head_label(address)).before(here_loc)).at(-1, default: none)
   if head == none { return }
   // The rubrics in the block, between its head and here.
+  // Those traced: by their own `trace`, else by `trace`.
   let mine = query(selector(RUBRIC_LABEL).after(head.location()).before(here_loc)).filter(a => (
-    OWNER.at(a.location()) in owners
+    OWNER.at(a.location()) in owners and is_traced(a.value, trace)
   ))
   if mine.len() == 0 { return }
   let from_head = head.location().page() == here_loc.page()
@@ -618,7 +642,7 @@
 
 #let _RUBRIC_LIST = declare_function(
   "rubric-list",
-  doc: "Lists every rubric of the exam, whatever `show-rubrics` is set to (e.g. as a grading guide after the exam).",
+  doc: "Lists every rubric of the exam. This function ignores the value of the global `show-rubrics` option.",
 )
 
 /// Every rubric of the exam, each in its card, one after another (see

@@ -9,20 +9,20 @@
 #import "prelude.typ": e
 #import "markers.typ": begin_marker, end_marker, outside_check
 #import "constants.typ": DEBUG_PANIC
-#import "signature.typ": UNSET, declare_function, define, unset_or
+#import "signature.typ": declare_function, define
 
 /// The arguments of a question, part, or subpart, which take identical ones.
 #let _DIVISION_FIELDS = (
   e.field(
     "body",
     e.types.union(content, str),
-    doc: "The text of the question/part/subpart.",
+    doc: "The text of the question/part/subpart. Can contain nested question/part/subparts",
     required: true,
   ),
   e.field(
     "points",
     e.types.union(int, float, none),
-    doc: "The number of points (e.g. `points: 2` shows \"(2 points)\"). Points are counted in `#points-table()` and the other point totals.",
+    doc: "The number of points shown for this question/part/subpart (e.g. `points: 2` shows \"(2 points)\"). Points are also shown in `#points-table()` and related functions.",
     default: none,
   ),
   e.field(
@@ -34,13 +34,13 @@
   e.field(
     "rubric",
     e.types.option(content),
-    doc: "Rubric items for the question/part/subpart (see `#rubric[..]`). Text between the items is shown as a note for the grader. Rubric items written in the body are listed first.",
+    doc: "Rubric items for the question/part/subpart (see `#rubric[..]`). Rubric items written here are shown after any `#rubric[..]` items in `body`.",
     default: none,
   ),
   e.field(
     "number",
     e.types.union(auto, int, str, content, none),
-    doc: "Setting to `auto` numbers the question/part/subpart in order. An integer sets the number (later ones continue from it), content is shown as is, and `none` leaves the number out.",
+    doc: "By default, questions/parts/subparts automatically increment their number. Providing a `number` overrides this behaviour. A numerical value will cause numbering to skip to that value; a non-numerical value or general content will pause the counter and show that content. To omit a number completely, set `number: none`.",
     default: auto,
   ),
   e.field(
@@ -48,7 +48,7 @@
     e.types.union(auto, length, fraction),
     doc: "The height of the question/part/subpart, including its parts. A length or fraction (e.g. `1fr`) makes it a single block of that height, which cannot break across pages.
 
-    Note: to give room to write in, use an `#answer-box[..]` instead (e.g. `#answer-box(width: 100%, height: 3cm)[]`).",
+    Note: prefer `#answer-box[..]` (e.g. `#answer-box(width: 100%, height: 3cm)[]`) over setting a question's height if your goal is to give students a space to write in.",
     default: auto,
   ),
   e.field(
@@ -56,38 +56,15 @@
     e.types.smart(length),
     doc: "The indentation level to use for the question/part/subpart. Setting to `auto` uses `config`'s `indent`.",
     default: auto,
+    meta: (config: "indent"),
   ),
   e.field(
     "numbering",
     e.types.union(auto, str, function, e.types.array(e.types.union(str, function))),
-    doc: "Determines how the question/part/subpart and those inside it are numbered. This option behaves like [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering), taking a numbering pattern (e.g. `\"1.a.i.\"`) or a function that generates a label. In addition, `numbering` also accepts an array of numbering patterns (e.g. `(\"Bonus 1.\", \"(i)\")`), with the left-most pattern applying to this question/part/subpart. Setting to `auto` uses the setting of the enclosing question/part, or `config`'s.",
+    doc: "Determines how the question/part/subpart and those inside it are numbered. This option behaves like [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering), taking a numbering pattern (e.g. `\"1.a.i.\"`) or a function that generates a label. In addition, `numbering` also accepts an array of numbering patterns (e.g. `(\"Bonus 1.\", \"(i)\")`), with the left-most pattern applying to the highest level (almost always the `#question[]`), even when set on a part.
+
+    Setting to `auto` uses the `numbering` of the enclosing question/part, or `config`'s `numbering` if there is none.",
     default: auto,
-  ),
-  e.field(
-    "rubric-position",
-    e.types.union(auto, "margin-right", "margin-left", "end"),
-    doc: "Determines where the rubrics of this question/part/subpart and those inside it are displayed.
-
-    `\"margin-right\"` or `\"margin-left\"`: in the page margin, next to the question/part/subpart they belong to (see `rubric-width`).
-
-    `\"end\"`: after the question/part/subpart, taking up space on the page. When set to `\"end\"`, visible rubrics will take up space in the document.
-
-    Setting to `auto` uses the setting of the enclosing question/part, or `config`'s.",
-    default: auto,
-  ),
-  e.field(
-    "rubric-trace",
-    unset_or(auto, bool),
-    doc: "Whether to draw a dotted line from each rubric item written in the text to the rubric, for this question/part/subpart and those inside it. Setting to `auto` draws lines only for rubrics in the margin. When not given, uses the setting of the enclosing question/part, or `config`'s.",
-    default: UNSET,
-    meta: (default-shown: "auto"),
-  ),
-  e.field(
-    "rubric-width",
-    unset_or(auto, length),
-    doc: "The width of rubrics in the margin, for this question/part/subpart and those inside it. Setting to `auto` fills the margin. When not given, uses the setting of the enclosing question/part, or `config`'s.",
-    default: UNSET,
-    meta: (default-shown: "auto"),
   ),
   e.field(
     "label",
@@ -102,7 +79,7 @@
 /// (chosen by nesting depth, not by which function is called), so the API
 /// reference documents them as one group instead of repeating the same
 /// argument list three times.
-#let _DIVISION_DOC = "Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively. The three functions take identical arguments; the numbering style is chosen by nesting depth, not by which function is called."
+#let _DIVISION_DOC = "Declare a question, part, or subpart, numbered \"1.\", \"(a)\", and \"i.\" respectively. `#question[..]`, `#part[..]`, and `#subpart[..]` are aliases of the same function, taking the same arguments. The numbering style is chosen by nesting depth, not by function, so `#question[#part[..]]` and `#question[#question[..]]` will render identically."
 
 /// Names an author might reach for that the divisions do not take.
 #let _ALIASES = (
@@ -126,9 +103,6 @@
     height: it.height,
     indent: it.indent,
     numbering: it.numbering,
-    rubric-position: it.rubric-position,
-    rubric-trace: it.rubric-trace,
-    rubric-width: it.rubric-width,
     label: it.label,
     name: spec.name,
   ))

@@ -15,7 +15,7 @@
       bonus: get-num-points-page(bonus: true),
       page: get-num-points-page(page: 1),
     ))<page-points>]
-  #points-table(by: "page", bonus: true)
+  #points-table(granularity: "page", bonus: true)
   #pagebreak()
   #question(points: 4)[On page 2.]
   Points on this page: #num-points-page.

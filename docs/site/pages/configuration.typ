@@ -122,7 +122,7 @@ shows how you might create a fully custom cover page with the exam's name and te
   "points-position",
   "points-show-totals",
   "points-table-direction",
-  "points-table-by",
+  "points-table-granularity",
   "points-table-score",
   "points-table-bonus",
   "points-table-max-columns",

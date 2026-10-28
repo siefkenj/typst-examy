@@ -2,7 +2,7 @@
 // badges in the margin are drawn there together, once each. Whether they
 // are stacked with the rubrics in that margin is the exam's to say, not each
 // division's, so that the two agree even when their rubrics are drawn in
-// different places (`rubric-position`).
+// different places (by `config` rules setting `rubric-position`).
 #import "/src/lib.typ": *
 #import "/src/rubric.typ": AREA
 #import "/tests/record.typ": rule
@@ -16,11 +16,19 @@
 #block(stroke: .3pt + gray, inset: 6pt, exam(
   questions: [
     #question(points: 3, rubric: rubric[One.])[
-      #part(points: 4, rubric-position: "end", rubric: rubric[Its part.])[A part.] #part(points: 1)[Another.]
+      #[
+        #show: e.set_(config, rubric-position: "end")
+        #part(points: 4, rubric: rubric[Its part.])[A part.]
+      ]
+      #part(points: 1)[Another.]
     ]
-    #question(points: 5, rubric-position: "end", rubric: rubric[Two.])[
-      #part(points: 6, rubric-position: "margin-right", rubric: rubric[Its part.])[A part.]
-      #part(points: 2)[Another.]
+    #[
+      #show: e.set_(config, rubric-position: "end")
+      #question(points: 5, rubric: rubric[Two.])[
+        #show: e.set_(config, rubric-position: "margin-right")
+        #part(points: 6, rubric: rubric[Its part.])[A part.]
+        #part(points: 2)[Another.]
+      ]
     ]
   ],
   show-rubrics: true,

@@ -8,13 +8,13 @@
 // has a paged form too (see `_either` in site/template.typ).
 
 #import "site/template.typ": (
-  OUTPUT, PAGES, REFERENCE_PAGES, REPOSITORY, _anchor, entry_heading, entry_page, inline_code, page_label,
+  ACCENT, OUTPUT, PAGES, REFERENCE_PAGES, REPOSITORY, _anchor, entry_heading, entry_page, inline_code,
+  page_label,
 )
 #import "api.typ": VERSION, entry
 #import "logo/logo.typ": NAVY, examy-logo
 #import "/src/elements/bubble.typ": check_mark
 
-#let ACCENT = rgb("#1d5fb4")
 #let HOMEPAGE = toml("/typst.toml").package.homepage
 #let UNIVERSE = "https://typst.app/universe/package/" + toml("/typst.toml").package.name
 
@@ -177,9 +177,22 @@
   include "site/" + p.file
   // The reference: each export after the index, as on the site's pages.
   if p.path == "reference.html" {
+    set heading(numbering: none)
+    // Each export's heading on a tinted band, so that where one starts is
+    // easy to find while scrolling.
+    show heading.where(level: 2): it => block(
+      width: 100%,
+      inset: (x: .7em, y: .55em),
+      radius: (right: 3pt),
+      fill: ACCENT.lighten(90%),
+      stroke: (left: 3pt + ACCENT),
+      sticky: true,
+      it,
+    )
     for r in REFERENCE_PAGES {
       heading(level: 2, entry_heading(r.entry))
-      entry_page(r.entry)
+      // Indented under its heading, so that the band stands out.
+      pad(left: 2.2em, entry_page(r.entry))
     }
   }
 }

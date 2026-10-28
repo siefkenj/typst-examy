@@ -26,12 +26,12 @@
 
 #let _SHOW_SOLUTIONS = declare_function(
   "show-solutions",
-  doc: "Whether solutions are shown, taking the `--input show-solutions=..` command-line option into account. Use it for content that `#solution[..]` cannot wrap (e.g. one curve of a plot): `e.get(get => if show-solutions(get) [..])`.",
+  doc: "Returns whether solutions are shown. Use this instead of reading `show-solutions` directly from `config`, since it takes the `--input show-solutions=..` command-line option into account. Useful for content that `#solution[..]` cannot wrap (e.g. to show a solution curve on plot). Must be used with elembic's `get` function. E.g., `e.get(get => if show-solutions(get) [..])`.",
   fields: (
     e.field(
       "get",
       function,
-      doc: "The `get` function given by `e.get(get => ..)`.",
+      doc: "The `get` function returned by elembic. E.g., `e.get(get => ..)`.",
       required: true,
       meta: (hint: "call it inside `e.get(get => ..)` and pass it `get`"),
     ),
@@ -51,7 +51,7 @@
 /// An inline solution that makes no line taller: its text highlighted where it
 /// stands, so it flows and wraps with the words around it, rather than boxed.
 /// A box would need vertical padding, which makes its line taller, and it
-/// cannot break across lines. The sideways padding a boxed solution has comes
+/// cannot break across lines. The sideways padding a box would have comes
 /// from a filled cap at each end, joined to the text so that a line break
 /// cannot strand it, and drawn as an outset so it takes no height. `highlight`
 /// covers only text, so an inline equation gets a fill of its own; an outset
@@ -93,10 +93,10 @@
     if type(above) != length { above = par.spacing }
     above
   } else { 0pt }
-  let body = text(fill: colors.color, body)
-  let drawn = if it.boxed { block(width: width, fill: colors.background, inset: 3pt, body) } else {
-    block(width: width, body)
-  }
+  let drawn = block(width: width, fill: colors.background, inset: 3pt, text(
+    fill: colors.color,
+    body,
+  ))
   place(dy: gap, if it._then == none { drawn } else { block(width: 100%, drawn + it._then) })
 }
 
@@ -105,10 +105,12 @@
 /// of that width, padded only sideways and filled above and below as an
 /// outset, so it is as tall as its text, though a long one still wraps onto
 /// further lines.
-#let _in_line_no_height(it, body, colors, width) = {
-  if not it.boxed { return text(fill: colors.color, body) }
+#let _in_line_no_height(body, colors, width) = {
   if width == auto { return _inline_no_height(body, colors) }
-  box(width: width, fill: colors.background, inset: (x: 3pt), outset: (y: 3pt), text(fill: colors.color, body))
+  box(width: width, fill: colors.background, inset: (x: 3pt), outset: (y: 3pt), text(
+    fill: colors.color,
+    body,
+  ))
 }
 
 /// A solution taking no height (see `answer-box`) with an `otherwise`,
@@ -120,11 +122,18 @@
 #let _over_otherwise(it, colors) = {
   let w = if it.width == none { auto } else { it.width }
   if is_multi_par(it.otherwise) {
-    let body = text(fill: colors.color, it.body)
-    let drawn = if it.boxed { block(width: if w == auto { 100% } else { w }, fill: colors.background, inset: 3pt, body) } else { body }
+    let drawn = block(
+      width: if w == auto { 100% } else { w },
+      fill: colors.background,
+      inset: 3pt,
+      text(
+        fill: colors.color,
+        it.body,
+      ),
+    )
     block(width: 100%, hide(it.otherwise) + place(top + left, drawn))
   } else {
-    box(hide(it.otherwise) + place(bottom + left, _in_line_no_height(it, it.body, colors, w)))
+    box(hide(it.otherwise) + place(bottom + left, _in_line_no_height(it.body, colors, w)))
   }
 }
 
@@ -168,21 +177,17 @@
             return if it._fill-width or is_multi_par(it.body) {
               _placed_no_height(it, it_, colors, if w == auto { 100% } else { w })
             } else {
-              _in_line_no_height(it, it_, colors, w)
+              _in_line_no_height(it_, colors, w)
             }
           }
-          if it.boxed {
-            // A width other than `auto` must use a block: a full-width *inline*
-            // box would be pushed onto a line of its own, splitting any text
-            // around it (and stretching a justified line before it).
-            let wrap = if w == auto { box.with(width: auto) } else { block.with(width: w) }
-            wrap(fill: colors.background, inset: 3pt, text(
-              fill: colors.color,
-              it_,
-            ))
-          } else {
-            text(fill: colors.color, it_)
-          }
+          // A width other than `auto` must use a block: a full-width *inline*
+          // box would be pushed onto a line of its own, splitting any text
+          // around it (and stretching a justified line before it).
+          let wrap = if w == auto { box.with(width: auto) } else { block.with(width: w) }
+          wrap(fill: colors.background, inset: 3pt, text(
+            fill: colors.color,
+            it_,
+          ))
         }
         // Rubrics in the solution, when they are drawn, stay with the text
         // beside them (see `glue_rubrics`).
@@ -192,11 +197,10 @@
   },
   fields: (
     e.field("body", content, doc: "The solution content", required: true),
-    e.field("boxed", bool, doc: "Whether to put the solution in a box", default: true),
     e.field(
       "width",
       e.types.option(e.types.union(auto, relative)),
-      doc: "The width of the solution's box. Setting to `auto` fits the content; `none` lets the surrounding content decide (e.g. a solution on its own in an `#answer-box[..]` fills its width).",
+      doc: "The width of the solution box. Setting to `auto` fits the content; `none` lets the surrounding content decide (e.g. a solution on its own in an `#answer-box[..]` fills its width).",
       default: none,
     ),
     e.field(
@@ -204,17 +208,21 @@
       e.types.union(auto, color),
       doc: "The color of the text of the solution. Setting to `auto` uses `config`'s `solution-color`.",
       default: auto,
+      meta: (config: "solution-color"),
     ),
     e.field(
       "background-color",
       e.types.union(auto, color),
       doc: "The background color for the solution. Setting to `auto` uses `config`'s `solution-background-color`.",
       default: auto,
+      meta: (config: "solution-background-color"),
     ),
     e.field(
       "otherwise",
       e.types.option(content),
-      doc: "Content shown in place of the solution when solutions are hidden (e.g. lines to write on).",
+      doc: "Content shown in place of the solution when solutions are hidden. Can be used to show, for example, lined paper when no solution is visible.
+      
+      Note: to provide space for a student to write an answer use `#answer-box[..]` instead",
       default: none,
     ),
     // Internal: how `answer-box` asks a solution standing alone in a paragraph
@@ -227,6 +235,16 @@
       bool,
       doc: "Whether an unset `width` should fill the container instead of shrink-wrapping.",
       default: false,
+      internal: true,
+    ),
+    // Deprecated: in 0.4, `boxed: false` drew a solution without its
+    // background. Solutions are now always boxed; kept, and ignored, so that
+    // documents written for 0.4 still compile.
+    e.field(
+      "boxed",
+      bool,
+      doc: "Deprecated: ignored. Solutions are always drawn in a box.",
+      default: true,
       internal: true,
     ),
     // Internal: how `answer-box` with its default height keeps its solutions
