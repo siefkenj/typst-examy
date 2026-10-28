@@ -1,5 +1,5 @@
 <h1 align="center">
-  <a href="https://siefkenj.github.io/typst-examy/"><img src="docs/logo/logo.svg" width="220" alt="examy"></a>
+  <a href="https://siefkenj.github.io/typst-examy/"><img src="docs/logo/logo.svg" width="220" alt="the examy logo"></a>
 </h1>
 
 **[Full Documentation](https://siefkenj.github.io/typst-examy/)** |
