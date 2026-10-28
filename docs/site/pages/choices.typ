@@ -1,16 +1,17 @@
 #import "../template.typ": *
 
-Multiple choice questions can be written with #api("choices", arg: "[...]") for an automatically
-formatted list, or with #api("choice", arg: "[...]") and #api("bubble", arg: "()") for finer-grained
+Multiple choice questions can be written with #api("choices", arg: "[..]") for an automatically
+formatted list, or with #api("choice", arg: "[..]") and #api("bubble", arg: "()") for finer-grained
 control.
 
-A #api("choices", arg: "[...]") accepts a mixed list with both
+A #api("choices", arg: "[..]") accepts a mixed list with both
 #typst-link("reference/model/list/")[```typ -```] and
 #typst-link("reference/model/enum/")[```typ +```] starting a line or an
 #typst-link("reference/foundations/array/")[array] of content. Lines starting with ```typ +``` are
-recorded as correct choices. Alternatively, correct choices can be given with `correct:`, by their
-0-based index (`correct: 1`), by their label when the bubbles are labelled (`correct: "B"`), or as an
-array of these (`correct: (0, 2, 3)`).
+recorded as correct choices. Alternatively, correct choices can be given with
+#api("choices", field: "correct", body: raw("correct:")), by their 0-based index (`correct: 1`), by
+their label when the bubbles are labelled (`correct: "B"`), or as an array of these
+(`correct: (0, 2, 3)`).
 
 #example(
   ```typ
@@ -40,9 +41,12 @@ array of these (`correct: (0, 2, 3)`).
 By default, choices are listed one per line, but they can also be laid out in a paragraph or in
 columns.
 
-/ `inline: true`: Run the choices side by side, wrapping like words. This suits short choices.
-/ `columns: n`: Lay the choices out in `n` equal columns, filled row by row.
-/ `gap`: The space between choices. Inline, `gap: 1fr` spreads the choices across the line.
+/ #api("choices", field: "inline", value: "true"): Run the choices side by side, wrapping like
+  words. This suits short choices.
+/ #api("choices", field: "columns", value: "n"): Lay the choices out in `n` equal columns, filled
+  row by row.
+/ #api("choices", field: "gap"): The space between choices. Inline, `gap: 1fr` spreads the choices
+  across the line.
 
 #example(
   ```typ
@@ -66,12 +70,15 @@ columns.
 
 == Round, square, and labelled bubbles
 
-The shape of a choice's bubble can be set using `bubble: "circle"` (default) or `bubble: "square"` (often used for select-all-that-apply questions).
+The shape of a choice's bubble can be set using
+#api("choices", field: "bubble", value: "\"circle\"") (default) or
+#api("choices", field: "bubble", value: "\"square\"") (often used for select-all-that-apply
+questions).
 
-Setting `enumerate: true` will label the bubbles with the letters A, B, C, … in sequence. 
-For custom lettering, you can supply a
-#typst-link("reference/model/numbering/")[numbering string], an array, or a function that
-determines the label.
+Setting #api("choices", field: "enumerate", value: "true") will label the bubbles with the letters
+A, B, C, … in sequence. For custom lettering, you can supply a
+#typst-link("reference/model/numbering/")[numbering string], an array, or a function that determines
+the label.
 
 #example(
   ```typ
@@ -101,10 +108,11 @@ If you would like to set exam-wide defaults for choices, use the global #api("co
 ```
 Relevant options are:
 
-/ `choices-enumerate`: Letters in the bubbles of every #api("choices", arg: "[...]"), as `enumerate`
-  gives them.
-/ `choices-inline`, `choices-columns`, `choices-gap`: The layout of every `choices`, as `inline`,
-  `columns`, and `gap` give it. A `choices` given `inline` or `columns` itself ignores both
+/ `choices-enumerate`: Letters in the bubbles of every #api("choices", arg: "[..]"), as
+  #api("choices", field: "enumerate") gives them.
+/ `choices-inline`, `choices-columns`, `choices-gap`: The layout of every `choices`, as
+  #api("choices", field: "inline"), #api("choices", field: "columns"), and
+  #api("choices", field: "gap") give it. A `choices` given `inline` or `columns` itself ignores both
   `choices-inline` and `choices-columns`.
 / `bubble-label-font`: The font of those letters (by default, the monospaced font bundled with
   Typst).
@@ -114,18 +122,18 @@ Relevant options are:
   (e.g. `.06em + gray`).
 / `bubble-outset`: The space around every bubble, as `outset` gives it.
 
-A single `choice` takes `size`, `stroke`, and `outset` itself, and a single `choices` takes those
-and `label-font` for all its bubbles. Each wins over the global option, and a `stroke` that gives
-only a color (e.g. `stroke: blue`) keeps the global thickness. Both also take `solution-color` and
-`solution-background-color`, which set the colors of a correct bubble on the answer key in place of
-the global options of the same names.
+A single #api("choice") takes `size`, `stroke`, and `outset` itself, and a single #api("choices")
+takes those and `label-font` for all its bubbles. Each wins over the global option, and a `stroke`
+that gives only a color (e.g. `stroke: blue`) keeps the global thickness. Both also take
+`solution-color` and `solution-background-color`, which set the colors of a correct bubble on the
+answer key in place of the global #api("config") options of the same names.
 
 
 == Custom layouts
 
-To fully customize layouts, you can use the 
-#api("choice", arg: "[...]") function directly to draw choices one at a time, or 
-the #api("bubble", arg: "()") and #api("square-bubble", arg: "()") functions to draw bubbles without associated content.
+To fully customize layouts, you can use the #api("choice", arg: "[..]") function directly to draw
+choices one at a time, or the #api("bubble", arg: "()") and #api("square-bubble", arg: "()")
+functions to draw bubbles without associated content.
 
 #example(
   ```typ

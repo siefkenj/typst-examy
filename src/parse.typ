@@ -3,13 +3,15 @@
 /// totals. Everything here is pure data → data (no layout, no context).
 ///
 /// Item kinds:
-/// - (kind: "division", level, fields, styles, parent, children, number,
+/// - (kind: "division", id, level, fields, styles, parent, children, number,
 ///    address, total_points, total_bonus_points)
 /// - (kind: "chunk", body, styles, has_inner_break, fr, parent)
 /// - (kind: "break", target, weak, styles, parent)
 ///
 /// `parent`/`children` are indices into the items array (`none` for top
-/// level). `level` is 1 for questions, 2 for parts, 3 for subparts, ...
+/// level), and a division's `id` is its own: what tells it apart from every
+/// other division of its exam, which its address may not (two unnumbered
+/// questions both have `(none,)`). `level` is 1 for questions, 2 for parts, 3 for subparts, ...
 /// `number` is the resolved number: 0-based int for auto/int numbering,
 /// content/str for custom numbers, or `none` for unnumbered divisions.
 /// `address` is the full path of resolved numbers, root first.
@@ -24,6 +26,7 @@
       let parent = stack.at(-1, default: none)
       items.push((
         kind: "division",
+        id: idx,
         level: stack.len() + 1,
         fields: tok.fields,
         styles: tok.styles,
@@ -51,7 +54,7 @@
     stack.len() == 0,
     message: "examy: unbalanced division markers: "
       + str(stack.len())
-      + " division(s) were never closed (this should be impossible when using `question[...]` etc.)",
+      + " division(s) were never closed (this should be impossible when using `question[..]` etc.)",
   )
   items
 }

@@ -37,8 +37,8 @@ affect the exam from that point onwards. However, some values _cannot_ be set in
 example, `numbering-full` cannot be set inside an exam (it would lead to ambiguous references).
 
 #warning[
-  _Warning._ A few options cannot be changed in the middle of an exam: `numbering-full`, `strings`,
-  and `show-rubrics`. Set these with `#show: exam.with(..)`.
+  _Warning._ A few options cannot be changed in the middle of an exam: `numbering-full`,
+  `strings`, and `show-rubrics`. Set these with `#show: exam.with(..)`.
 ]
 
 #example(
@@ -81,7 +81,7 @@ shows how you might create a fully custom cover page with the exam's name and te
 
 #note[
   _Note._ To check whether solutions are shown, use #api("show-solutions", arg: "(get)") instead of
-  reading the value directly from `config` (see #page-link("solutions.html")[Solutions]). This
+  reading the value directly from #api("config") (see #page-link("solutions.html")[Solutions]). This
   ensures that settings passed through the commandline via #typst-link(
     "reference/foundations/sys/",
   )[```sh --input show-solutions=..```] are taken into account.

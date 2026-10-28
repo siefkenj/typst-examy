@@ -1,4 +1,4 @@
-// Demonstrates `#solution[...]`: inside an answer box and inline. Uses a
+// Demonstrates `#solution[..]`: inside an answer box and inline. Uses a
 // small auto-height page so the render is easy to read in the README.
 //
 // Student version:  typst compile --root .. --input show-solutions=false solutions.typ

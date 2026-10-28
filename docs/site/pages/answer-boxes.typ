@@ -1,9 +1,9 @@
 #import "../template.typ": *
 
-An #api("answer-box", arg: "[...]") provides an area for students to write in. It can have a set
+An #api("answer-box", arg: "[..]") provides an area for students to write in. It can have a set
 height in #typst-link("reference/layout/length/")[fixed units] (`2cm`, `1in`, …) or
 #typst-link("reference/layout/fraction/")[_fractional_ units] (`1fr`, `2fr`, …). When the height is
-set as a fractional unit, an #api("answer-box", arg: "[...]") will negotiate with all other items on
+set as a fractional unit, an #api("answer-box", arg: "[..]") will negotiate with all other items on
 the page and adjust its height based on the available room.
 
 #example(
@@ -44,10 +44,9 @@ Answer boxes can also be used mid-sentence.
 
 == Height and Width
 
-Without a height set, an answer box will size to its content (excluding any #api(
-  "solution",
-  arg: "[...]",
-)s), with an empty answer box taking up a `default-height` (normally set to `2cm`).
+Without a height set, an answer box will size to its content (excluding any
+#api("solution", arg: "[..]")s), with an empty answer box taking up a
+#api("answer-box", field: "default-height") (normally set to `2cm`).
 
 #example(
   ```typ
@@ -62,22 +61,22 @@ Without a height set, an answer box will size to its content (excluding any #api
   ```,
 )
 
-Setting `width: 100%` or `height: 1fr` (or another fractional unit) makes an answer box act like
-a #typst-link("reference/layout/block/")[block]. Otherwise, it is placed as
-#typst-link("reference/layout/box/")[inline content], centered on the current sentence's
-baseline.
+Setting #api("answer-box", field: "width", value: "100%") or
+#api("answer-box", field: "height", value: "1fr") (or another fractional unit) makes an answer box
+act like a #typst-link("reference/layout/block/")[block]. Otherwise, it is placed as
+#typst-link("reference/layout/box/")[inline content], centered on the current sentence's baseline.
 
 A fractional width, such as `width: 1fr`, fills the rest of the line, so a box can run from a prompt
 to the end of its line, as in ```typ Critical points: #answer-box(width: 1fr)[]``` above. Two boxes
 in one line share it in proportion to their fractions.
 
 #note[
-  _Note._ It is good practice to explicitly set a `height: ...` on an answer box.
+  _Note._ It is good practice to explicitly set a `height: ..` on an answer box.
 ]
 
 == Borders
 
-An answer box's border is set with `stroke`, which accepts anything
+An answer box's border is set with #api("answer-box", field: "stroke"), which accepts anything
 #typst-link("reference/layout/box/#parameters-stroke")[`box`'s `stroke`] does.
 
 #example(
@@ -98,7 +97,8 @@ An answer box's border is set with `stroke`, which accepts anything
 
 == Global settings for answer boxes
 
-Exam-wide defaults can be set for answer boxes via the `answer-box-*` config options.
+Exam-wide defaults can be set for answer boxes via the `answer-box-*` options of the global
+#api("config").
 
 #example(
   ```typ

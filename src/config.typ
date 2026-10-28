@@ -292,7 +292,7 @@
     e.field(
       "numbering-full",
       bool,
-      doc: "Similar to [`enum`'s `full`](https://typst.app/docs/reference/model/enum/#parameters-full), if set, ensures that question/part/subparts get globally unique identifiers (e.g., part (a) of question 1 would be labeled as \"1.a.\"). This also affects `@name` references to questions.",
+      doc: "Similar to [`enum`'s `full`](https://typst.app/docs/reference/model/enum/#parameters-full), if set, ensures that question/part/subparts get globally unique identifiers (e.g., part (a) of question 1 is labeled \"1 (a)\" by default, or \"1.a.\" with `numbering: \"1.a.i.\"`). This also affects `@name` references to questions.",
       default: false,
     ),
     e.field(

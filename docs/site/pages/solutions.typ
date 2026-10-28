@@ -1,10 +1,10 @@
 #import "../template.typ": *
 
-Wrapping content #api("solution", arg: "[...]") ensures that it is only shown in an "answer key"
+Wrapping content #api("solution", arg: "[..]") ensures that it is only shown in an "answer key"
 version of an exam, which means you can use a single source to render both an exam and its answer
 key. Solutions can be placed anywhere in an exam, but are often placed in an #api(
   "answer-box",
-  arg: "[...]",
+  arg: "[..]",
 ).
 
 #example(
@@ -25,7 +25,8 @@ key. Solutions can be placed anywhere in an exam, but are often placed in an #ap
   ```,
 )
 
-To toggle whether solutions are visible, set `show-solutions` on the global #api("config").
+To toggle whether solutions are visible, set #api("config", field: "show-solutions") on the global
+#api("config").
 
 ```typ
 #show: exam.with(show-solutions: true)
@@ -82,8 +83,8 @@ during a single compile. To use it, save the exam as content, and make one #typs
 #let quiz = [
   #show: exam
 
-  #question[...]
-  #question[...]
+  #question[..]
+  #question[..]
 ]
 
 #document("quiz-nosolutions.pdf", {
@@ -114,15 +115,16 @@ typst compile --features bundle -f bundle bundle.typ out/
 
 The colors of solutions can be set via the global #api("config") with:
 
-/ `solution-color`: The color of a solution's text. The highlight behind it is derived from it,
-  unless set too.
-/ `solution-background-color`: The color of the highlight. The text color is derived from it, unless
-  set too.
+/ #api("config", field: "solution-color"): The color of a solution's text. The highlight behind it
+  is derived from it, unless set too.
+/ #api("config", field: "solution-background-color"): The color of the highlight. The text color is
+  derived from it, unless set too.
 
 If only one is set, the other is inferred by lightening or darkening the set color.
 
-A single solution takes its own `color` and `background-color`, which win over the global options
-for that solution, as in the last question below.
+A single solution takes its own #api("solution", field: "color") and
+#api("solution", field: "background-color"), which win over the global options for that solution, as
+in the last question below.
 
 #example(
   ```typ
@@ -145,10 +147,10 @@ for that solution, as in the last question below.
 
 === The `otherwise:` argument
 
-Normally, when a solution is not rendered, nothing is shown. Setting its `otherwise: ...` value to
-content will show that content when a solution is not shown. This can be used, for example, to show
-lined space on a no-solutions version of an exam, but replace it with just a solution on the
-solutions version.
+Normally, when a solution is not rendered, nothing is shown. Setting its
+#api("solution", field: "otherwise", value: "..") value to content will show that content when a
+solution is not shown. This can be used, for example, to show lined space on a no-solutions version
+of an exam, but replace it with just a solution on the solutions version.
 
 #example(
   ```typ
@@ -176,10 +178,10 @@ solutions version.
 
 == Solutions inside graphics and other advanced solutions
 
-A #api("solution", arg: "[...]") is wrapped in context, and as such, its output cannot be used
+A #api("solution", arg: "[..]") is wrapped in context, and as such, its output cannot be used
 as the input for most functions, like those that draw graphics. 
 
-An alternative is to pass #api("exam", arg: "[...]") a function of the form `solutions-only => ...`.
+An alternative is to pass #api("exam", arg: "[..]") a function of the form `solutions-only => ..`.
 The first argument is a function which returns its content only when solutions are rendered and
 returns its `otherwise:` argument otherwise. This needs `#exam(solutions-only => [..])` around the
 questions; with `#show: exam`, the exam is given content, not a function.
@@ -200,7 +202,8 @@ questions; with `#show: exam`, the exam is given content, not a function.
   ```,
 )
 
-This can also be used to achieve effects like changing a question's height between solution and no-solution versions.
+This can also be used to achieve effects like changing a question's height between solution and
+no-solution versions.
 
 #example(
   ```typ

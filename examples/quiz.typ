@@ -52,7 +52,7 @@
 #question(points: 2)[
   The graph below shows a function $f$. On the graph, sketch the graph of its derivative $f'$.
 
-  // The solution is part of the *plot*, so `#solution[...]` can't hide
+  // The solution is part of the *plot*, so `#solution[..]` can't hide
   // it. Instead, retrieve the `show-solutions` value from elembic with
   // `e.get` and add the solution curve to the diagram only when
   // solutions are enabled.
@@ -61,7 +61,7 @@
     e.get(get => {
       // `get(config).show-solutions` would read the raw config value;
       // the `show-solutions` helper also honors the command-line
-      // `--input show-solutions=...` override.
+      // `--input show-solutions=..` override.
       let solutions = show-solutions(get) != false
       let xs = lq.linspace(-2 * calc.pi, 2 * calc.pi, num: 200)
       lq.diagram(

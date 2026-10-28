@@ -21,8 +21,8 @@
 /// value is set at all.
 ///
 /// ```typst
-/// #show: e.set_(config, institution: [...], exam-name: [...],
-///   term: [...], duration: duration(minutes: 110))
+/// #show: e.set_(config, institution: [..], exam-name: [..],
+///   term: [..], duration: duration(minutes: 110))
 /// #maketitle()
 /// // or, overriding the configured term:
 /// #maketitle(term: [Summer 2026])
@@ -106,7 +106,7 @@
 #let DEFAULT_NAME_FIELDS = ((prefix: [Name:]), (prefix: [Student ID:]))
 
 /// Render one entry of a name block's `fields` as grid cells. A dictionary entry
-/// `(prefix: ..., suffix: ...)` (both optional) becomes a fill-in row:
+/// `(prefix: .., suffix: ..)` (both optional) becomes a fill-in row:
 /// the prefix, then an underline extending to the end of the line, with the
 /// suffix sitting on the line at its right end. Any other entry is content
 /// rendered verbatim, spanning the full block width.
@@ -136,7 +136,7 @@
 /// quiz header. Place it on a cover page, at the top of a quiz, or anywhere
 /// else in the document.
 ///
-/// `fields` entries are either a `(prefix: ..., suffix: ...)` dictionary
+/// `fields` entries are either a `(prefix: .., suffix: ..)` dictionary
 /// (both keys optional), rendered as the prefix, an underline extending to
 /// the end of the line, and the suffix sitting on the line at its right
 /// end — or arbitrary content, rendered verbatim as its own row.
@@ -215,7 +215,7 @@
   if present {
     let divisions = range(items.len())
       .filter(i => items.at(i).kind == "division" and items.at(i).at("rubric", default: false))
-      .map(i => (address: items.at(i).address, field: items.at(i).fields.rubric, info: rubric_info(items.at(i), opts)))
+      .map(i => (id: i, address: items.at(i).address, field: items.at(i).fields.rubric, info: rubric_info(items.at(i), opts)))
     rubric_export(divisions)
     exam_end
   }

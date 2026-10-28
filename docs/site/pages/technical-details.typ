@@ -8,12 +8,11 @@ examy, but might be of interest.
 == No nested boxes
 
 A straightforward implementation of examy would wrap each question/part/subpart in a box and apply
-an appropriate inset. Unfortunately, `#pagebreak()` cannot work inside a #typst-link(
-  "reference/layout/box/",
-)[box] and, worse still, boxes can only negotiate #typst-link(
-  "reference/layout/fraction/",
-)[fractional units] if they are peers of each other. So, the box approach would make it impossible
-to have a part and a subpart both share the remaining space on the page.
+an appropriate inset. Unfortunately, #typst-link("reference/layout/pagebreak/")[`#pagebreak()`]
+cannot work inside a #typst-link("reference/layout/box/")[box] and, worse still, boxes can only
+negotiate #typst-link("reference/layout/fraction/")[fractional units] if they are peers of each
+other. So, the box approach would make it impossible to have a part and a subpart both share the
+remaining space on the page.
 
 Instead, examy flattens all question/part/subpart contents and tags the start and end of each block
 with #typst-link("reference/introspection/metadata/")[`metadata`]. The flat stream is then parsed,
@@ -48,7 +47,8 @@ then runs through the following steps.
   options pre-computed. This allows for a global analysis of the exam (e.g., for use in #api(
     "points-table",
     arg: "()",
-  )) without appealing to `context` or `query`s.
+  )) without appealing to #typst-link("reference/context/")[`context`] or
+  #typst-link("reference/introspection/query/")[`query`]s.
 
 / Plan: A question with no `#pagebreak()` and no `fr` answer box is drawn using nested blocks. Any
   other question is split into peer blocks, each indented to appear as if it is nested.
@@ -73,14 +73,15 @@ The global #api("config") object and question references are controlled by elemb
 re-exported as #api("e").
 
 / Settings: The global #api("config") is an elembic element that is never drawn; its fields are
-  examy's options. `#show: e.set_(config, ..)` works like a Typst `set` rule, applying until the end
-  of its block, and `#show: exam.with(..)` applies its options the same way. Options are read with
-  `e.get`, which, like Typst's `context`, gives the values in effect where it is placed. This is why
-  #api("show-solutions", arg: "(get)") takes `get`.
+  examy's options. `#show: e.set_(config, ..)` works like a Typst
+  #typst-link("reference/styling/#set-rules")[`set` rule], applying until the end of its block, and
+  `#show: exam.with(..)` applies its options the same way. Options are read with `e.get`, which,
+  like Typst's #typst-link("reference/context/")[`context`], gives the values in effect where it is
+  placed. This is why #api("show-solutions", arg: "(get)") takes `get`.
 
   The exam reads its options where it starts. A `config` rule inside the exam applies to the
-  questions in its scope, except for `numbering-full`, `strings`, and `show-rubrics`, which hold
-  for the whole exam.
+  questions in its scope, except for `numbering-full`, `strings`, and `show-rubrics`, which hold for
+  the whole exam.
 
 / References: Each labelled question/part/subpart leaves an invisible elembic element as its anchor.
   Elembic lets an element decide how references to it are drawn, so a reference can show "1 (a)" or

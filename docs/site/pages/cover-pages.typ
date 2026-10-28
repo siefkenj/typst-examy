@@ -22,7 +22,8 @@ construct a typical cover page.
 
 A #api("maketitle", arg: "()") renders the exam's details, which are set with the global #api(
   "config",
-). It includes the `institution`, `exam-name`, `term`, and `duration`. Each detail can be
+). It includes the #api("config", field: "institution"), #api("config", field: "exam-name"),
+#api("config", field: "term"), and #api("config", field: "duration"). Each detail can be
 overwritten by passing arguments directly to #api("maketitle", arg: "()") (e.g.
 `#maketitle(term: [Summer 2026])`).
 
@@ -50,15 +51,17 @@ default.
 
 #note[
   _Note._ #api("maketitle", arg: "()") and #api("name-block", arg: "()") are typeset in the
-  document's #typst-link("reference/text/text/#parameters-font")[font]. Use a `set` rule to change
-  the font, e.g. `#{ set text(font: "DejaVu Sans Mono"); name-block() }`.
+  document's #typst-link("reference/text/text/#parameters-font")[font]. Use a
+  #typst-link("reference/styling/#set-rules")[`set` rule] to change the font, e.g.
+  `#{ set text(font: "DejaVu Sans Mono"); name-block() }`.
 ]
 
 === Customizing
 
-Name blocks can be customized by setting the `fields: (...)` attribute. The `fields` attribute
-expects an array of content or dictionaries consisting of `(prefix: ..., suffix: ...)`.
-`(prefix: ..., suffix: ...)` items will show before and after an underline.
+Name blocks can be customized by setting the #api("name-block", field: "fields", value: "(..)")
+attribute. The `fields` attribute expects an array of content or dictionaries consisting of
+`(prefix: .., suffix: ..)`. `(prefix: .., suffix: ..)` items will show before and after an
+underline.
 
 #example(
   ```typ
@@ -108,7 +111,7 @@ given to the exam apply to it too.
   maketitle()
   name-block(fields: (
     (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),
-    // ...more fields
+    // ..more fields
   ))
 }
 
@@ -123,7 +126,7 @@ given to the exam apply to it too.
 #align(center, points-table())
 #pagebreak()
 
-#question[...]
+#question[..]
 ```
 
 The repository's examples include #link(REPOSITORY + "/blob/main/examples/quiz.typ")[a minimal

@@ -1,4 +1,4 @@
-// Demonstrates multiple-choice questions: each option of `#choices[...]`,
+// Demonstrates multiple-choice questions: each option of `#choices[..]`,
 // and a bare `#bubble()` in a table. The README shows this file verbatim,
 // below everything up to and including the import line (with the import
 // pointed at @preview/examy), above its two renders — keep them in step.

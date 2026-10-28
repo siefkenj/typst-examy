@@ -39,7 +39,7 @@
 
 // --- `trace: true` in a division's text marks the division ---
 #let items(body) = (
-  (kind: "division", address: (0,), parent: none, fields: (rubric: none)),
+  (kind: "division", id: 0, address: (0,), parent: none, fields: (rubric: none)),
   (kind: "chunk", body: body, parent: 0),
 )
 #let marked(body) = mark_rubrics(items(body)).first().first().at("rubric_trace", default: false)

@@ -29,11 +29,11 @@ typst init @preview/examy
 
 == A first exam
 
-A basic document is built out of an #api("exam", arg: "[...]") (alternatively `#show: exam`). Inside
-are questions, created with #api("question", arg: "[...]") (see
-#page-link("questions.html")[Questions and numbering]) along with #api("answer-box", arg: "[...]")s
+A basic document is built out of an #api("exam", arg: "[..]") (alternatively `#show: exam`). Inside
+are questions, created with #api("question", arg: "[..]") (see
+#page-link("questions.html")[Questions and numbering]) along with #api("answer-box", arg: "[..]")s
 (see #page-link("answer-boxes.html")[Answer boxes]) for students to write in and
-#api("solution", arg: "[...]")s (see #page-link("solutions.html")[Solutions]) whose visibility can
+#api("solution", arg: "[..]")s (see #page-link("solutions.html")[Solutions]) whose visibility can
 be toggled to create regular/key versions of a test.
 
 Additionally, examy comes with helpers like #api("name-block", arg: "()") to give students a place
@@ -73,10 +73,10 @@ to write their name (see #page-link("cover-pages.html")[Cover pages]).
 )
 
 // #note[
-//   _Note._ `#show: exam` makes everything after it part of the exam and is needed before defining any `#question[...]` blocks. Under the hood, it sets up an #link(
+//   _Note._ `#show: exam` makes everything after it part of the exam and is needed before defining any `#question[..]` blocks. Under the hood, it sets up an #link(
 //     "https://typst.app/universe/package/elembic",
 //   )[elembic] environment that cross-references need (`#show: e.prepare()`). If you use
-//   `#exam[...]` around just the questions instead, and refer to them from outside it, add
+//   `#exam[..]` around just the questions instead, and refer to them from outside it, add
 //   `#show: e.prepare()` at the top of the document yourself.
 // ]
 

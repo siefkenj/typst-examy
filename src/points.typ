@@ -55,12 +55,12 @@
 /// `num-points-page` and the table by page count. Invisible.
 #let points_marker(points, intent) = [#metadata((points: points, intent: intent))#POINTS_MARKER]
 
-/// The label of the marker every division leaves at its start, with its
-/// address, for the points table to link to (see `division_marker`).
+/// The label of the marker every division leaves at its start, with its id
+/// (see parse.typ), for the points table to link to (see `division_marker`).
 #let DIVISION_MARKER = label(PREFIX + "/division")
 
 /// The marker a division leaves where it starts. Invisible.
-#let division_marker(address) = [#metadata(address)#DIVISION_MARKER]
+#let division_marker(id) = [#metadata(id)#DIVISION_MARKER]
 
 /// How a division is labelled in the points table: exactly as a reference
 /// to it reads from outside its exam ("2 (a)"; "2(a)" with `full`), an
@@ -74,7 +74,7 @@
 )
 
 /// The point data of an exam, from its parsed items: a row per division, in
-/// order, with its `level`, `address`, `number`, and `label` (see
+/// order, with its `id`, `level`, `address`, `number`, and `label` (see
 /// `_division_label`); its own regular, bonus and practice points, `own`,
 /// `own-bonus` and `own-practice`; and its `total_points` and `total_bonus_points`, its own
 /// with all of its parts' (see `assign_points`).
@@ -84,6 +84,7 @@
     .map(d => {
       let p = if d.fields.points == none { 0 } else { d.fields.points }
       (
+        id: d.id,
         level: d.level,
         address: d.address,
         number: d.number,
@@ -101,7 +102,7 @@
 
 /// The columns of a points table of `rows` (see `compute_points_data`) by
 /// `level` (1 for questions, 2 for parts, 3 for subparts): `(label, points,
-/// bonus, address)` each, in order. Pure.
+/// bonus, id, address)` each, in order. Pure.
 ///
 /// A division at `level` has a column of its points and all of its parts',
 /// if they come to anything; one above `level`, a column of its own points,
@@ -114,6 +115,7 @@
     label: r.label,
     points: points,
     bonus: if bonus == none or bonus == 0 { none } else { bonus },
+    id: r.id,
     address: r.address,
   )
   let out = ()
@@ -445,16 +447,16 @@
       if found == none { () } else {
         let (i, rows) = found
         let level = ("question", "part", "subpart").position(x => x == o.granularity) + 1
-        // Where each division of that exam starts, by its address, to link
-        // its label to: the markers after its start, before the next's.
+        // Where each division of that exam starts, by its id, to link its
+        // label to: the markers after its start, before the next's.
         let starts = (:)
         for m in query(DIVISION_MARKER) {
           if EXAMS_STARTED.at(m.location()).first() == i + 1 {
-            starts.insert(repr(m.value), m.location())
+            starts.insert(str(m.value), m.location())
           }
         }
         table_columns(rows, level).map(c => {
-          let at = starts.at(repr(c.address), default: none)
+          let at = starts.at(str(c.id), default: none)
           (..c, label: if at == none { c.label } else { link(at, c.label) })
         })
       },

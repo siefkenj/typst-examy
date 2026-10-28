@@ -24,7 +24,7 @@
   // configured above.
   maketitle()
 
-  // Rows of the fill-in name block. A `(prefix: ..., suffix: ...)` entry
+  // Rows of the fill-in name block. A `(prefix: .., suffix: ..)` entry
   // draws an underline between the two; plain content is shown verbatim.
   name-block(fields: (
     (prefix: [#text(size: .85em)[(Given then Family)] \ NAME:]),

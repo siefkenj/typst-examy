@@ -8,9 +8,10 @@ shown in the margin. They can be authored anywhere in an exam and will point bac
 location where they are authored.
 
 All rubric items in a particular question/part/subpart are grouped together and shown in a single
-box in the margin. Rubric items set in the `rubric: ...` option of a question/part/subpart will not
-have a traceback line. To hide or show the traceback line of a single rubric item, give it
-`trace: false` or `trace: true`; `config`'s `rubric-trace` sets this for all of them.
+box in the margin. Rubric items set in the #api("question", field: "rubric", value: "..") option of
+a question/part/subpart will not have a traceback line. To hide or show the traceback line of a
+single rubric item, give it #api("rubric", field: "trace", value: "false") or `trace: true`;
+#api("config")'s `rubric-trace` sets this for all of them.
 
 // Shown as images of a paged rendering (`paged-name`), as a rubric's dotted
 // lines need to know where things are on the page.
@@ -44,8 +45,9 @@ have a traceback line. To hide or show the traceback line of a single rubric ite
 )
 
 
-A rubric item's `points` can be positive or negative. No accounting/checking is done by examy, and
-it is the author's responsibility to make sure that rubric points add up to the correct total.
+A rubric item's #api("rubric", field: "points") can be positive or negative. No accounting/checking
+is done by examy, and it is the author's responsibility to make sure that rubric points add up to
+the correct total.
 
 == Visibility
 
@@ -66,12 +68,12 @@ typst compile --input show-solutions=true --input show-rubrics=true exam.typ
 
 == Groups
 
-A #api("rubric", arg: "[...]") that contains other #api("rubric", arg: "[...]")s creates a group.
+A #api("rubric", arg: "[..]") that contains other #api("rubric", arg: "[..]")s creates a group.
 Its first paragraph is the group's title and the `#rubric`s inside are items. Any other non-rubric
 text will show up as a note.
 
-A rubric's `annotation` argument supplies a short note for the grader, useful for instructions like
-`annotation: [pick one]` on a group of mutually exclusive rubric items.
+A rubric's #api("rubric", field: "annotation") argument supplies a short note for the grader, useful
+for instructions like `annotation: [pick one]` on a group of mutually exclusive rubric items.
 
 #example(
   ```typ

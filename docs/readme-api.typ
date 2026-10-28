@@ -90,7 +90,7 @@
 }
 
 /// How an export is written in a document, bare of its arguments:
-/// `#name[...]` for one that takes content, `#name(...)` for one called with
+/// `#name[..]` for one that takes content, `#name(..)` for one called with
 /// arguments only, `#name()` for one that takes none, `#name` for a value
 /// that is content, and `name` for
 /// anything used in code (`config`, `e`, `presets`, or a function such as
@@ -102,9 +102,9 @@
     if x.args.len() == 0 {
       "#" + name + "()"
     } else if positional.len() == 0 {
-      "#" + name + "(...)"
+      "#" + name + "(..)"
     } else if positional.first().type.contains("content") {
-      "#" + name + "[...]"
+      "#" + name + "[..]"
     } else {
       name + "(" + positional.map(a => a.name).join(", ") + ")"
     }

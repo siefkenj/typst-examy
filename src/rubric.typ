@@ -5,7 +5,7 @@
 /// `rubric` returns a marker (see markers.typ) carrying its own data, so the
 /// same call works in a division's `rubric:` field, where it is read, and in
 /// its body, where it is placed: an invisible anchor, found by a query. The
-/// renderer updates `OWNER` before each run of a division's own content, so a
+/// renderer marks each run of a division's own content (see `OWNER`), so a
 /// rubric in the body, however deep (a `solution`, an `answer-box`), belongs
 /// to the division whose text it is in.
 
@@ -281,14 +281,33 @@
 // Which rubrics are a division's
 // ---------------------------------------------------------------------------
 
-/// The address of the division whose own content follows: set by the
-/// renderer around each run of a division's content that holds rubrics, and
-/// `none` everywhere else.
-#let OWNER = state(PREFIX + "/rubric-owner", none)
+/// The label of the marks around each run of a division's content that
+/// holds rubrics: the first with the id of the division (see parse.typ), the
+/// last with `none`. A rubric is the division's of the last mark before it.
+///
+/// Marks, not a `state`: whose a rubric is comes from one query of the marks
+/// and the rubrics together (see `_owned_rubrics`). A `state` read at each
+/// rubric would be a read per rubric that Typst checks again every time it
+/// reuses a result that depends on them (`_exam_rubrics`, for every card),
+/// so that an exam would take time in the square of its rubrics.
+#let OWNER = label(PREFIX + "/rubric-owner")
 
-/// Mark the content that follows as division `address`'s (`none`: no
+/// Mark the content that follows as division `id`'s (`none`: no
 /// division's), for the rubrics in it.
-#let owner_update(address) = OWNER.update(address)
+#let owner_update(id) = [#metadata(id)#OWNER]
+
+/// The rubrics after `start` and before `end` (locations), in order, each
+/// `(rubric, owner)`: its marker, and the id of its division, or `none`
+/// (see `OWNER`). Needs context.
+#let _owned_rubrics(start, end) = {
+  let owner = query(selector(OWNER).before(start)).at(-1, default: none)
+  let owner = if owner == none { none } else { owner.value }
+  let out = ()
+  for m in query(selector(RUBRIC_LABEL).or(OWNER).after(start).before(end)) {
+    if m.label == OWNER { owner = m.value } else { out.push((m, owner)) }
+  }
+  out
+}
 
 /// The exam a location is in: its number, counted from 1. Needs context.
 #let _exam_number(loc) = EXAMS_STARTED.at(loc).first()
@@ -310,7 +329,7 @@
 }
 
 /// The rubrics written in the exam between `start` and `end`, by the
-/// division they belong to (keyed by the `repr` of its address): its nodes,
+/// division they belong to (keyed by its id, as a string): its nodes,
 /// in order, and for each of them (by index, as a string) its key, its index
 /// among every rubric placed in the document, which links its box to its
 /// anchor. Worked out once for the exam: Typst reuses the result for every
@@ -318,10 +337,9 @@
 #let _exam_rubrics(start, end) = {
   let offset = query(selector(RUBRIC_LABEL).before(start, inclusive: false)).len()
   let out = (:)
-  for (i, a) in query(selector(RUBRIC_LABEL).after(start).before(end)).enumerate() {
-    let owner = OWNER.at(a.location())
+  for (i, (a, owner)) in _owned_rubrics(start, end).enumerate() {
     if owner == none { continue }
-    let k = repr(owner)
+    let k = str(owner)
     let r = out.at(k, default: (nodes: (), keys: (:)))
     r.keys.insert(str(r.nodes.len()), offset + i)
     r.nodes.push(_node(rubric_value(a)))
@@ -330,13 +348,13 @@
   out
 }
 
-/// The rubric of the division at `address`, its `rubric:` field `field`, in
-/// the exam within `bounds` (see `exam_bounds`): the rubrics written in its
-/// body, in order, then its field; and the keys of those written (see
+/// The rubric of the division `id`, its `rubric:` field `field`, in the exam
+/// within `bounds` (see `exam_bounds`): the rubrics written in its body, in
+/// order, then its field; and the keys of those written (see
 /// `_exam_rubrics`). Needs context.
-#let division_rubric(address, field, bounds) = {
+#let division_rubric(id, field, bounds) = {
   let written = if bounds == none { (nodes: (), keys: (:)) } else {
-    _exam_rubrics(..bounds).at(repr(address), default: (nodes: (), keys: (:)))
+    _exam_rubrics(..bounds).at(str(id), default: (nodes: (), keys: (:)))
   }
   (nodes: written.nodes + rubric_tree(field), keys: written.keys)
 }
@@ -353,15 +371,14 @@
 /// The label of where each rubric is drawn, for stacking those in a margin.
 #let AREA = label("_examy_rubric_area")
 
-/// The label of the marker at the start of each block of division
-/// `address`'s content, which its leaders are drawn from (see
-/// `rubric_leaders`): one of its own, to be found without looking through
-/// every division's.
-#let _head_label(address) = label("_examy_rubric_head_" + repr(address))
+/// The label of the marker at the start of each block of division `id`'s
+/// content, which its leaders are drawn from (see `rubric_leaders`): one of
+/// its own, to be found without looking through every division's.
+#let _head_label(id) = label("_examy_rubric_head_" + str(id))
 
-/// The marker at the start of a block of division `address`'s content
+/// The marker at the start of a block of division `id`'s content
 /// (invisible).
-#let rubric_head(address) = [#metadata(address)#_head_label(address)]
+#let rubric_head(id) = [#metadata(id)#_head_label(id)]
 
 /// The gap between the text and a rubric in the margin, and between the
 /// rubric and the page's edge; and the gap between rubrics stacked in a
@@ -425,10 +442,11 @@
   m.to-absolute()
 }
 
-/// Division `address`'s rubric as drawn (see `division_rubric`), and the id
-/// its area is known by: none when it has no rubric. Needs context.
-#let _drawn(address, field) = {
-  let r = division_rubric(address, field, exam_bounds())
+/// Division `division`'s rubric as drawn (see `division_rubric`), and the id
+/// its area is known by, which names the division by its `address`: none
+/// when it has no rubric. Needs context.
+#let _drawn(division, address, field) = {
+  let r = division_rubric(division, field, exam_bounds())
   if r.nodes.len() == 0 { return none }
   r + (id: (exam: _exam_number(here()), address: address))
 }
@@ -502,9 +520,10 @@
 /// so it is emitted only for a division with a rubric, and only when
 /// rubrics are shown: see render.typ.) `indent` is how far right of the
 /// text's left edge the block's content is, and `dy` how far below its top
-/// the first line is. `info`: `heading` and `points` (see `rubric_info`).
-#let rubric_area(address, field, info, opts, indent: 0pt, dy: 0pt) = context {
-  let r = _drawn(address, field)
+/// the first line is. `division` is its id, and `address` its address.
+/// `info`: `heading` and `points` (see `rubric_info`).
+#let rubric_area(division, address, field, info, opts, indent: 0pt, dy: 0pt) = context {
+  let r = _drawn(division, address, field)
   if r == none { return }
   let side = opts.rubric.position
   let width = if opts.rubric.width == auto { _margin(side) - GAP - OUTER } else { opts.rubric.width }
@@ -531,8 +550,8 @@
 }
 
 /// A division's rubric at its `"end"`: a block in the flow, after its parts.
-#let rubric_end_area(address, field, info, opts) = context {
-  let r = _drawn(address, field)
+#let rubric_end_area(division, address, field, info, opts) = context {
+  let r = _drawn(division, address, field)
   if r == none { return }
   let k = _scale()
   block(width: 100%, above: .8em, below: .8em, breakable: false, {
@@ -553,8 +572,8 @@
   own == true or own == auto and trace
 }
 
-/// The leaders of the rubrics written in a block of division `address`'s
-/// content that belong to one of `owners` (its own, and those it takes in
+/// The leaders of the rubrics written in a block of division `id`'s content
+/// that belong to one of `owners`, by id (its own, and those it takes in
 /// from segments dropped before it, see plan.typ), to their boxes in their
 /// rubric: along the rest of the rubric's line, in the gap below it, to the
 /// text's edge, then to the box (at the `"end"`, down beside the text).
@@ -569,15 +588,15 @@
 /// drawn from their own position would not match those on the page. A
 /// block that runs onto a later page has its top on another page, and there
 /// they are drawn from where they are emitted.
-#let rubric_leaders(address, owners, side, trace: true) = context {
+#let rubric_leaders(id, owners, side, trace: true) = context {
   let here_loc = here()
-  let head = query(selector(_head_label(address)).before(here_loc)).at(-1, default: none)
+  let head = query(selector(_head_label(id)).before(here_loc)).at(-1, default: none)
   if head == none { return }
   // The rubrics in the block, between its head and here.
   // Those traced: by their own `trace`, else by `trace`.
-  let mine = query(selector(RUBRIC_LABEL).after(head.location()).before(here_loc)).filter(a => (
-    OWNER.at(a.location()) in owners and is_traced(a.value, trace)
-  ))
+  let mine = _owned_rubrics(head.location(), here_loc)
+    .filter(((a, owner)) => owner in owners and is_traced(a.value, trace))
+    .map(((a, owner)) => a)
   if mine.len() == 0 { return }
   let from_head = head.location().page() == here_loc.page()
   let o = if from_head { head.location().position() } else { here().position() }

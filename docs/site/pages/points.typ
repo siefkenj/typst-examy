@@ -1,9 +1,9 @@
 #import "../template.typ": *
 
-Supplying a question/part/subpart with `points: x` will cause an "(x points)" annotation to be shown
-next to the question/part/subpart. Points defined this way will show up in the
-#api("points-table", arg: "()") as well as related functions like #api("num-points", arg: "()"),
-#api("num-questions", arg: "()"), etc..
+Supplying a question/part/subpart with #api("question", field: "points", value: "x") will cause an
+"(x points)" annotation to be shown next to the question/part/subpart. Points defined this way will
+show up in the #api("points-table", arg: "()") as well as related functions like
+#api("num-points", arg: "()"), #api("num-questions", arg: "()"), etc..
 
 #example(
   ```typ
@@ -31,7 +31,7 @@ next to the question/part/subpart. Points defined this way will show up in the
 
 == The "points" marker <points-badge>
 
-A question/part/subpart with a value for `points: ...` will display the number of points for that
+A question/part/subpart with a value for `points: ..` will display the number of points for that
 question. The display can be customized in several ways.
 
 === Customizing the position of "points"
@@ -64,7 +64,7 @@ The global #api("config")'s `points-position` option sets where the points badge
 === Customizing the display and spelling of "points"
 
 The display of points can be fully customized by setting the `points-format` and
-`bonus-points-format` config options.
+`bonus-points-format` options of the global #api("config").
 
 #example(
   ```typ
@@ -142,9 +142,10 @@ Multiple points tables can be included in an exam, and a points table can be cus
   width: 9cm,
 )
 
-By default, a points table has a column per question. Specifying `granularity:` as `"part"` or
-`"subpart"` will create columns for each part or subpart instead, and `"page"` a column for each page
-(of the questions/parts/subparts that start on it).
+By default, a points table has a column per question. Specifying
+#api("points-table", field: "granularity", body: raw("granularity:")) as `"part"` or `"subpart"`
+will create columns for each part or subpart instead, and `"page"` a column for each page (of the
+questions/parts/subparts that start on it).
 
 #example(
   ```typ

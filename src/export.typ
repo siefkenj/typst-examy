@@ -151,13 +151,13 @@
 /// (see `rubric_data`). Emitted at the end of an exam with rubrics, whatever
 /// `show-rubrics` says, all in one place, so that it costs the same however
 /// many divisions there are. `divisions`: those that may have a rubric, in
-/// order, each `(address, field, info)` (see `rubric_info`).
+/// order, each `(id, address, field, info)` (see `rubric_info`).
 #let rubric_export(divisions) = context {
   let exam = _exam_number(here())
   let bounds = exam_bounds()
   let records = ()
   for d in divisions {
-    let nodes = division_rubric(d.address, d.field, bounds).nodes
+    let nodes = division_rubric(d.id, d.field, bounds).nodes
     if nodes.len() == 0 { continue }
     records.push((exam: exam, address: d.address, heading: d.info.heading, points: d.info.points, nodes: nodes))
   }

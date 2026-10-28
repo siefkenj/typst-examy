@@ -80,24 +80,31 @@
 
 /// A link to the reference page of the export `name`, shown as its name in
 /// code. With `arg`, shown as a call to it in markup, `#name` followed by
-/// `arg`: `arg: "[...]"` shows `#name[...]`, and `arg: ""` shows `#name`.
+/// `arg`: `arg: "[..]"` shows `#name[..]`, and `arg: ""` shows `#name`.
 /// With `field`, a link to that argument of it instead, shown as the
-/// argument's name as written in a call (`..options` for `exam`'s options).
-/// `body` shows what it is given instead. A label, so that Typst works out
-/// the link from wherever it is.
-#let api(name, arg: none, field: none, body: auto) = {
+/// argument's name as written in a call (`..options` for `exam`'s options),
+/// or, with `value` too, as given that value: `field: "inline", value:
+/// "true"` shows `inline: true`. `body` shows what it is given instead. A
+/// label, so that Typst works out the link from wherever it is.
+#let api(name, arg: none, field: none, value: none, body: auto) = {
   let x = ENTRIES.find(x => name in x.names)
   assert(x != none, message: "api: `" + name + "` is not an export of examy")
   assert(
     arg == none or type(arg) == str,
-    message: "api: `arg` must be a string, such as \"[...]\" or \"\", got " + repr(arg),
+    message: "api: `arg` must be a string, such as \"[..]\" or \"\", got " + repr(arg),
   )
   let a = if field != none { x.args.find(a => a.name == field) }
   assert(
     field == none or a != none,
     message: "api: `" + name + "` has no argument `" + repr(field) + "`",
   )
-  let shown = if body != auto { body } else if field != none { raw(arg_name(a)) } else if (
+  assert(
+    value == none or (field != none and type(value) == str),
+    message: "api: `value` must be a string, such as \"true\", and needs a `field`",
+  )
+  let shown = if body != auto { body } else if value != none {
+    raw(field + ": " + value)
+  } else if field != none { raw(arg_name(a)) } else if (
     arg != none
   ) {
     raw("#" + name + arg)
@@ -685,16 +692,66 @@
 // ---------------------------------------------------------------------------
 // The reference
 
-/// Inline code that names no language (`` `..` ``) highlighted as Typst:
-/// as markup when it starts with `#`, as code otherwise, which is what most of
-/// it is (an option, a value, a call). Inline code in another language names
-/// it (```` ```sh --input ..``` ````), and code blocks are left as they are.
-/// Applied to every page, on the site (see `layout`) and in the PDF.
+/// The names of the exports, which inline code calling one links to.
+#let _EXPORT_NAMES = ENTRIES.map(x => x.names).flatten()
+
+/// The names of `config`'s options, in the order it declares them.
+#let CONFIG_OPTIONS = entry("config").args.map(a => a.name)
+
+/// `config`'s options that are also an export (`show-solutions`) or another
+/// export's argument (a question's `indent`, `maketitle`'s `term`): inline
+/// code naming one could mean either, so it links to the option only in a
+/// description that names `config` just before it (see `doc`).
+#let _SHARED_OPTIONS = CONFIG_OPTIONS.filter(o => (
+  o in _EXPORT_NAMES or ENTRIES.any(x => "config" not in x.names and x.args.any(a => a.name == o))
+))
+
+/// A call, as `#maketitle()`, `#choices[..]` or `#answer-box(..)[..]` are:
+/// `#`, a name, and its arguments and its body, if any.
+#let _CALL = regex("^#([a-z][a-z-]*)(\\(.*\\))?(\\[.*\\])?$")
+
+/// A name, alone or given a value, as `numbering-full: true` is.
+#let _NAMED = regex("^([a-z][a-z-]*)(:\\s.*)?$")
+
+/// What inline code `c` links to, as `api`'s `(name, field)`: the export it
+/// calls (`#maketitle()`), `config` (`config`), or a `config` option it
+/// names, alone or given a value (`choices-inline`, `numbering-full: true`),
+/// unless one of `_SHARED_OPTIONS`. Otherwise none.
+#let _code-target(c) = {
+  let call = c.match(_CALL)
+  let named = c.match(_NAMED)
+  if c == "config" { (name: "config", field: none) } else if (
+    call != none and call.captures.first() in _EXPORT_NAMES
+  ) { (name: call.captures.first(), field: none) } else if named != none {
+    let o = named.captures.first()
+    if o in CONFIG_OPTIONS and o not in _SHARED_OPTIONS { (name: "config", field: o) }
+  }
+}
+
+/// Inline code as Typst: as markup when it starts with `#`, as code
+/// otherwise, which is what most of it is (an option, a value, a call).
+#let _typst-raw(c) = raw(c, lang: if c.starts-with("#") { "typ" } else { "typc" })
+
+/// Inline code that names no language (`` `..` ``) highlighted as Typst (see
+/// `_typst-raw`), and linked to the reference of what it names (see
+/// `_code-target`), except in a link, a heading or the outline, where a link
+/// cannot be. Inline code in another language names it (```` ```sh --input
+/// ..``` ````), and code blocks are left as they are. Applied to every page,
+/// on the site (see `layout`) and in the PDF: the one rule that links code,
+/// in the guide's pages and the package's docs (see `doc`) alike.
 #let inline_code(body) = {
-  show raw.where(block: false, lang: none): it => raw(
-    it.text,
-    lang: if it.text.starts-with("#") { "typ" } else { "typc" },
-  )
+  show raw.where(block: false, lang: none): it => {
+    let target = _code-target(it.text)
+    let shown = _typst-raw(it.text)
+    if target == none { shown } else { api(target.name, field: target.field, body: shown) }
+  }
+  let unlinked(it) = {
+    show raw.where(block: false, lang: none): it => _typst-raw(it.text)
+    it
+  }
+  show link: unlinked
+  show heading: unlinked
+  show outline: unlinked
   body
 }
 
@@ -712,22 +769,42 @@
 /// with `code` and Markdown links (the README shows them as Markdown).
 #let _PIECE = regex("`([^`]*)`|\[([^\]]+)\]\(([^)\s]+)\)")
 
+/// What may come between the options of a list of them: "`a`, `b` and `c`".
+#let _LIST_GLUE = (", ", " and ", ", and ", " or ", ", or ")
+
 /// A description from the package's docs, as content: `code` in code, links
 /// as links (their text read the same way, so that a link can be code, as
 /// in [`box`'s `stroke`](..)), and everything else as plain text, never read
-/// as markup. The code is highlighted as `inline_code` and
-/// `markdown_code_lang` say.
+/// as markup. The code is highlighted and linked as `inline_code` and
+/// `markdown_code_lang` say, and so are the guide's pages.
+///
+/// What `inline_code` cannot tell, an option of `_SHARED_OPTIONS` named as
+/// `config`'s, after "`config`'s " or in a list of options after it
+/// ("`config`'s `indent` and `numbering`"), links to the option here, but not
+/// in a link of the description's own.
 #let doc(s) = {
-  let inline(s) = {
+  let inline(s, links: true) = {
     let out = ()
     let at = 0
+    // The last code, and whether it was an option in a list of `config`'s.
+    let last = none
+    let listing = false
     for m in s.matches(_PIECE) {
-      out.push(s.slice(at, m.start))
-      out.push(if m.captures.at(0) != none {
-        raw(m.captures.at(0), lang: markdown_code_lang(m.captures.at(0)))
+      let between = s.slice(at, m.start)
+      out.push(between)
+      let c = m.captures.at(0)
+      listing = (
+        c in CONFIG_OPTIONS
+          and ((last == "config" and between == "'s ") or (listing and between in _LIST_GLUE))
+      )
+      out.push(if c == none {
+        link(m.captures.at(2), inline(m.captures.at(1), links: false))
+      } else if links and listing and c in _SHARED_OPTIONS {
+        api("config", field: c, body: raw(c))
       } else {
-        link(m.captures.at(2), inline(m.captures.at(1)))
+        raw(c, lang: markdown_code_lang(c))
       })
+      last = c
       at = m.end
     }
     out.push(s.slice(at))
@@ -839,7 +916,7 @@
     }),
     () => block(above: 1.2em, {
       block(sticky: true, {
-        strong(raw(arg_name(a)))
+        strong(_typst-raw(arg_name(a)))
         h(.8em)
         if inline {
           text(size: .9em, badge)
@@ -886,7 +963,7 @@
     html.elem("span", attrs: (class: "kind"), x.kind)
   },
   () => {
-    x.names.map(raw).join(", ")
+    x.names.map(_typst-raw).join(", ")
     h(.5em)
     text(size: .7em, weight: "regular", fill: luma(90), x.kind)
   },
@@ -939,9 +1016,6 @@
     ..ENTRIES.map(x => (x.names.map(n => api(n)).join(", "), doc(summary(x.desc)))).flatten(),
   ),
 )
-
-/// The names of `config`'s options, in the order it declares them.
-#let CONFIG_OPTIONS = entry("config").args.map(a => a.name)
 
 /// The label of the record each `config-options` table leaves of the options
 /// it lists (see `config-options-check`).

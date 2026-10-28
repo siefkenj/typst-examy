@@ -78,18 +78,18 @@ All names below are exported by `#import "@preview/examy:1.0.0": *`. See the [fu
 
 | Export | |
 | --- | --- |
-| [`#answer-box[...]`](https://siefkenj.github.io/typst-examy/reference/answer-box.html) | A box for students to write answers in. |
-| [`#choice[...]`](https://siefkenj.github.io/typst-examy/reference/choice.html) | A round or square bubble (used for multiple-choice questions) followed by the choice it labels. |
-| [`#choices[...]`](https://siefkenj.github.io/typst-examy/reference/choices.html) | An enumerate environment for multiple-choice answers. Every list item gets turned into a `#choice`, with a round/square bubble as its list marker. |
+| [`#answer-box[..]`](https://siefkenj.github.io/typst-examy/reference/answer-box.html) | A box for students to write answers in. |
+| [`#choice[..]`](https://siefkenj.github.io/typst-examy/reference/choice.html) | A round or square bubble (used for multiple-choice questions) followed by the choice it labels. |
+| [`#choices[..]`](https://siefkenj.github.io/typst-examy/reference/choices.html) | An enumerate environment for multiple-choice answers. Every list item gets turned into a `#choice`, with a round/square bubble as its list marker. |
 | [`config`](https://siefkenj.github.io/typst-examy/reference/config.html) | Global configuration of package options. Give options to the exam, e.g. `#show: exam.with(show-solutions: true)`, or set them with `#show: e.set_(config, show-solutions: true)`. |
 | [`e`](https://siefkenj.github.io/typst-examy/reference/e.html) | A re-export of [elembic](https://typst.app/universe/package/elembic), used mainly for `e.set_`. |
-| [`#exam[...]`](https://siefkenj.github.io/typst-examy/reference/exam.html) | Lays out an exam. Start one with `#show: exam` (or `#show: exam.with(..)`, with `config` options). |
-| [`#maketitle(...)`](https://siefkenj.github.io/typst-examy/reference/maketitle.html) | The exam title block (in the spirit of LaTeX's `\maketitle`). Exam information is read from the global `config`. |
-| [`#name-block(...)`](https://siefkenj.github.io/typst-examy/reference/name-block.html) | A block of fill-in rows for a student to write their name. |
-| [`#points-table(...)`](https://siefkenj.github.io/typst-examy/reference/points-table.html), [`#num-points(...)`](https://siefkenj.github.io/typst-examy/reference/num-points.html), [`#num-questions()`](https://siefkenj.github.io/typst-examy/reference/num-questions.html) | Display a scoring table and other information about the exam. |
-| [`#question[...]`](https://siefkenj.github.io/typst-examy/reference/question.html), [`#part[...]`](https://siefkenj.github.io/typst-examy/reference/question.html#api-part), [`#subpart[...]`](https://siefkenj.github.io/typst-examy/reference/question.html#api-subpart) | Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively. |
-| [`#rubric[...]`](https://siefkenj.github.io/typst-examy/reference/rubric.html), [`#rubric-list()`](https://siefkenj.github.io/typst-examy/reference/rubric-list.html) | Grading rubric items for a question, part, or subpart, drawn on the graders' copy, and every rubric of the exam as a list. |
-| [`#solution[...]`](https://siefkenj.github.io/typst-examy/reference/solution.html) | Declare a solution to a question, part, or subpart; this is only rendered if the config option to show solutions is enabled. |
+| [`#exam[..]`](https://siefkenj.github.io/typst-examy/reference/exam.html) | Lays out an exam. Start one with `#show: exam` (or `#show: exam.with(..)`, with `config` options). |
+| [`#maketitle(..)`](https://siefkenj.github.io/typst-examy/reference/maketitle.html) | The exam title block (in the spirit of LaTeX's `\maketitle`). Exam information is read from the global `config`. |
+| [`#name-block(..)`](https://siefkenj.github.io/typst-examy/reference/name-block.html) | A block of fill-in rows for a student to write their name. |
+| [`#points-table(..)`](https://siefkenj.github.io/typst-examy/reference/points-table.html), [`#num-points(..)`](https://siefkenj.github.io/typst-examy/reference/num-points.html), [`#num-questions()`](https://siefkenj.github.io/typst-examy/reference/num-questions.html) | Display a scoring table and other information about the exam. |
+| [`#question[..]`](https://siefkenj.github.io/typst-examy/reference/question.html), [`#part[..]`](https://siefkenj.github.io/typst-examy/reference/question.html#api-part), [`#subpart[..]`](https://siefkenj.github.io/typst-examy/reference/question.html#api-subpart) | Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively. |
+| [`#rubric[..]`](https://siefkenj.github.io/typst-examy/reference/rubric.html), [`#rubric-list()`](https://siefkenj.github.io/typst-examy/reference/rubric-list.html) | Grading rubric items for a question, part, or subpart, drawn on the graders' copy, and every rubric of the exam as a list. |
+| [`#solution[..]`](https://siefkenj.github.io/typst-examy/reference/solution.html) | Declare a solution to a question, part, or subpart; this is only rendered if the config option to show solutions is enabled. |
 <!-- API-DOCS-END -->
 
 ## License

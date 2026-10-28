@@ -1,8 +1,8 @@
 #import "../template.typ": *
 
-A document is built out of an #api("exam", arg: "[...]") (alternatively `#show: exam`). Inside are
-questions created with the commands #api("question", arg: "[...]"), #api("part", arg: "[...]"), and
-#api("subpart", arg: "[...]"), used to create a question hierarchy. Questions/parts/subparts can be
+A document is built out of an #api("exam", arg: "[..]") (alternatively `#show: exam`). Inside are
+questions created with the commands #api("question", arg: "[..]"), #api("part", arg: "[..]"), and
+#api("subpart", arg: "[..]"), used to create a question hierarchy. Questions/parts/subparts can be
 assigned points, heights, etc.
 
 #example(
@@ -26,16 +26,17 @@ assigned points, heights, etc.
   height: 9cm,
 )
 
-A part's numbering is determined _only_ by how deeply it is nested, so `#question[#question[...]]`
-and `#question[#part[...]]` are numbered the same. The aliases `question`/`part`/`subpart` are
+A part's numbering is determined _only_ by how deeply it is nested, so `#question[#question[..]]`
+and `#question[#part[..]]` are numbered the same. The aliases `question`/`part`/`subpart` are
 provided for convenience.
 
 == Numbering a question
 
-By default, questions automatically increment their number. Providing a `number: ...` argument to a
-`question`/`part`/`subpart` overrides this behaviour. A numerical value will cause numbering to skip
-to that value; a non-numerical value or general content will pause the counter and show that
-content. To omit a number completely, you can set `number: none`.
+By default, questions automatically increment their number. Providing a
+#api("question", field: "number", value: "..") argument to a `question`/`part`/`subpart` overrides
+this behaviour. A numerical value will cause numbering to skip to that value; a non-numerical value
+or general content will pause the counter and show that content. To omit a number completely, you
+can set `number: none`.
 
 #example(
   ```typ
@@ -101,9 +102,9 @@ To number some questions/parts/subparts differently, set `numbering` with a #api
 inside the exam. It takes the same values as the global `numbering` option and applies to the
 questions/parts/subparts after the rule, up to the end of its scope.
 
-#note[_Note._ Setting the `numbering` `config` rule does not change the question's `number`. Set
-  `number` on the question/part/subpart if you additionally want the counting in the question label
-  to reset.]
+#note[_Note._ Setting the `numbering` #api("config") rule does not change the question's
+  #api("question", field: "number"). Set #api("question", field: "number") on the
+  question/part/subpart if you additionally want the counting in the question label to reset.]
 
 #example(
   ```typ
@@ -120,14 +121,15 @@ questions/parts/subparts after the rule, up to the end of its scope.
   inset: 4em,
 )
 
-The `indent` option sets how far each part and subpart is indented from the question/part it is in
-(by default, `1.5em`). A question/part/subpart given `indent` itself uses its own.
+The #api("config", field: "indent") option sets how far each part and subpart is indented from the
+question/part it is in (by default, `1.5em`). A question/part/subpart given
+#api("question", field: "indent") itself uses its own.
 
 == Height and writing space
 
-To allow students a space to write, use #api("answer-box", arg: "(height: ...)[]"). However, if you
+To allow students a space to write, use #api("answer-box", arg: "(height: ..)[]"). However, if you
 need a question and all its part/subparts to cumulatively take up a fixed amount of space, you can
-provide a `height: ...` argument directly on a question.
+provide a #api("question", field: "height", value: "..") argument directly on a question.
 
 #example(
   ```typ
@@ -149,8 +151,8 @@ provide a `height: ...` argument directly on a question.
 #warning[
   _Warning._
   A question/part/subpart with a `height` is laid out as a single block, so it cannot break across
-  pages, and the height of its part/subparts cannot be shared with other questions. Usually, you want
-  to use something like #api("answer-box", arg: "(width: 100%, stroke: none, height: ...)[]")
+  pages, and the height of its part/subparts cannot be shared with other questions. Usually, you
+  want to use something like #api("answer-box", arg: "(width: 100%, stroke: none, height: ..)[]")
   instead.
 ]
 

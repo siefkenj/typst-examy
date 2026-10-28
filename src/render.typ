@@ -550,12 +550,12 @@
   // Where `num-points-page` finds the division's points, and where the
   // points table links its label to.
   if d.fields.points != none { points_marker(d.fields.points, d.fields.intent) }
-  division_marker(d.address)
+  division_marker(d.id)
   if _badge_position(d, opts) == "start" { _badge_body(d, opts) + h(.5em) }
 }
 
 /// Mark the chunks that hold rubrics, anywhere inside them (`rubric:
-/// true`, and `owner`: the address of their division, or `none`), and the
+/// true`, and `owner`: the id of their division, or `none`), and the
 /// divisions that have a rubric (`rubric: true`): in their `rubric:` field,
 /// or in their own text (then also `rubric_text: true`). Returns the items
 /// and whether any are marked. What is not marked is rendered as if there
@@ -565,7 +565,7 @@
   for (i, it) in items.enumerate() {
     if it.kind == "chunk" and has_any_rubric(it.body) {
       items.at(i).insert("rubric", true)
-      items.at(i).insert("owner", if it.parent != none { items.at(it.parent).address })
+      items.at(i).insert("owner", if it.parent != none { items.at(it.parent).id })
       if it.parent != none {
         items.at(it.parent).insert("rubric", true)
         items.at(it.parent).insert("rubric_text", true)
@@ -590,9 +590,9 @@
 // marks of `mark_rubrics`), so that an exam with none, or whose rubrics are
 // not shown, pays (almost) nothing for them.
 
-/// `body` marked as division `address`'s, for the rubrics in it (see
-/// `OWNER`): no division's again after it.
-#let _owned(address, body) = owner_update(address) + body + owner_update(none)
+/// `body` marked as division `id`'s, for the rubrics in it (see `OWNER`):
+/// no division's again after it.
+#let _owned(id, body) = owner_update(id) + body + owner_update(none)
 
 /// The `metadata` of chunks `chunks` (items) that a segment takes in (see
 /// plan.typ), alone: their rubrics, their division's, and any other
@@ -729,12 +729,12 @@
 /// Division `d`'s rubric in the margin, at the start of its block (see
 /// `rubric_area`). Only for a division with a rubric drawn there.
 #let _rubric_margin(d, opts, indent, dy) = {
-  rubric_area(d.address, d.fields.rubric, rubric_info(d, opts), opts_of(d, opts), indent: indent, dy: dy)
+  rubric_area(d.id, d.address, d.fields.rubric, rubric_info(d, opts), opts_of(d, opts), indent: indent, dy: dy)
 }
 
 /// Division `d`'s rubric at its `"end"` (see `rubric_end_area`). Only for a
 /// division with a rubric drawn there.
-#let _rubric_end(d, opts) = rubric_end_area(d.address, d.fields.rubric, rubric_info(d, opts), opts)
+#let _rubric_end(d, opts) = rubric_end_area(d.id, d.address, d.fields.rubric, rubric_info(d, opts), opts)
 
 /// Render a division subtree as ordinary nested blocks (used when the
 /// subtree contains no page breaks or fr heights). `carry` are ancestors
@@ -778,7 +778,7 @@
     } else if not shares_line {
       _margin_badges(items, line, cumulative_indent(items, idx), opts, dy: dy)
     }
-    if traced { rubric_head(it.address) }
+    if traced { rubric_head(it.id) }
     if margin { _rubric_margin(it, opts, cumulative_indent(items, idx), dy) }
     // The labels of its first line, drawn by the innermost division on it,
     // on that line, its own last.
@@ -822,7 +822,7 @@
     render_chunks(items, chunk_run, o, base: it_styles.len())
     end_badge
     if end and o.rubric.position == "end" and _drawn(it, opts) { _rubric_end(it, opts) }
-    if traced { rubric_leaders(it.address, (it.address,), o.rubric.position, trace: o.rubric.trace) }
+    if traced { rubric_leaders(it.id, (it.id,), o.rubric.position, trace: o.rubric.trace) }
   }
 
   apply_styles(
@@ -865,7 +865,7 @@
   let carried = seg.at("rubrics", default: ()).map(i => items_of(items).at(i))
   let traced = ()
   if o.rubric.traced and seg.items.any(i => items_of(items).at(i).at("rubric", default: false)) {
-    traced.push((owner.address, o.rubric))
+    traced.push((owner.id, o.rubric))
   }
   for c in carried.filter(c => c.at("rubric", default: false)) {
     let r = opts_of(items_of(items).at(c.parent), opts).rubric
@@ -882,7 +882,7 @@
     let dy = if _labels_above(labels, inline_label, seg.indent) { 0pt } else { dy }
     // First, before the paragraph it is level with (see `render_nested`).
     if seg.label_divisions.len() > 0 { _margin_badges(items, seg.label_divisions, seg.indent, opts, dy: dy) }
-    if traced.len() > 0 { rubric_head(owner.address) }
+    if traced.len() > 0 { rubric_head(owner.id) }
     if opts.rubric.drawn {
       for d_idx in seg.label_divisions {
         let d = items_of(items).at(d_idx)
@@ -915,7 +915,7 @@
       end_badge = none
     }
     end_badge
-    for (address, r) in traced { rubric_leaders(owner.address, (address,), r.position, trace: r.trace) }
+    for (id, r) in traced { rubric_leaders(owner.id, (id,), r.position, trace: r.trace) }
   }
 
   let segment(height, above) = block(width: 100%, inset: (left: seg.indent), height: height, sticky: seg.sticky, above: above, {
