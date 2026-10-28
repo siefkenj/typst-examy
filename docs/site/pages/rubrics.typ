@@ -1,11 +1,9 @@
 #import "../template.typ": *
 
-Rubrics indicate how points should be awarded when grading a question, and examy provides a #api(
-  "rubric",
-  arg: "(points: ..)[..]",
-) for that purpose. Rubrics don't take up any space inside an exam, can be nested in groups, and are
-shown in the margin. They can be authored anywhere in an exam and will point back to the specific
-location where they are authored.
+Rubrics indicate how points should be awarded when grading a question, and examy provides a
+#api("rubric", arg: "(points: ..)[..]") for that purpose. By default, rubrics are shown in the
+margin and take up no space in the exam. They can be nested in groups, and they can be authored
+anywhere in an exam and will point back to the specific location where they are authored.
 
 All rubric items in a particular question/part/subpart are grouped together and shown in a single
 box in the margin. Rubric items set in the #api("question", field: "rubric", value: "..") option of
@@ -59,7 +57,7 @@ Rubrics are hidden by default and can be shown by setting `show-rubrics` on the 
 / `show-rubrics: true`: Rubrics are shown.
 / `show-rubrics: auto`: Rubrics are shown whenever solutions are shown.
 
-As with solutions, a command line setting can be used to override the exam's settings.
+As with solutions, a command-line setting can be used to override the exam's settings.
 
 ```bash
 # the answer key, with its rubric, for the graders
@@ -138,10 +136,8 @@ different spacings.
 
 == Listing and exporting rubrics
 
-To display all rubrics in a list, use the #api("rubric-list", arg: "()") command. The #api(
-  "rubric-list",
-  arg: "()",
-) command always displays the rubrics regardless of whether `show-rubrics` is set.
+To display all rubrics in a list, use the #api("rubric-list", arg: "()") function. It always
+displays the rubrics, regardless of whether `show-rubrics` is set.
 
 #example(
   ```typ

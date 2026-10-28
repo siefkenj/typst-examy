@@ -430,24 +430,6 @@ h1 .kind {
 }
 .live-toggle[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-/* The Configuration page's tables: an option's name on one line. */
-.config-options td:first-child code { white-space: nowrap; }
-/* Its default and type, below it, slightly indented, wrapping to the
-   name's width. */
-.config-options td:first-child { min-width: 10rem; }
-.config-options .option-meta { margin-top: .2rem; padding-left: .6rem; width: 0; min-width: calc(100% - .6rem); }
-/* The type wraps after its `|`s, and after the default's badge, which stands
-   for one of its alternatives (see `config-options`). */
-.config-options .option-meta > span { white-space: nowrap; }
-.config-options .option-meta .arg-type { font-size: .82rem; }
-/* A default wider than the column, as `numbering`'s, wraps in its badge. */
-.config-options .option-meta .default-badge, .config-options .option-meta .default-box { max-width: 100%; }
-.config-options td:first-child .option-meta .default-value code { white-space: normal; }
-.config-options .option-pretty { margin-left: .6rem; }
-.config-options .option-pretty .default-box { display: inline-block; }
-.config-options .option-pretty pre { margin: 0; padding: 0; border: 0; background: none; overflow: visible; font-size: .95em; line-height: 1.35; }
-.config-options td:first-child .option-pretty pre code { white-space: pre; }
-
 /* The playground's entry in the guide's list (in the sidebar, and in the
    menu on a small screen): an edit icon after it, in the link's color,
    since it opens a page of another kind, in a tab of its own.

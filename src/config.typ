@@ -159,7 +159,7 @@
 
       `\"margin-left\"` or `\"margin-right\"`: in the page margin, next to the question/part/subpart they belong to (see `rubric-width`).
 
-      `\"end\"`: after the question/part/subpart, taking up space on the page. When set to `\"end\"`, visible rubrics will take up space in the document.",
+      `\"end\"`: after the question/part/subpart, taking up space on the page, so an exam with visible rubrics is laid out differently from one without.",
       default: "margin-right",
     ),
     e.field(
@@ -277,7 +277,7 @@
     e.field(
       "numbering",
       e.types.union(str, function, e.types.array(e.types.union(str, function))),
-      doc: "Determines how questions, parts, and subparts are numbered. This option behaves like [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering), taking a numbering pattern (e.g. `\"1.a.i.\"`) or a function that generates a label. In addition, `numbering` also accepts an array of numbering patterns (e.g. `(\"Problem 1.\", \"(a)\", \"i.\")`), with the left-most pattern applying to the highest level (almost always the `#question[]`).
+      doc: "Determines how questions, parts, and subparts are numbered. This option behaves like [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering), taking a numbering pattern (e.g. `\"1.a.i.\"`) or a function that generates a label. In addition, `numbering` also accepts an array of numbering patterns (e.g. `(\"Problem 1.\", \"(a)\", \"i.\")`), with the left-most pattern applying to the highest level (almost always the `#question[..]`).
 
       A `config` rule inside an exam (e.g. `#show: e.set_(config, numbering: (\"Bonus 1.\", \"(i)\"))`) sets the numbering of the questions/parts/subparts after it in its scope. Its left-most pattern still applies to questions, even when the rule is inside a question.",
       default: DEFAULT_NUMBERING,
@@ -293,7 +293,7 @@
     e.field(
       "numbering-full",
       bool,
-      doc: "Similar to [`enum`'s `full`](https://typst.app/docs/reference/model/enum/#parameters-full), if set, ensures that question/part/subparts get globally unique identifiers (e.g., part (a) of question 1 is labeled \"1 (a)\" by default, or \"1.a.\" with `numbering: \"1.a.i.\"`). This also affects `@name` references to questions.",
+      doc: "Similar to [`enum`'s `full`](https://typst.app/docs/reference/model/enum/#parameters-full), if set, ensures that questions/parts/subparts get globally unique identifiers (e.g., part (a) of question 1 is labelled \"1 (a)\" by default, or \"1.a.\" with `numbering: \"1.a.i.\"`). This also affects `@name` references to questions.",
       default: false,
     ),
     e.field(

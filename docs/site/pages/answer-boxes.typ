@@ -37,12 +37,12 @@ Answer boxes can also be used mid-sentence.
   ```typ
   #question[
     The derivative of $x^3$ at $x = 2$
-    is #answer-box[#solution[12]].
+    is #answer-box(height: 1.4em)[#solution[12]].
   ]
   ```,
 )
 
-== Height and Width
+== Height and width
 
 Without a height set, an answer box will size to its content (excluding any
 #api("solution", arg: "[..]")s), with an empty answer box taking up a
@@ -103,8 +103,8 @@ Exam-wide defaults can be set for answer boxes via the `answer-box-*` options of
 #example(
   ```typ
   #show: exam.with(
-    answer-box-height: 1fr, 
-    answer-box-width: 100%, 
+    answer-box-height: 1fr,
+    answer-box-width: 100%,
     answer-box-stroke: (paint: blue, dash: "dashed"),
   )
 
@@ -114,7 +114,7 @@ Exam-wide defaults can be set for answer boxes via the `answer-box-*` options of
   ]
   #question[
     Is $x^3 + 2x$ increasing? Explain.
-    #answer-box(height: 1.5cm)[]
+    #answer-box(height: 1.5cm)[_Only 1.5cm available for your answer. Be concise!_]
   ]
   #question[
     Find the critical points of $x^3 - 3x$.

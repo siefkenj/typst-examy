@@ -33,12 +33,11 @@ using elembic's `#show: e.set_(config, ..)` mechanism.
 )
 
 Inside of an exam, values can be set with elembic's `#show: e.set_(..)` mechanism. Such values will
-affect the exam from that point onwards. However, some values _cannot_ be set in an exam. For
-example, `numbering-full` cannot be set inside an exam (it would lead to ambiguous references).
+affect the exam from that point onwards.
 
 #warning[
-  _Warning._ A few options cannot be changed in the middle of an exam: `numbering-full`,
-  `strings`, and `show-rubrics`. Set these with `#show: exam.with(..)`.
+  _Warning._ A few options cannot be changed in the middle of an exam: `numbering-full` (it would
+  make references ambiguous), `strings`, and `show-rubrics`. Set these with `#show: exam.with(..)`.
 ]
 
 #example(
@@ -82,13 +81,13 @@ shows how you might create a fully custom cover page with the exam's name and te
 #note[
   _Note._ To check whether solutions are shown, use #api("show-solutions", arg: "(get)") instead of
   reading the value directly from #api("config") (see #page-link("solutions.html")[Solutions]). This
-  ensures that settings passed through the commandline via #typst-link(
+  ensures that settings passed on the command line via #typst-link(
     "reference/foundations/sys/",
   )[```sh --input show-solutions=..```] are taken into account.
 ]
 
 
-// Every option, by topic, each table generated from `config`'s declaration.
+// Every option, by topic, each list generated from `config`'s declaration.
 // An option in none of them fails the build (see the check at the end).
 
 == All `config` options

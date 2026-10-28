@@ -174,7 +174,11 @@
 
 #for p in PAGES {
   [#heading(level: 1, p.title)#page_label(p.path)]
-  include "site/" + p.file
+  {
+    // The changelog's versions are not sections of the manual.
+    set heading(numbering: none) if p.path == "changelog.html"
+    include "site/" + p.file
+  }
   // The reference: each export after the index, as on the site's pages.
   if p.path == "reference.html" {
     set heading(numbering: none)

@@ -21,7 +21,7 @@ To use examy, import it and start the exam with a
 #raw(IMPORT + "\n\n#show: exam", lang: "typ", block: true)
 
 A quick-start template is available by choosing examy under _Start from template_ in the Typst web
-app or in the command line by running
+app or on the command line by running
 
 ```bash
 typst init @preview/examy
@@ -29,9 +29,9 @@ typst init @preview/examy
 
 == A first exam
 
-A basic document is built out of an #api("exam", arg: "[..]") (alternatively `#show: exam`). Inside
+A basic document is built out of an #api("exam", arg: "[..]"). Inside
 are questions, created with #api("question", arg: "[..]") (see
-#page-link("questions.html")[Questions and numbering]) along with #api("answer-box", arg: "[..]")s
+#page-link("questions.html")[Questions and numbering]), along with #api("answer-box", arg: "[..]")s
 (see #page-link("answer-boxes.html")[Answer boxes]) for students to write in and
 #api("solution", arg: "[..]")s (see #page-link("solutions.html")[Solutions]) whose visibility can
 be toggled to create regular/key versions of a test.
@@ -65,7 +65,7 @@ to write their name (see #page-link("cover-pages.html")[Cover pages]).
     Give an example of a continuous function that is not
     differentiable.
     #answer-box(height: 2fr)[
-      #solution[$f(x) = |x|$, at $x = 0$.]
+      #solution[$f(x) = abs(x)$, at $x = 0$.]
     ]
   ]
   ```,
@@ -80,7 +80,7 @@ to write their name (see #page-link("cover-pages.html")[Cover pages]).
 //   `#show: e.prepare()` at the top of the document yourself.
 // ]
 
-== Basic Features
+== Basic features
 
 #features(
   (
@@ -96,7 +96,7 @@ to write their name (see #page-link("cover-pages.html")[Cover pages]).
   (
     "cross-references.html",
     [Cross-references],
-    [Use ```typ @name``` syntax reference to a question/part/subpart.],
+    [Use ```typ @name``` to reference a question/part/subpart.],
   ),
   (
     "answer-boxes.html",
@@ -121,11 +121,11 @@ to write their name (see #page-link("cover-pages.html")[Cover pages]).
     [Annotate questions and solutions with grading rubrics (positive or negative points), exportable
       as JSON.],
   ),
-  ("cover-pages.html", [Cover pages], [Basic commands for creating name/exam info areas.]),
+  ("cover-pages.html", [Cover pages], [Functions for creating name/exam info areas.]),
   (
     "configuration.html",
-    [Global Config],
+    [Configuration],
     [Configuration options that affect the look and feel of your test.],
   ),
-  ("reference.html", [API Reference], [Complete documentation for functions provided by examy.]),
+  ("reference.html", [Reference], [Complete documentation for functions provided by examy.]),
 )

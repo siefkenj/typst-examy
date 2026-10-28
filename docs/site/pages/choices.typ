@@ -93,8 +93,8 @@ the label.
   #question(points: 1)[
     Which planet is your favorite?
     #choices(enumerate: "i", inline: true)[
-      - Mars
-      + Jupiter
+      + Mars
+      - Jupiter
       - Venus
     ]
   ]
@@ -108,25 +108,24 @@ If you would like to set exam-wide defaults for choices, use the global #api("co
 ```
 Relevant options are:
 
-/ `choices-enumerate`: Letters in the bubbles of every #api("choices", arg: "[..]"), as
-  #api("choices", field: "enumerate") gives them.
-/ `choices-inline`, `choices-columns`, `choices-gap`: The layout of every `choices`, as
-  #api("choices", field: "inline"), #api("choices", field: "columns"), and
-  #api("choices", field: "gap") give it. A `choices` given `inline` or `columns` itself ignores both
-  `choices-inline` and `choices-columns`.
-/ `bubble-label-font`: The font of those letters (by default, the monospaced font bundled with
-  Typst).
+/ `choices-enumerate`: Label each bubble in a choice #api("choices", arg: "[..]") with letters.
+/ `choices-inline`, `choices-columns`, `choices-gap`: Effects the layout #api("choices").
+/ `bubble-label-font`: The #typst-link("reference/text/text/#parameters-font")[font] of
+  letters used when `choices-enumerate` is set to true (by default, the monospace).
 / `bubble-size`: The size of every round bubble (by default, `1em`). Square bubbles are drawn a
   little smaller, in the same proportion as by default.
-/ `bubble-stroke`: The outline of every bubble: a thickness (by default, `.1em`), a color, or both
-  (e.g. `.06em + gray`).
-/ `bubble-outset`: The space around every bubble, as `outset` gives it.
+/ `bubble-stroke`: The outline of every bubble, as a
+  #typst-link("reference/visualize/stroke/")[stroke]: a thickness (by default, `.1em`), a color, or
+  both (e.g. `.06em + gray`).
+/ `bubble-outset`: The space around every bubble, as #api("choice", field: "outset") gives it.
 
-A single #api("choice") takes `size`, `stroke`, and `outset` itself, and a single #api("choices")
-takes those and `label-font` for all its bubbles. Each wins over the global option, and a `stroke`
-that gives only a color (e.g. `stroke: blue`) keeps the global thickness. Both also take
-`solution-color` and `solution-background-color`, which set the colors of a correct bubble on the
-answer key in place of the global #api("config") options of the same names.
+A single #api("choice") takes #api("choice", field: "size"), #api("choice", field: "stroke"), and
+#api("choice", field: "outset") itself, and a single #api("choices") takes those and
+#api("choices", field: "label-font") for all its bubbles. Each wins over the global option, and a
+`stroke` that gives only a color (e.g. `stroke: blue`) keeps the global thickness. Both also take
+#api("choice", field: "solution-color") and #api("choice", field: "solution-background-color"),
+which set the colors of a correct bubble on the answer key in place of the global #api("config")
+options of the same names.
 
 
 == Custom layouts

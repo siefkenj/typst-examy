@@ -80,7 +80,7 @@ question/part/subpart.
   inset: 5em,
 )
 
-To force each question/part/subpart to be labeled with a globally unique identifier, use
+To force each question/part/subpart to be labelled with a globally unique identifier, use
 `numbering-full: true`. This is similar to setting the #typst-link(
   "reference/model/enum/#parameters-full",
 )[`full` argument] on an `enum`.
@@ -104,14 +104,15 @@ questions/parts/subparts after the rule, up to the end of its scope.
 
 #note[_Note._ Setting the `numbering` #api("config") rule does not change the question's
   #api("question", field: "number"). Set #api("question", field: "number") on the
-  question/part/subpart if you additionally want the counting in the question label to reset.]
+  question/part/subpart if you additionally want the counting in the question label to reset, as
+  the bonus question below does.]
 
 #example(
   ```typ
   #question[What is $3 + 4$?]
   #[
     #show: e.set_(config, numbering: ("Bonus 1.", "(i)"))
-    #question[
+    #question(number: 1)[
       #part[Name a prime number larger than 100.]
       #part(label: <largest>)[Name the largest prime number you know.]
     ]
@@ -150,10 +151,10 @@ provide a #api("question", field: "height", value: "..") argument directly on a 
 
 #warning[
   _Warning._
-  A question/part/subpart with a `height` is laid out as a single block, so it cannot break across
-  pages, and the height of its part/subparts cannot be shared with other questions. Usually, you
-  want to use something like #api("answer-box", arg: "(width: 100%, stroke: none, height: ..)[]")
-  instead.
+  A question/part/subpart with a #api("question", field: "height") is laid out as a single block,
+  so it cannot break across pages, and the height of its part/subparts cannot be shared with other
+  questions. Usually, you want to use something like
+  #api("answer-box", arg: "(width: 100%, stroke: none, height: ..)[]") instead.
 ]
 
 == Pagebreaks

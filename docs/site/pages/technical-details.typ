@@ -16,8 +16,9 @@ remaining space on the page.
 
 Instead, examy flattens all question/part/subpart contents and tags the start and end of each block
 with #typst-link("reference/introspection/metadata/")[`metadata`]. The flat stream is then parsed,
-indentation level is tracked, and peer boxes are produced, so that `#pagebreak()` and `fr` units can
-negotiate space.
+indentation level is tracked, and peer boxes are produced, so that
+#typst-link("reference/layout/pagebreak/")[`#pagebreak()`] and
+#typst-link("reference/layout/fraction/")[`fr`] units can negotiate space.
 
 == Step 1: Questions are annotated with metadata
 
@@ -54,7 +55,8 @@ then runs through the following steps.
   other question is split into peer blocks, each indented to appear as if it is nested.
 
 / Render: Each block is drawn with its number and points badge. Labelled questions/parts/subparts
-  get a typst label that can be used for `@name` references, and the point information recorded for
+  get a Typst label that can be used for #typst-link("reference/model/ref/")[`@name`] references,
+  and the point information recorded for
   #api(
     "points-table",
     arg: "()",
@@ -88,10 +90,8 @@ re-exported as #api("e").
   just "(a)" depending on where it is. `#show: e.prepare()` sets this up. The exam applies it to its
   own content, so a document only needs it for references from outside the exam.
 
-While #api("solution") and #api("answer-box") are elembic elements, the #api("exam", arg: "[..]"),
-#api(
-  "question",
-  arg: "[..]",
-), #api("part", arg: "[..]"), and #api("subpart", arg: "[..]") commands are plain Typst functions.
+While #api("solution") and #api("answer-box") are elembic elements, #api("exam", arg: "[..]"),
+#api("question", arg: "[..]"), #api("part", arg: "[..]"), and #api("subpart", arg: "[..]") are
+plain Typst functions.
 However, during the _Render_ phase of examy, these items are typeset using elembic elements (and so
 can respond to elembic's set rules).

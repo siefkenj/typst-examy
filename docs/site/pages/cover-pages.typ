@@ -24,10 +24,10 @@ A #api("maketitle", arg: "()") renders the exam's details, which are set with th
   "config",
 ). It includes the #api("config", field: "institution"), #api("config", field: "exam-name"),
 #api("config", field: "term"), and #api("config", field: "duration"). Each detail can be
-overwritten by passing arguments directly to #api("maketitle", arg: "()") (e.g.
+overridden by passing arguments directly to #api("maketitle", arg: "()") (e.g.
 `#maketitle(term: [Summer 2026])`).
 
-The exam's `duration` can be a typst #typst-link("reference/foundations/duration/")[`duration`] such
+The exam's `duration` can be a Typst #typst-link("reference/foundations/duration/")[`duration`] such
 as `duration(minutes: 150)`, or content.
 
 #example(
@@ -59,7 +59,7 @@ default.
 === Customizing
 
 Name blocks can be customized by setting the #api("name-block", field: "fields", value: "(..)")
-attribute. The `fields` attribute expects an array of content or dictionaries consisting of
+argument. The `fields` argument expects an array of content or dictionaries consisting of
 `(prefix: .., suffix: ..)`. `(prefix: .., suffix: ..)` items will show before and after an
 underline.
 

@@ -1,7 +1,7 @@
 #import "../template.typ": *
 
 To reference a question/part/subpart, add a
-#typst-link("reference/foundations/label/")[`label: <name>`] attribute and use Typst's
+#typst-link("reference/foundations/label/")[`label: <name>`] argument and use Typst's
 #typst-link("reference/model/ref/")[```typ @name``` syntax] to refer to it. By default, a reference
 is rendered as the shortest unambiguous string.
 
@@ -26,12 +26,13 @@ is rendered as the shortest unambiguous string.
 Notice how in 1 (b), the reference ```typ @continuity``` is rendered as "(a)" while in question 2
 the same reference is rendered as "1 (a)".
 
-To ensure all labels are globally unique, you can use the `numbering-full: true` option.
+To make every reference show the full number (e.g. "1 (a)" wherever it is), use the
+`numbering-full: true` option.
 
 #example(
   ```typ
   #show: exam.with(numbering-full: true)
-  
+
   #question[
     Let $f(x) = x^2$.
     #part(points: 2, label: <continuity>)[
@@ -54,8 +55,7 @@ shows its number. References follow the numbering style set with `numbering` (se
 )[Questions and numbering]).
 
 #note[
-  _Note._ Labels are given as an argument, `label: <name>`, rather than written after the question
-  as `#question[..] <name>`, because examy takes questions apart to lay them out (see #page-link(
-    "technical-details.html",
-  )[Technical details]).
+  _Note._ Labels are given as an argument, #api("question", field: "label", value: "<name>"),
+  rather than written after the question as `#question[..] <name>`, because examy takes questions
+  apart to lay them out (see #page-link("technical-details.html")[Technical details]).
 ]

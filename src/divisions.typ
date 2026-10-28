@@ -29,7 +29,7 @@
   e.field(
     "intent",
     e.types.union(e.types.literal("practice"), e.types.literal("bonus"), none),
-    doc: "Setting to `\"bonus\"` counts the points as bonus points, which are totaled separately. Setting to `\"practice\"` leaves the points out of all totals.",
+    doc: "Setting to `\"bonus\"` counts the points as bonus points, which are totaled separately. Setting to `\"practice\"` leaves the points out of the exam's totals and its points table; `num-points(intent: \"practice\")` counts them.",
     default: none,
   ),
   e.field(

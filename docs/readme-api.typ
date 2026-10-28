@@ -35,7 +35,10 @@
     "The exam title block (in the spirit of LaTeX's `\\maketitle`). Exam information is read from the global `config`.",
   ),
   (("name-block",), "A block of fill-in rows for a student to write their name."),
-  (("points-table", "num-points", "num-questions"), "Display a scoring table and other information about the exam."),
+  (
+    ("points-table", "num-points", "num-questions"),
+    "A scoring table, and the exam's points and number of questions as numbers, which need context (e.g. `#context num-points()`).",
+  ),
   (("question", "part", "subpart"), "Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively."),
   (
     ("rubric", "rubric-list"),

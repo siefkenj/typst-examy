@@ -1,11 +1,11 @@
 # Changelog
 
-## 1.0.0
+## 1.0.0 — 2026-10-28
 
 ### Breaking changes
 
-- `points-table`, `page-score-box` and `rubric-list` are functions: write
-  `#points-table()`.
+- `points-table` is a function now. Write `#points-table()` instead of
+  `#points-table`.
 - `num-points` and `num-questions` are functions that return a number, and
   need context: write `#context num-points()` to show it, or compute with it,
   as in `#context calc.ceil(num-points() * .6)`.

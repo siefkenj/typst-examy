@@ -13,7 +13,7 @@ follows the spirit of the [exam class for LaTeX](https://ctan.org/pkg/exam?lang=
 </p>
 <p align="center"><em><a href="examples/quiz.typ">examples/quiz.typ</a>, compiled without and with solutions.</em></p>
 
-Full documentation is available at the [Examy website](https://siefkenj.github.io/typst-examy/) 
+Full documentation is available at the [Examy website](https://siefkenj.github.io/typst-examy/)
 or downloadable as a [PDF](https://siefkenj.github.io/typst-examy/examy-manual.pdf).
 See the
 [examples/](examples/) folder for sample documents.
@@ -36,17 +36,19 @@ A basic document looks like this:
 #question(points: 2)[
   State the definition of a _continuous function_.
   #answer-box(height: 1fr)[
-    #solution[A function $f$ is continuous at $a$ if ...]
+    #solution[A function $f$ is continuous at $a$ if
+      $lim_(x -> a) f(x) = f(a)$.]
   ]
 ]
 #question(points: 3)[
-  Give an example of a continuous function that is not differentiable.
+  Give an example of a continuous function that is not
+  differentiable.
   #answer-box(height: 2fr)[
-    #solution[$f(x) = |x|$ ...]
+    #solution[$f(x) = abs(x)$, at $x = 0$.]
   ]
 ]
 ```
-A quick-start template is available by choosing examy under _Start from template_ in the Typst web app or in the command line by running
+A quick-start template is available by choosing examy under _Start from template_ in the Typst web app or on the command line by running
 
 ```bash
 typst init @preview/examy
@@ -58,7 +60,7 @@ typst init @preview/examy
   numbered automatically.
 - **[Points](https://siefkenj.github.io/typst-examy/points.html)**: points listed on a per-question basis as well as points tables and points per page displays.
 - **[Answer boxes](https://siefkenj.github.io/typst-examy/answer-boxes.html)** providing a student with space to write. These can have a fixed size or can use available space via fractional units (e.g. `height: 1fr`).
-- **[Solutions](https://siefkenj.github.io/typst-examy/solutions.html)**: written solutions can be globally toggled as visible/invisible to make a key/blank versions of a test.
+- **[Solutions](https://siefkenj.github.io/typst-examy/solutions.html)**: written solutions can be globally toggled as visible/invisible to make answer-key and blank versions of a test.
 - **[Rubrics](https://siefkenj.github.io/typst-examy/rubrics.html)**: annotate questions and solutions with grading rubrics (positive or negative points), exportable as JSON.
 - **[Multiple choice](https://siefkenj.github.io/typst-examy/choices.html)**
   with round or square bubbles, optionally enumerated.
@@ -86,7 +88,7 @@ All names below are exported by `#import "@preview/examy:1.0.0": *`. See the [fu
 | [`#exam[..]`](https://siefkenj.github.io/typst-examy/reference/exam.html) | Lays out an exam. Start one with `#show: exam` (or `#show: exam.with(..)`, with `config` options). |
 | [`#maketitle(..)`](https://siefkenj.github.io/typst-examy/reference/maketitle.html) | The exam title block (in the spirit of LaTeX's `\maketitle`). Exam information is read from the global `config`. |
 | [`#name-block(..)`](https://siefkenj.github.io/typst-examy/reference/name-block.html) | A block of fill-in rows for a student to write their name. |
-| [`#points-table(..)`](https://siefkenj.github.io/typst-examy/reference/points-table.html), [`#num-points(..)`](https://siefkenj.github.io/typst-examy/reference/num-points.html), [`#num-questions()`](https://siefkenj.github.io/typst-examy/reference/num-questions.html) | Display a scoring table and other information about the exam. |
+| [`#points-table(..)`](https://siefkenj.github.io/typst-examy/reference/points-table.html), [`#num-points(..)`](https://siefkenj.github.io/typst-examy/reference/num-points.html), [`#num-questions()`](https://siefkenj.github.io/typst-examy/reference/num-questions.html) | A scoring table, and the exam's points and number of questions as numbers, which need context (e.g. `#context num-points()`). |
 | [`#question[..]`](https://siefkenj.github.io/typst-examy/reference/question.html), [`#part[..]`](https://siefkenj.github.io/typst-examy/reference/question.html#api-part), [`#subpart[..]`](https://siefkenj.github.io/typst-examy/reference/question.html#api-subpart) | Declare a question, part, or subpart — numbered `1.`, `(a)`, or `i.` respectively. |
 | [`#rubric[..]`](https://siefkenj.github.io/typst-examy/reference/rubric.html), [`#rubric-list()`](https://siefkenj.github.io/typst-examy/reference/rubric-list.html) | Grading rubric items for a question, part, or subpart, drawn on the graders' copy, and every rubric of the exam as a list. |
 | [`#solution[..]`](https://siefkenj.github.io/typst-examy/reference/solution.html) | Declare a solution to a question, part, or subpart; this is only rendered if the config option to show solutions is enabled. |

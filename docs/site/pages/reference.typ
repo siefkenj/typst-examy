@@ -12,7 +12,7 @@ name of the `config` option they inherit from (e.g. #default-badge("auto", optio
 Setting such an argument to `auto` uses the value of that `config` option, so changing the option
 changes the default everywhere.
 
-#note[_Note_. Many arguments on individual elements can be set on the global #api("config") instead
+#note[_Note._ Many arguments on individual elements can be set on the global #api("config") instead
   of specifying them on the element.]
 
 #reference_index()

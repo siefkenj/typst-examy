@@ -1,6 +1,6 @@
 #import "../template.typ": *
 
-Wrapping content #api("solution", arg: "[..]") ensures that it is only shown in an "answer key"
+Wrapping content in #api("solution", arg: "[..]") ensures that it is only shown in an "answer key"
 version of an exam, which means you can use a single source to render both an exam and its answer
 key. Solutions can be placed anywhere in an exam, but are often placed in an #api(
   "answer-box",
@@ -42,8 +42,8 @@ or
 == Compiling with and without solutions
 
 There are three ways to create solution/no-solution versions of an exam: (1) explicitly set
-`show-solutions:` as `true`/`false` and recompile, (2) use a commandline flag, or (3) Typst's
-experimental bundle option.
+#api("config", field: "show-solutions", body: raw("show-solutions:")) as `true`/`false` and
+recompile, (2) use a command-line flag, or (3) Typst's experimental bundle option.
 
 === Manually setting the flag
 
@@ -57,7 +57,7 @@ Putting `show-solutions` on its own line allows you to easily comment/uncomment 
 multiple exam versions.
 
 
-=== Command line flag
+=== Command-line flag
 
 The `show-solutions` #typst-link("reference/foundations/sys/")[input] given on the command line
 overrides the document's `show-solutions` setting, so it can be used to create solution/no-solution
@@ -136,9 +136,9 @@ in the last question below.
     #answer-box(width: 100%)[#solution[Jupiter.]]
   ]
   #question[
-    A test for the color blind.
+    Name a primary color.
     #answer-box(width: 100%)[
-      #solution(background-color: yellow.darken(30%))[Can you read me?]
+      #solution(background-color: yellow.darken(30%))[Yellow.]
     ]
   ]
   ```,
@@ -179,7 +179,7 @@ of an exam, but replace it with just a solution on the solutions version.
 == Solutions inside graphics and other advanced solutions
 
 A #api("solution", arg: "[..]") is wrapped in context, and as such, its output cannot be used
-as the input for most functions, like those that draw graphics. 
+as the input for most functions, like those that draw graphics.
 
 An alternative is to pass #api("exam", arg: "[..]") a function of the form `solutions-only => ..`.
 The first argument is a function which returns its content only when solutions are rendered and

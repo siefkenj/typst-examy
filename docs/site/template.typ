@@ -886,9 +886,12 @@
 /// One argument of a reference entry, with the anchor `api(.., field:)` links
 /// to. A default that is one of the alternatives of its type (`auto` of
 /// `auto | length`) is shown once, as its badge, first among them; any other
-/// is shown after the type.
-#let _arg(owner, a) = {
-  [#metadata(a.name)#_anchor(owner, arg: a.name)]
+/// is shown after the type. `linked`: the name a link to the argument's entry
+/// instead, for a page that lists arguments documented in the reference (see
+/// `config-options`).
+#let _arg(owner, a, linked: false) = {
+  if not linked { [#metadata(a.name)#_anchor(owner, arg: a.name)] }
+  let name(shown) = if linked { api(owner, field: a.name, body: shown) } else { shown }
   let has_default = not a.variadic and not a.required
   let alts = if a.type == none { () } else { _alternatives(a.type) }
   let inline = has_default and a.default in alts
@@ -896,9 +899,9 @@
   let rest = if inline { alts.filter(t => t != a.default) } else { alts }
   let badge = if has_default { default-badge(a.default, option: a.config) }
   _either(
-    () => html.elem("div", attrs: (class: "arg", id: owner + "." + a.name), {
+    () => html.elem("div", attrs: (class: "arg", ..if not linked { (id: owner + "." + a.name) }), {
       html.elem("div", attrs: (class: "arg-head"), {
-        html.elem("code", attrs: (class: "arg-name"), arg_name(a))
+        name(html.elem("code", attrs: (class: "arg-name"), arg_name(a)))
         if inline { badge }
         if rest != () {
           html.elem("code", attrs: (class: "arg-type"), (if inline { "| " } else { "" }) + rest.join(" | "))
@@ -916,7 +919,7 @@
     }),
     () => block(above: 1.2em, {
       block(sticky: true, {
-        strong(_typst-raw(arg_name(a)))
+        name(strong(_typst-raw(arg_name(a))))
         h(.8em)
         if inline {
           text(size: .9em, badge)
@@ -1017,113 +1020,27 @@
   ),
 )
 
-/// The label of the record each `config-options` table leaves of the options
+/// The label of the record each `config-options` list leaves of the options
 /// it lists (see `config-options-check`).
 #let _CONFIG_OPTIONS_LISTED = <docs-config-options-listed>
 
-/// A table of some of `config`'s options, each a link to its reference with
-/// its default and type below it, and its description.
+/// Some of `config`'s options, each shown as the reference shows an argument
+/// (see `_arg`), its name a link to its entry there.
 #let config-options(..names) = {
-  let args = entry("config").args
-  // A default on one line, or, when that is long (`strings`'), as written,
-  // over several lines.
-  let one-line(d) = d.replace(regex("\\(\\s*\n\\s*"), "(").replace(regex(",?\\s*\n\\s*\\)"), ")").replace(regex("\\s*\n\\s*"), " ")
-  let is-long(a) = one-line(a.default).len() > 24
-  let default-of(a) = if is-long(a) { a.default } else { one-line(a.default) }
-  // The name, and its default and type below it, slightly indented. They
-  // wrap (the type at its `|`s), so a long one does not widen the column
-  // past the name (or the widest piece of them). As in the reference (see
-  // `_arg`), a default that is one of the alternatives of the type is shown
-  // once, as its badge, first among them; any other short one after the
-  // type; a long one, written over several lines, in a box of its own below.
-  let name-cell(a) = {
-    let long = not a.required and is-long(a)
-    let alts = if a.type == none { () } else { _alternatives(a.type) }
-    let inline = not a.required and not long and default-of(a) in alts
-    let rest = if inline { alts.filter(t => t != default-of(a)) } else { alts }
-    let badge = if not a.required and not long { default-badge(default-of(a)) }
-    _either(
-      () => {
-        api("config", field: a.name)
-        // Each alternative, the badge among them, in one piece with the `|`
-        // after it: the line wraps between them.
-        let bar = html.elem("code", attrs: (class: "arg-type"), "|")
-        let pieces = rest.map(t => html.elem("code", attrs: (class: "arg-type"), t))
-        if inline { pieces.insert(0, badge) }
-        let pieces = pieces.enumerate().map(((i, p)) => if i < pieces.len() - 1 { [#p #bar] } else { p })
-        if badge != none and not inline { pieces.push(badge) }
-        html.elem("div", attrs: (class: "option-meta"), pieces.map(p => html.elem("span", p)).join(" "))
-        // Outside the `option-meta`, so that the column fits it.
-        if long {
-          html.elem("div", attrs: (class: "option-pretty default-badge"), html.elem("div", attrs: (class: "default-box"), {
-            html.elem("div", attrs: (class: "default-value"), {
-              html.elem("span", attrs: (class: "default-key"), [default])
-              raw(default-of(a), lang: "typc", block: true)
-            })
-          }))
-        }
-      },
-      () => context {
-        let name = api("config", field: a.name)
-        let indent = .6em.to-absolute()
-        let small(body) = text(size: .8em, body)
-        let type(t) = text(fill: luma(90), raw(t))
-        // Each alternative, the badge among them, in one box with the `|`
-        // after it: the line wraps between them.
-        let pieces = rest.map(type)
-        if inline { pieces.insert(0, badge) }
-        let pieces = pieces.enumerate().map(((i, p)) => if i < pieces.len() - 1 { [#p#type(" |")] } else { p })
-        if badge != none and not inline { pieces.push(badge) }
-        let pieces = pieces.map(p => box(small(p)))
-        // Not wrapped: as wide as its widest line, under "default", as a
-        // badge has it.
-        let pretty = if long {
-          small(stack(
-            spacing: .2em,
-            align(center, text(size: .65em, fill: ACCENT)[default]),
-            box(stroke: .5pt + ACCENT, radius: 2pt, inset: (x: .4em, y: .3em), raw(default-of(a))),
-          ))
-        }
-        // At least wide enough for a short type on one line, as `content | none`.
-        let width = calc.max(
-          8em.to-absolute(),
-          measure(name).width - indent,
-          ..(..pieces, pretty).filter(p => p != none).map(p => measure(p).width),
-        )
-        // The leading of their smaller size, not the text around them.
-        set par(justify: false, leading: .5em)
-        // Kept on one page with its row's start.
-        block(breakable: false, stack(
-          spacing: .5em,
-          name,
-          ..(pieces.join(" "), pretty).filter(x => x != none).map(x => pad(left: indent, block(width: width, x))),
-        ))
-      },
-    )
+  for n in names.pos() {
+    let a = entry("config").args.find(a => a.name == n)
+    assert(a != none, message: "config-options: `config` has no option `" + n + "`")
+    _arg("config", a, linked: true)
   }
-  let t = table(
-    stroke: none,
-    columns: (auto, 1fr),
-    // table.header[*Option*][*Description*],
-    ..names
-      .pos()
-      .map(n => {
-        let a = args.find(a => a.name == n)
-        assert(a != none, message: "config-options: `config` has no option `" + n + "`")
-        (name-cell(a), doc(a.doc))
-      })
-      .flatten(),
-  )
-  _either(() => html.elem("div", attrs: (class: "config-options"), t), () => t)
   [#metadata(names.pos())#_CONFIG_OPTIONS_LISTED]
 }
 
 /// Fails the build if one of `config`'s options is in no `config-options`
-/// table, so that a new option cannot be left out of them.
+/// list, so that a new option cannot be left out of them.
 #let config-options-check() = context {
   let listed = query(_CONFIG_OPTIONS_LISTED).map(m => m.value).flatten()
   let missing = CONFIG_OPTIONS.filter(o => o not in listed)
-  assert(missing.len() == 0, message: "config-options: no table lists " + missing.join(", "))
+  assert(missing.len() == 0, message: "config-options: no list has " + missing.join(", "))
 }
 
 // ---------------------------------------------------------------------------
