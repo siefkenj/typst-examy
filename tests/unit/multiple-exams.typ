@@ -1,9 +1,10 @@
 // A document holding several exams (a bundle of the exam and its key, or a
 // page of examples): each of `num-points`, `num-questions`, and
-// `points-table` is about the exam it is in, else the next exam, else the
-// last one.
+// `points-table` (by question, and by page) is about the exam it is in, else
+// the next exam, else the last one. The two exams share a page, whose points
+// a table by page counts only for its own exam.
 #import "/src/lib.typ": *
-#import "/src/points.typ": exam_points_data
+#import "/src/points.typ": exam_pages, exam_points_data
 #import "/tests/record.typ": rule
 
 #set page(width: 6in, height: auto, margin: .3in)
@@ -16,7 +17,8 @@
   context {
     let data = exam_points_data()
     let total = if data == none { none } else { data.map(q => q.total_points).sum(default: 0) }
-    [#metadata((where: where, total: total))<probe>]
+    let by_page = exam_pages().map(p => p.points).sum(default: 0)
+    [#metadata((where: where, total: total, by-page: by_page))<probe>]
   }
   [_#where:_ #context num-questions() questions, #context num-points() points.]
 }
@@ -24,6 +26,7 @@
 #rule[Before the first exam: about the first (3 points).]
 #probe("before first")
 #align(center, points-table())
+#align(center, points-table(granularity: "page"))
 
 #exam(questions: [
   #question(points: 1)[One point. #probe("inside first")]
@@ -33,6 +36,7 @@
 #rule[Between the exams: about the second, the next (10 points).]
 #probe("between")
 #align(center, points-table())
+#align(center, points-table(granularity: "page"))
 
 #exam(questions: [
   #question(points: 4)[Four points. #probe("inside second")]
@@ -55,5 +59,6 @@
   for (where, total) in expected {
     let found = got.find(v => v.where == where)
     assert(found != none and found.total == total, message: where + ": " + repr(found))
+    assert(found.by-page == total, message: where + " (by page): " + repr(found))
   }
 }

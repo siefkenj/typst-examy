@@ -4,7 +4,9 @@
 #import "../parse.typ": parse
 #import "../plan.typ": hold, plan
 #import "../render.typ": localize, mark_rubrics, opts_of, render, rubric_info
-#import "../points.typ": EXAMS_ENDED, EXAMS_STARTED, assign_badges, compute_points_data, exam_index, points_data_state
+#import "../points.typ": (
+  EXAMS_ENDED, EXAMS_STARTED, assign_badges, compute_points_data, exam_index, pages_record, pages_start, points_data_state,
+)
 #import "../refs.typ": own_exam_refs
 #import "../config.typ": config, exam_options, exam_wide_names
 #import "./solution.typ": show_rubrics, show_solutions
@@ -209,8 +211,11 @@
   EXAMS_STARTED.step()
   points_data_state.update(all => all + (data,))
   if present { exam_start }
+  // Around what it draws, for the points on each page (see `pages_record`).
+  pages_start
   let held = hold(items)
   render(held, plan(held), opts: opts)
+  pages_record
   // Its rubrics recorded, and as data for the command line (see export.typ).
   if present {
     let divisions = range(items.len())

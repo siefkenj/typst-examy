@@ -615,8 +615,11 @@
         }
         continue
       }
-      let glued = results.slice(results.len() - t.n)
-      results = results.slice(0, results.len() - t.n)
+      // Popped, not sliced off: a slice copies all of `results`, at every
+      // container (see `tokenize`). A `for` loop has no limit on its rounds.
+      let glued = ()
+      for _ in range(t.n) { glued.push(results.pop()) }
+      let glued = glued.rev()
       let kids = glued.map(g => g.first())
       if f == STYLED_FUNC {
         let (child, changed) = glued.first()

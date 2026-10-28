@@ -804,21 +804,27 @@
       end_badge = none
     }
     // Children in document order: runs of chunks joined, child divisions
-    // rendered recursively.
+    // rendered recursively. Its text after a child division is its own
+    // again, for the references in it (see `update_current_address`), which
+    // the child's anchor made the child's.
     let chunk_run = ()
+    let after_child = false
     for c_idx in children {
       let child = items_of(items).at(c_idx)
       if child.kind == "chunk" {
         chunk_run.push(c_idx)
       } else {
+        if after_child and chunk_run.len() > 0 { update_current_address(it.address) }
         render_chunks(items, chunk_run, o, base: it_styles.len())
         end_badge
         end_badge = none
         chunk_run = ()
         render_nested(items, c_idx, opts, base_styles: it_styles.len(), carry: carry)
         carry = ()
+        after_child = true
       }
     }
+    if after_child and chunk_run.len() > 0 { update_current_address(it.address) }
     render_chunks(items, chunk_run, o, base: it_styles.len())
     end_badge
     if end and o.rubric.position == "end" and _drawn(it, opts) { _rubric_end(it, opts) }
@@ -1120,6 +1126,18 @@
   let rubric_ends = if opts.rubric.drawn and "end" in opts.rubric.positions {
     _rubric_ends(items, instructions, opts, root: root)
   } else { (:) }
+  // For each instruction, whether it is text between divisions, or after
+  // them, that follows one: it is no division's, for the references in it
+  // (see `update_current_address`), which the division's anchor made the
+  // division's. And whether the last of them draws a division, so that
+  // what follows the exam is no division's either.
+  let (resets, in_division) = ((), false)
+  for instr in instructions {
+    resets.push(instr.kind == "verbatim" and in_division)
+    if instr.kind in ("nested", "segment", "frame") { in_division = true } else if instr.kind == "verbatim" {
+      in_division = false
+    }
+  }
   // Instruction `n`, drawn inside styles `depth` deep.
   let one(n, depth, opts) = {
     let instr = instructions.at(n)
@@ -1127,6 +1145,7 @@
       // Between divisions: a rubric here is no division's (see `OWNER`).
       let it = items_of(items).at(instr.item)
       let styles = stack_of(it.styles)
+      if resets.at(n) { update_current_address(()) }
       apply_styles(it.body, styles.slice(calc.min(depth, styles.len())))
     } else if instr.kind == "rubrics" {
       _carried_rubrics(instr.items.map(i => items_of(items).at(i)))
@@ -1209,4 +1228,6 @@
   }
   while open.len() > 1 { open = close(open) }
   shift + open.first().parts.join()
+  // A frame's instructions are inside its division, which goes on after them.
+  if root == none and in_division { update_current_address(()) }
 }

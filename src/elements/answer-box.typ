@@ -1,5 +1,5 @@
 #import "../prelude.typ": *
-#import "../config.typ": BOX_FILL, BOX_STROKE, config
+#import "../config.typ": BOX_FILL, BOX_STROKE, _RELATIVE, config
 #import "../widen.typ": exam_content, par_events, widen_par_solutions
 #import "solution.typ": solution as solution_element
 #import "../scan.typ": (
@@ -13,10 +13,6 @@
 
 /// The box's own inset: the space between its outline and its content.
 #let _INSET = 5pt
-
-/// A relative length, checked but kept as given: a plain length stays a
-/// length (see signature.typ), which `is_standalone` below relies on.
-#let _RELATIVE = (length, ratio, e.types.exact(relative))
 
 /// The `config` options that give an answer box's fields when neither its
 /// call nor a set rule on `answer-box` does, by option: the field each gives.

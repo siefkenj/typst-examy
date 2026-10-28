@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 (unreleased)
+## 1.0.0
 
 ### Breaking changes
 
@@ -88,6 +88,10 @@
   exam.
 - A set rule inside a question no longer hides the parts after it from the
   exam.
+- A reference in a question's text after one of its parts, between
+  questions, or after the exam reads as from there: `@sub` is "(a) i" in
+  question 1's text after part (a), not "i".
+- `num-points-page` in a page footer no longer slows down a long exam.
 - Many fixes to the layout of points badges, question numbers, answer boxes,
   solutions and equations.
 

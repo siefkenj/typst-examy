@@ -38,7 +38,8 @@
 #let DEFAULT_INDENT = 1.5em
 
 /// A relative length, checked but kept as given: a plain length stays a
-/// length (see signature.typ), as `answer-box` expects.
+/// length (see signature.typ), as `answer-box` expects: its
+/// `is_standalone` tells a box of a fixed width from one of a ratio by type.
 #let _RELATIVE = (length, ratio, e.types.exact(relative))
 
 /// What an answer box's outline and background take, as `box`'s `stroke`
@@ -116,7 +117,7 @@
   prefix: PREFIX,
   doc: "Examy's options. Set them with `#show: exam.with(..)` or `#show: e.set_(config, ..)`, and read them with `e.get(get => get(config).exam-name)`.",
   display: it => panic(
-    "Config should not be displayed directly; instead use `e._set` to set properties on it.",
+    "Config should not be displayed directly; instead use `e.set_` to set properties on it.",
   ),
   fields: (
     e.field(

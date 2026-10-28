@@ -220,9 +220,12 @@
   default: none,
 )
 
+/// An `intent` as a key of a dictionary: `none` as `"none"`.
+#let _intent_key(intent) = if intent == none { "none" } else { intent }
+
 /// The key of the points of `intent` in a row of `compute_points_data`.
 #let _OWN = ("none": "own", bonus: "own-bonus", practice: "own-practice")
-#let _own_key(intent) = _OWN.at(if intent == none { "none" } else { intent })
+#let _own_key(intent) = _OWN.at(_intent_key(intent))
 
 #let _NUM_QUESTIONS = declare_function(
   "num-questions",
@@ -253,29 +256,76 @@
 /// alone does not tell which document's page it is. Needs context.
 #let _document_index(loc) = query(selector(document).before(loc)).len()
 
-/// The points markers of the document `here()` is in (see
-/// `_document_index`). Needs context.
-#let _points_markers() = {
-  let mine = _document_index(here())
-  query(POINTS_MARKER).filter(m => _document_index(m.location()) == mine)
-}
+/// The labels of the mark an exam leaves where its questions start, and of
+/// the record of their points by page it leaves where they end (see
+/// `pages_record`).
+#let PAGES_START = label(PREFIX + "/pages-start")
+#let PAGES = label(PREFIX + "/pages")
 
-/// The points markers of the document `here()` is in, grouped by page: an
-/// array of `(page: n, location, points, bonus)`, one per page with points,
-/// in page order, where `location` is that of the page's first marker.
-/// Needs context.
-#let _points_by_page() = {
+/// The mark an exam leaves where its questions start (see `pages_record`).
+/// Invisible.
+#let pages_start = [#metadata(none)#PAGES_START]
+
+/// The record an exam leaves where its questions end: the points of the
+/// divisions that start on each page (see `points_marker`), which exam it is
+/// (counted from 1, see `EXAMS_STARTED`), and which document of a bundle it
+/// is in (see `_document_index`). Invisible. Worked
+/// out here, once for the exam, so that a reader of them, such as a page
+/// footer, read on every page, queries only these records, one per exam: a
+/// query of every marker, in every footer, takes time growing with the
+/// square of the exam's length, as Typst checks a reused query by running
+/// it again.
+///
+/// `pages`: for each page with points, keyed by its number (as a string),
+/// `(page, location, points)`, `location` that of its first marker, and
+/// `points` its points by intent (`none`, `"bonus"`, `"practice"`, as
+/// strings; see `_intent_key`).
+#let pages_record = context {
+  let start = query(selector(PAGES_START).before(here())).at(-1, default: none)
+  if start == none { return }
   let pages = (:)
-  for m in _points_markers() {
+  for m in query(selector(POINTS_MARKER).after(start.location()).before(here())) {
     let page = m.location().page()
     let key = str(page)
     if key not in pages {
-      pages.insert(key, (page: page, location: m.location(), points: 0, bonus: 0))
+      pages.insert(key, (page: page, location: m.location(), points: ("none": 0, bonus: 0, practice: 0)))
     }
-    if m.value.intent == none { pages.at(key).points += m.value.points }
-    if m.value.intent == "bonus" { pages.at(key).bonus += m.value.points }
+    pages.at(key).points.at(_intent_key(m.value.intent)) += m.value.points
   }
-  pages.values().sorted(key: p => p.page)
+  [#metadata((doc: _document_index(here()), exam: EXAMS_STARTED.get().first(), pages: pages))#PAGES]
+}
+
+/// The points of document `doc` (see `_document_index`) by page, as
+/// `pages_record` gives them: of exam `exam` alone (counted from 1), or with
+/// `none`, of all its exams together, a page's first location that of its
+/// first exam. Needs context.
+#let _pages_of(doc, exam: none) = {
+  let pages = (:)
+  for r in query(PAGES) {
+    if r.value.doc != doc or exam != none and r.value.exam != exam { continue }
+    for (key, p) in r.value.pages {
+      if key not in pages {
+        pages.insert(key, p)
+        continue
+      }
+      for (intent, n) in p.points { pages.at(key).points.at(intent) += n }
+    }
+  }
+  pages
+}
+
+/// The points of the exam a reader at `here()` is about (see `exam_index`),
+/// by page: an array of `(page: n, location, points, bonus)`, one per page
+/// with points, in page order, where `location` is that of the page's first
+/// division with points. Another exam's points on the same pages are not
+/// counted. Needs context.
+#let exam_pages() = {
+  let i = exam_index(here())
+  if i == none { return () }
+  _pages_of(_document_index(here()), exam: i + 1)
+    .values()
+    .map(p => (page: p.page, location: p.location, points: p.points.at("none"), bonus: p.points.bonus))
+    .sorted(key: p => p.page)
 }
 
 #let _NUM_POINTS_PAGE = declare_function(
@@ -295,10 +345,8 @@
 /// The number of points of an intent on a page (see DOCS). Needs context.
 #let num_points_page = define(_NUM_POINTS_PAGE, it => {
   let page = if it.page == auto { here().page() } else { it.page }
-  _points_markers()
-    .filter(m => m.value.intent == it.intent and m.location().page() == page)
-    .map(m => m.value.points)
-    .sum(default: 0)
+  let found = _pages_of(_document_index(here())).at(str(page), default: none)
+  if found == none { 0 } else { found.points.at(_intent_key(it.intent)) }
 })
 
 #let _PAGE_SCORE_BOX = declare_function(
@@ -436,7 +484,7 @@
   let strings = o.strings
   let (entries, heading) = if o.granularity == "page" {
     (
-      _points_by_page()
+      exam_pages()
         .filter(p => p.points > 0 or p.bonus > 0)
         .map(p => (label: _page_label(p.location), points: p.points, bonus: p.bonus)),
       strings.page,

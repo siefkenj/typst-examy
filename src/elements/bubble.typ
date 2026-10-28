@@ -210,8 +210,6 @@
   square: (draw: square_shape, size: _SQUARE_SIZE),
 )
 
-/// The shape named by a `bubble:` option — `"circle"` or `"square"`, or
-/// Typst's own `circle`/`square` function, which reads the same at the call
 /// What is wrong with a `bubble:` option, or `none` if it names a shape (see
 /// `shape_name`).
 #let shape_error(value, caller) = {
@@ -225,6 +223,8 @@
   )
 }
 
+/// The shape named by a `bubble:` option — `"circle"` or `"square"`, or
+/// Typst's own `circle`/`square` function, which reads the same at the call
 /// site (`bubble: square`) and is told apart by its name. `caller` names the
 /// function in the error message.
 #let shape_name(value, caller) = {
