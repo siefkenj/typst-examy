@@ -2,6 +2,9 @@
   <a href="https://siefkenj.github.io/typst-examy/"><img src="docs/logo/logo.svg" width="220" alt="examy"></a>
 </h1>
 
+**[Full Documentation](https://siefkenj.github.io/typst-examy/)** |
+**[Playground](https://siefkenj.github.io/typst-examy/playground.html)**
+
 A [Typst](https://typst.app) package for writing exams, quizzes, and homework
 with automatically numbered questions, answer boxes, points accounting, smart
 cross-references, and solutions that can be toggled on and off. This package
