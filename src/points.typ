@@ -52,7 +52,7 @@
 #let POINTS_MARKER = label(PREFIX + "/points")
 
 /// The marker a division with points leaves where it starts, which
-/// `get-num-points-page` and the table by page count. Invisible.
+/// `num-points-page` and the table by page count. Invisible.
 #let points_marker(points, intent) = [#metadata((points: points, intent: intent))#POINTS_MARKER]
 
 /// The label of the marker every division leaves at its start, with its
@@ -75,8 +75,8 @@
 
 /// The point data of an exam, from its parsed items: a row per division, in
 /// order, with its `level`, `address`, `number`, and `label` (see
-/// `_division_label`); its own regular and bonus points, `own` and
-/// `own-bonus`; and its `total_points` and `total_bonus_points`, its own
+/// `_division_label`); its own regular, bonus and practice points, `own`,
+/// `own-bonus` and `own-practice`; and its `total_points` and `total_bonus_points`, its own
 /// with all of its parts' (see `assign_points`).
 #let compute_points_data(items, numbering: DEFAULT_NUMBERING, full: false) = {
   items
@@ -92,6 +92,7 @@
         label: _division_label(d, numbering, full),
         own: if d.fields.intent == none { p } else { 0 },
         own-bonus: if d.fields.intent == "bonus" { p } else { 0 },
+        own-practice: if d.fields.intent == "practice" { p } else { 0 },
         total_points: d.total_points,
         total_bonus_points: d.total_bonus_points,
       )
@@ -205,55 +206,44 @@
     (#badge.parts); with `points-show-totals`, give points to one or the other.]
 }
 
-// Each count comes twice: as a number, `get-num-..()`, to compute or test
-// with, which needs context; and as content, `num-..`, which shows it
-// anywhere, with no context of its own to write.
+// Each count is a number, and needs context: `#context num-points()` shows
+// it, and `num-points()` in a context block computes with it.
 
-#let _GET_NUM_QUESTIONS = declare_function(
-  "get-num-questions",
-  doc: "The total number of questions, as a number. Must be used inside of a [context](https://typst.app/docs/reference/context/) block. Use `#num-questions` for a ready-to-display alternative.",
+/// The `intent` of the points a count counts, named as a question's
+/// `intent` names them.
+#let _intent_field() = e.field(
+  "intent",
+  e.types.union(e.types.literal("practice"), e.types.literal("bonus"), none),
+  doc: "Which points to count, by their `intent` (see `#question[..]`): `none` for regular points, `\"bonus\"` for bonus points, or `\"practice\"` for practice points.",
+  default: none,
 )
 
-/// The total number of questions in the exam (see DOCS). Needs context.
-#let get_num_questions = define(_GET_NUM_QUESTIONS, it => {
+/// The key of the points of `intent` in a row of `compute_points_data`.
+#let _OWN = ("none": "own", bonus: "own-bonus", practice: "own-practice")
+#let _own_key(intent) = _OWN.at(if intent == none { "none" } else { intent })
+
+#let _NUM_QUESTIONS = declare_function(
+  "num-questions",
+  doc: "The number of questions in the exam. Must be used inside of a [context](https://typst.app/docs/reference/context/) block, e.g. `#context num-questions()`.",
+)
+
+/// The number of questions (see DOCS). Needs context.
+#let num_questions = define(_NUM_QUESTIONS, it => {
   let data = exam_points_data()
   if data == none { 0 } else { data.len() }
 })
 
-#let _GET_NUM_POINTS = declare_function(
-  "get-num-points",
-  doc: "The total number of regular points (not counting bonus and practice points), as a number. Must be used inside of a [context](https://typst.app/docs/reference/context/) block. Use `#num-points` for a ready-to-display alternative.",
+#let _NUM_POINTS = declare_function(
+  "num-points",
+  doc: "The total number of points in the exam: by default its regular points, not counting bonus and practice points. Must be used inside of a [context](https://typst.app/docs/reference/context/) block, e.g. `#context num-points()` to show it, or `#context calc.ceil(num-points() * .6)` to compute with it.",
+  fields: (_intent_field(),),
 )
 
-/// The total number of regular points (see DOCS). Needs context.
-#let get_num_points = define(_GET_NUM_POINTS, it => {
-  let data = exam_points_data()
-  if data == none { 0 } else { data.map(q => q.total_points).sum(default: 0) }
+/// The total number of points of an intent (see DOCS). Needs context.
+#let num_points = define(_NUM_POINTS, it => {
+  let found = _exam_rows()
+  if found == none { 0 } else { found.last().map(r => r.at(_own_key(it.intent))).sum(default: 0) }
 })
-
-#let _GET_NUM_BONUS_POINTS = declare_function(
-  "get-num-bonus-points",
-  doc: "The total number of bonus points, as a number. Must be used inside of a [context](https://typst.app/docs/reference/context/) block. Use `#num-bonus-points` for a ready-to-display alternative.",
-)
-
-/// The total number of bonus points (see DOCS). Needs context.
-#let get_num_bonus_points = define(_GET_NUM_BONUS_POINTS, it => {
-  let data = exam_points_data()
-  if data == none { 0 } else {
-    data
-      .map(q => if q.total_bonus_points == none { 0 } else { q.total_bonus_points })
-      .sum(default: 0)
-  }
-})
-
-/// The total number of questions in the exam, shown (see DOCS).
-#let num_questions = context get_num_questions()
-
-/// The total number of regular points, shown (see DOCS).
-#let num_points = context get_num_points()
-
-/// The total number of bonus points, shown (see DOCS).
-#let num_bonus_points = context get_num_bonus_points()
 
 /// The document of a bundle that `loc` is in, by its index among them (from
 /// 1); 0 outside a bundle. The documents of a bundle share one
@@ -286,9 +276,9 @@
   pages.values().sorted(key: p => p.page)
 }
 
-#let _GET_NUM_POINTS_PAGE = declare_function(
-  "get-num-points-page",
-  doc: "The number of points on a page (of the questions/parts/subparts that start on it), as a number. Must be used inside of a [context](https://typst.app/docs/reference/context/) block. Use `#num-points-page` for a ready-to-display alternative.",
+#let _NUM_POINTS_PAGE = declare_function(
+  "num-points-page",
+  doc: "The number of points on a page (of the questions/parts/subparts that start on it): by default its regular points, on the current page. Must be used inside of a [context](https://typst.app/docs/reference/context/) block, e.g. in a page footer, `#set page(footer: context [#num-points-page() points])`.",
   fields: (
     e.field(
       "page",
@@ -296,27 +286,18 @@
       doc: "The physical page number (counted from 1). Setting to `auto` uses the current page.",
       default: auto,
     ),
-    e.field(
-      "bonus",
-      bool,
-      doc: "Whether to count bonus points instead of regular points.",
-      default: false,
-    ),
+    _intent_field(),
   ),
 )
 
-/// The number of points on a page (see DOCS). Needs context.
-#let get_num_points_page = define(_GET_NUM_POINTS_PAGE, it => {
+/// The number of points of an intent on a page (see DOCS). Needs context.
+#let num_points_page = define(_NUM_POINTS_PAGE, it => {
   let page = if it.page == auto { here().page() } else { it.page }
-  let intent = if it.bonus { "bonus" } else { none }
   _points_markers()
-    .filter(m => m.value.intent == intent and m.location().page() == page)
+    .filter(m => m.value.intent == it.intent and m.location().page() == page)
     .map(m => m.value.points)
     .sum(default: 0)
 })
-
-/// The number of points on the current page, shown (see DOCS).
-#let num_points_page = context get_num_points_page()
 
 #let _PAGE_SCORE_BOX = declare_function(
   "page-score-box",
@@ -325,7 +306,7 @@
 
 /// A score box for the current page (see DOCS).
 #let page_score_box = define(_PAGE_SCORE_BOX, it => e.get(get => {
-  let points = get_num_points_page()
+  let points = num_points_page()
   if points == 0 { return }
   let strings = get(config).strings
   box(stroke: .5pt, inset: (x: .6em, y: .4em))[
@@ -408,7 +389,7 @@
     e.field(
       "granularity",
       e.types.union(auto, "question", "part", "subpart", "page"),
-      doc: "By default, table shows one cell per question. This can be changed to show one cell per `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"`. Setting to `auto` uses `config`'s `points-table-granularity`.",
+      doc: "How points are grouped into table cells: one cell per `\"question\"` (`config`'s default), `\"part\"`, `\"subpart\"`, or `\"page\"`. Setting to `auto` uses `config`'s `points-table-granularity`.",
       default: auto,
       meta: (config: "points-table-granularity"),
     ),
@@ -491,21 +472,8 @@
 /// docs/api.typ (keyed by export name).
 #let DOCS = (
   "points-table": _POINTS_TABLE,
-  "num-questions": (
-    desc: "Displays the number of questions in the exam. Works anywhere in the document. Use `get-num-questions()` instead, if you need a number to compute with.",
-  ),
-  "num-points": (
-    desc: "Displays the total points (not counting bonus and practice points). Works anywhere in the document. Use `get-num-points()` instead, if you need a number to compute with.",
-  ),
-  "num-bonus-points": (
-    desc: "Displays the total bonus points. Works anywhere in the document. Use `get-num-bonus-points()` instead, if you need a number to compute with.",
-  ),
-  "num-points-page": (
-    desc: "Displays the points on the current page (e.g. in a page footer). Use `get-num-points-page()` instead, if you need a number to compute with, or to access the number of points on a different page.",
-  ),
-  "get-num-questions": _GET_NUM_QUESTIONS,
-  "get-num-points": _GET_NUM_POINTS,
-  "get-num-bonus-points": _GET_NUM_BONUS_POINTS,
-  "get-num-points-page": _GET_NUM_POINTS_PAGE,
+  "num-questions": _NUM_QUESTIONS,
+  "num-points": _NUM_POINTS,
+  "num-points-page": _NUM_POINTS_PAGE,
   "page-score-box": _PAGE_SCORE_BOX,
 )

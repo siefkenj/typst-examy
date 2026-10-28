@@ -76,7 +76,8 @@
 /// `it`, the fields of a box, with those left to `config` taken from `cfg`,
 /// the options of `CONFIG_FIELDS` in force. A field left `auto` under its
 /// name now takes what its old name was given, if anything (by a set rule:
-/// a call's is renamed, see `_renamed`).
+/// a call's is renamed, see `_renamed`). `config`'s `auto` height is a
+/// height of `none`: fitted to what the box holds.
 #let _configured(it, cfg) = {
   for (name, old) in _OLD_NAMES {
     if it.at(name) == auto { it.insert(name, it.at(old)) }
@@ -84,6 +85,7 @@
   for (option, field) in CONFIG_FIELDS {
     if it.at(field) == auto { it.insert(field, cfg.at(option)) }
   }
+  if it.height == auto { it.height = none }
   it
 }
 
@@ -124,7 +126,7 @@
       e.types.union(auto, .._RELATIVE, fraction, none),
       doc: "The height of the box. Setting to `auto` uses `config`'s `answer-box-height`. Can be any length unit including fractional units (e.g. `1fr`), along with a special value:
 
-      `none`: if non-empty, fits the box's content, ignoring `#solution[..]`s. This value ensures an exam and answer key have the same layout.
+      `none`: if non-empty, fits the box's content, ignoring `#solution[..]`s, whatever `config`'s `answer-box-height` is. This value ensures an exam and answer key have the same layout.
 
       An empty box with height `none` gets a height of `default-height`.",
       default: auto,
@@ -198,12 +200,14 @@
       e.types.smart(length),
       doc: "Deprecated: alias of `default-height`. Use `default-height` instead.",
       default: auto,
+      internal: true,
     ),
     e.field(
       "default_width",
       e.types.smart(length),
       doc: "Deprecated: alias of `default-width`. Use `default-width` instead.",
       default: auto,
+      internal: true,
     ),
   ),
 )

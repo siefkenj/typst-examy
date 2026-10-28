@@ -102,7 +102,6 @@ shows how you might create a fully custom cover page with the exam's name and te
   "show-solutions",
   "solution-color",
   "solution-background-color",
-  "solution-text-color",
 )
 
 === #page-link("cover-pages.html")[Cover pages]

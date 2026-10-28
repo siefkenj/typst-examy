@@ -62,8 +62,8 @@ Without a height set, an answer box will size to its content (excluding any #api
   ```,
 )
 
-Setting `width: 100%` or `height: 1fr` (or another fractional unit) makes an answer box will act
-like a #typst-link("reference/layout/block/")[block]. Otherwise, it is placed as
+Setting `width: 100%` or `height: 1fr` (or another fractional unit) makes an answer box act like
+a #typst-link("reference/layout/block/")[block]. Otherwise, it is placed as
 #typst-link("reference/layout/box/")[inline content], centered on the current sentence's
 baseline.
 
@@ -124,7 +124,7 @@ Exam-wide defaults can be set for answer boxes via the `answer-box-*` config opt
   height: 11cm,
 )
 
-Global settings can be overwritten on a case-by-case basis.
+Global settings can be overridden on a case-by-case basis.
 
 #example(
   ```typ

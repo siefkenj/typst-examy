@@ -10,10 +10,7 @@
 #import "rubric.typ": rubric, rubric_list as rubric-list
 #import "presets.typ": presets
 #import "points.typ": (
-  num_points as num-points, num_bonus_points as num-bonus-points, num_questions as num-questions,
-  num_points_page as num-points-page, get_num_points as get-num-points,
-  get_num_bonus_points as get-num-bonus-points, get_num_questions as get-num-questions,
-  get_num_points_page as get-num-points-page, points_table as points-table,
-  page_score_box as page-score-box,
+  num_points as num-points, num_questions as num-questions, num_points_page as num-points-page,
+  points_table as points-table, page_score_box as page-score-box,
 )
 #import "prelude.typ": e

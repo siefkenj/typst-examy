@@ -958,75 +958,75 @@
   let default-of(a) = if is-long(a) { a.default } else { one-line(a.default) }
   // The name, and its default and type below it, slightly indented. They
   // wrap (the type at its `|`s), so a long one does not widen the column
-  // past the name (or the widest piece of them).
-  let name-cell(a) = _either(
-    () => {
-      api("config", field: a.name)
-      // As in the reference (see `_arg`): a default that is one of the
-      // alternatives of the type is shown once, as its badge, first among
-      // them; any other short one after the type.
-      let long = not a.required and is-long(a)
-      let alts = if a.type == none { () } else { _alternatives(a.type) }
-      let inline = not a.required and not long and default-of(a) in alts
-      let rest = if inline { alts.filter(t => t != default-of(a)) } else { alts }
-      let badge = default-badge(default-of(a))
-      // Each alternative, the badge among them, in one piece with the `|`
-      // after it: the line wraps between them.
-      let bar = html.elem("code", attrs: (class: "arg-type"), "|")
-      let pieces = rest.map(t => html.elem("code", attrs: (class: "arg-type"), t))
-      if inline { pieces.insert(0, badge) }
-      let pieces = pieces.enumerate().map(((i, p)) => if i < pieces.len() - 1 { [#p #bar] } else { p })
-      if not a.required and not long and not inline { pieces.push(badge) }
-      html.elem("div", attrs: (class: "option-meta"), pieces.map(p => html.elem("span", p)).join(" "))
-      // Written over several lines, in a box of its own, outside the
-      // `option-meta`, so that the column fits it.
-      if long {
-        html.elem("div", attrs: (class: "option-pretty default-badge"), html.elem("div", attrs: (class: "default-box"), {
-          html.elem("div", attrs: (class: "default-value"), {
-            html.elem("span", attrs: (class: "default-key"), [default])
-            raw(default-of(a), lang: "typc", block: true)
-          })
-        }))
-      }
-    },
-    () => context {
-      let name = api("config", field: a.name)
-      let indent = .6em.to-absolute()
-      let small(body) = text(size: .8em, fill: luma(90), body)
-      // Each line, with the pieces it wraps between, which the column must
-      // be wide enough for. A label stays with the start of what it labels.
-      let lines = ()
-      if not a.required {
-        let labelled(s) = small[default:#sym.space.nobreak#raw(s, lang: "typc")]
-        let d = default-of(a)
-        if is-long(a) {
-          // Not wrapped: as wide as its widest line.
-          let body = box(small(raw(d, lang: "typc")))
-          lines += ((small[default:], ()), (body, (body,)))
-        } else {
-          let ws = d.split(" ")
-          lines.push((labelled(d), (labelled(ws.first()),) + ws.slice(1).map(w => small(raw(w)))))
+  // past the name (or the widest piece of them). As in the reference (see
+  // `_arg`), a default that is one of the alternatives of the type is shown
+  // once, as its badge, first among them; any other short one after the
+  // type; a long one, written over several lines, in a box of its own below.
+  let name-cell(a) = {
+    let long = not a.required and is-long(a)
+    let alts = if a.type == none { () } else { _alternatives(a.type) }
+    let inline = not a.required and not long and default-of(a) in alts
+    let rest = if inline { alts.filter(t => t != default-of(a)) } else { alts }
+    let badge = if not a.required and not long { default-badge(default-of(a)) }
+    _either(
+      () => {
+        api("config", field: a.name)
+        // Each alternative, the badge among them, in one piece with the `|`
+        // after it: the line wraps between them.
+        let bar = html.elem("code", attrs: (class: "arg-type"), "|")
+        let pieces = rest.map(t => html.elem("code", attrs: (class: "arg-type"), t))
+        if inline { pieces.insert(0, badge) }
+        let pieces = pieces.enumerate().map(((i, p)) => if i < pieces.len() - 1 { [#p #bar] } else { p })
+        if badge != none and not inline { pieces.push(badge) }
+        html.elem("div", attrs: (class: "option-meta"), pieces.map(p => html.elem("span", p)).join(" "))
+        // Outside the `option-meta`, so that the column fits it.
+        if long {
+          html.elem("div", attrs: (class: "option-pretty default-badge"), html.elem("div", attrs: (class: "default-box"), {
+            html.elem("div", attrs: (class: "default-value"), {
+              html.elem("span", attrs: (class: "default-key"), [default])
+              raw(default-of(a), lang: "typc", block: true)
+            })
+          }))
         }
-      }
-      if a.type != none {
-        // Each alternative stays in one piece with its `|`.
-        let alts = a.type.split(" | ")
-        let alts = alts.enumerate().map(((i, t)) => box(raw(if i < alts.len() - 1 { t + " |" } else { t })))
-        let labelled(body) = small[type:#sym.space.nobreak#body]
-        lines.push((labelled(alts.join(" ")), (labelled(alts.first()),) + alts.slice(1).map(small)))
-      }
-      // At least wide enough for a short type on one line, as `content | none`.
-      let width = calc.max(
-        8em.to-absolute(),
-        measure(name).width - indent,
-        ..lines.map(((_, pieces)) => pieces).flatten().map(p => measure(p).width),
-      )
-      // The leading of their smaller size, not the text around them.
-      set par(justify: false, leading: .5em)
-      // Kept on one page with its row's start.
-      block(breakable: false, stack(spacing: .5em, name, ..lines.map(((x, _)) => pad(left: indent, block(width: width, x)))))
-    },
-  )
+      },
+      () => context {
+        let name = api("config", field: a.name)
+        let indent = .6em.to-absolute()
+        let small(body) = text(size: .8em, body)
+        let type(t) = text(fill: luma(90), raw(t))
+        // Each alternative, the badge among them, in one box with the `|`
+        // after it: the line wraps between them.
+        let pieces = rest.map(type)
+        if inline { pieces.insert(0, badge) }
+        let pieces = pieces.enumerate().map(((i, p)) => if i < pieces.len() - 1 { [#p#type(" |")] } else { p })
+        if badge != none and not inline { pieces.push(badge) }
+        let pieces = pieces.map(p => box(small(p)))
+        // Not wrapped: as wide as its widest line, under "default", as a
+        // badge has it.
+        let pretty = if long {
+          small(stack(
+            spacing: .2em,
+            align(center, text(size: .65em, fill: ACCENT)[default]),
+            box(stroke: .5pt + ACCENT, radius: 2pt, inset: (x: .4em, y: .3em), raw(default-of(a))),
+          ))
+        }
+        // At least wide enough for a short type on one line, as `content | none`.
+        let width = calc.max(
+          8em.to-absolute(),
+          measure(name).width - indent,
+          ..(..pieces, pretty).filter(p => p != none).map(p => measure(p).width),
+        )
+        // The leading of their smaller size, not the text around them.
+        set par(justify: false, leading: .5em)
+        // Kept on one page with its row's start.
+        block(breakable: false, stack(
+          spacing: .5em,
+          name,
+          ..(pieces.join(" "), pretty).filter(x => x != none).map(x => pad(left: indent, block(width: width, x))),
+        ))
+      },
+    )
+  }
   let t = table(
     stroke: none,
     columns: (auto, 1fr),

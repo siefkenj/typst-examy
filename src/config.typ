@@ -54,6 +54,11 @@
 )
 #let BOX_FILL = e.types.union(none, color, gradient, tiling)
 
+/// What a bubble's outline takes, as a shape's `stroke` does: a thickness, a
+/// paint, both (`.1em + blue`), or a dictionary of a stroke's fields. Not
+/// `none`: a bubble is its outline (`0pt` draws none).
+#let BUBBLE_STROKE = e.types.union(length, color, gradient, tiling, e.types.exact(stroke), dictionary)
+
 /// How questions, parts, and subparts are numbered when `numbering` is not
 /// configured: one numbering pattern per nesting level. Deeper levels fall
 /// back to `"1."`.
@@ -148,10 +153,10 @@
     ),
     e.field(
       "rubric-position",
-      e.types.union("margin-right", "margin-left", "end"),
+      e.types.union("margin-left", "margin-right", "end"),
       doc: "Determines where rubrics are displayed.
 
-      `\"margin-right\"` or `\"margin-left\"`: in the page margin, next to the question/part/subpart they belong to (see `rubric-width`).
+      `\"margin-left\"` or `\"margin-right\"`: in the page margin, next to the question/part/subpart they belong to (see `rubric-width`).
 
       `\"end\"`: after the question/part/subpart, taking up space on the page. When set to `\"end\"`, visible rubrics will take up space in the document.",
       default: "margin-right",
@@ -182,8 +187,8 @@
     ),
     e.field(
       "bubble-stroke",
-      length,
-      doc: "The outline thickness of bubbles drawn by `#choice[..]`, `#bubble()`, `#square-bubble()`, and `#choices[..]`.",
+      BUBBLE_STROKE,
+      doc: "The outline of bubbles drawn by `#choice[..]`, `#bubble()`, `#square-bubble()`, and `#choices[..]`, specified like a [`circle`'s `stroke`](https://typst.app/docs/reference/visualize/circle/#parameters-stroke): a thickness (e.g. `.15em`), a color (e.g. `blue`), or both (e.g. `.15em + blue`). A thickness left out is `.1em`, and a color left out is black. On the answer key, a correct bubble's outline takes the solution color.",
       default: DEFAULT_BUBBLE_STROKE,
     ),
     e.field(
@@ -234,14 +239,14 @@
     ),
     e.field(
       "answer-box-height",
-      e.types.union(.._RELATIVE, fraction, none),
-      doc: "The default height of an `#answer-box[..]`. When `none`, a non-empty box is sized to fit its contents, excluding `#solution[..]`s. An empty box gets `answer-box-default-height`.",
-      default: none,
+      e.types.union(auto, .._RELATIVE, fraction),
+      doc: "The default height of an `#answer-box[..]`. Setting to `auto` sizes a non-empty box to fit its contents, excluding `#solution[..]`s, and gives an empty box `answer-box-default-height`.",
+      default: auto,
     ),
     e.field(
       "answer-box-width",
       e.types.union(auto, .._RELATIVE, fraction),
-      doc: "The default width of an `#answer-box[..]`. When `auto`, a box is `answer-box-default-width` wide, or full width if its height is fractional (e.g. `1fr`).",
+      doc: "The default width of an `#answer-box[..]`. Setting to `auto` makes a box `answer-box-default-width` wide, or full width if its height is fractional (e.g. `1fr`).",
       default: auto,
     ),
     e.field(
@@ -281,7 +286,7 @@
     e.field(
       "indent",
       length,
-      doc: "The indentation level to use for a question/part/subpart",
+      doc: "How far each question/part/subpart is indented from the question/part it is in (a question, from the left edge of the text).",
       default: DEFAULT_INDENT,
     ),
     e.field(
@@ -341,7 +346,7 @@
     e.field(
       "points-table-granularity",
       e.types.union("question", "part", "subpart", "page"),
-      doc: "A `#points-table()` lists the points per question by default. However, this can be changed to list the points by `\"question\"`, `\"part\"`, `\"subpart\"`, or `\"page\"`.",
+      doc: "How points are grouped into the cells of a `#points-table()`: one cell per `\"question\"` (the default), `\"part\"`, `\"subpart\"`, or `\"page\"`.",
       default: "question",
     ),
     e.field(
@@ -370,6 +375,16 @@
       e.types.union(auto, color),
       doc: "Deprecated: alias of `solution-color`. Use `solution-color` instead.",
       default: auto,
+      internal: true,
+    ),
+    // The name `show-rubrics` had in 0.4.0. Kept so that documents written
+    // for it still compile.
+    e.field(
+      "show-rubric",
+      e.types.option(e.types.union(auto, bool)),
+      doc: "Deprecated: alias of `show-rubrics`. Use `show-rubrics` instead.",
+      default: none,
+      internal: true,
     ),
     // Internal: set while `answer-box` lays out its body as the exam shows
     // it, to measure it. Overrides `show-solutions` and the command line
@@ -433,6 +448,12 @@
   (color: solution-color, background: background)
 }
 
+/// `config`'s `show-rubrics`, of the configuration `cfg`, or the deprecated
+/// `show-rubric` when only it is set.
+#let configured_show_rubrics(cfg) = if cfg.show-rubrics == false and cfg.show-rubric != none {
+  cfg.show-rubric
+} else { cfg.show-rubrics }
+
 /// `resolve_solution_colors` for the configured values, for use inside
 /// `e.get(get => ..)`. The deprecated `solution-text-color` stands in for
 /// `solution-color` when only it is set. `color` and `background`, when not
@@ -479,7 +500,7 @@
     // are too, and `positions`, those its divisions' rubrics are drawn at
     // (see `process_questions`).
     rubric: (
-      shown: cfg.show-rubrics,
+      shown: configured_show_rubrics(cfg),
       present: false,
       drawn: false,
       traced: false,
@@ -509,6 +530,7 @@
   "points-show-totals",
   "_fr-unit",
   "show-rubrics",
+  "show-rubric",
   "rubric-position",
   "rubric-trace",
   "rubric-width",

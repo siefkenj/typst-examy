@@ -8,10 +8,11 @@
 // answers through the bubbles.
 #import "/src/lib.typ": *
 #import "/src/elements/bubble.typ": (
-  _BUBBLE_SIZE, _OUTSET, _SQUARE_SIZE, bubble_drop, bubble_stroke, bubble_style, cap_center, check_mark,
-  is_filled, resolve_sides, round_shape,
+  _BUBBLE_SIZE, _OUTSET, _SQUARE_SIZE, bubble_drop, bubble_outline, bubble_stroke, bubble_style, cap_center,
+  check_mark, is_filled, resolve_sides, round_shape,
 )
 #import "/src/config.typ": DEFAULT_BUBBLE_STROKE, resolve_solution_colors, solution_colors
+#import "/tests/record.typ": cases, rule
 
 #set page(width: 6in, height: auto, margin: .25in)
 #set text(size: 10pt)
@@ -49,11 +50,36 @@
 // A filled-in bubble is drawn with the same pair as a solution: the
 // solution color outlining the solution background.
 #let _colors = (color: blue, background: aqua)
-#assert.eq(bubble_style(true, _colors, DEFAULT_BUBBLE_STROKE).stroke, DEFAULT_BUBBLE_STROKE + blue)
-#assert.eq(bubble_style(true, _colors, DEFAULT_BUBBLE_STROKE).fill, aqua)
+#let _plain = bubble_outline(auto, DEFAULT_BUBBLE_STROKE)
+#assert.eq(bubble_style(true, _colors, _plain).stroke, DEFAULT_BUBBLE_STROKE + blue)
+#assert.eq(bubble_style(true, _colors, _plain).fill, aqua)
 // An empty bubble is a plain outline, in no particular color.
-#assert.eq(bubble_style(false, _colors, DEFAULT_BUBBLE_STROKE).stroke, DEFAULT_BUBBLE_STROKE)
-#assert.eq(bubble_style(false, _colors, DEFAULT_BUBBLE_STROKE).fill, none)
+#assert.eq(bubble_style(false, _colors, _plain).stroke, stroke(DEFAULT_BUBBLE_STROKE))
+#assert.eq(bubble_style(false, _colors, _plain).fill, none)
+// A colored outline takes the solution color too, when filled in, and keeps
+// its dash.
+#let _dashed = bubble_outline((paint: red, dash: "dashed"), DEFAULT_BUBBLE_STROKE)
+#assert.eq(bubble_style(false, _colors, _dashed).stroke.paint, red)
+#assert.eq(bubble_style(true, _colors, _dashed).stroke.paint, blue)
+#assert.eq(bubble_style(true, _colors, _dashed).stroke.dash, stroke((dash: "dashed")).dash)
+
+// --- a bubble's outline: a choice's `stroke` over `config`'s, field by field ---
+#let OUTLINES = (
+  (auto, .1em, (thickness: .1em)),
+  (auto, red, (thickness: DEFAULT_BUBBLE_STROKE, paint: red)),
+  (auto, 2pt + red, (thickness: 2pt, paint: red)),
+  (blue, 2pt + red, (thickness: 2pt, paint: blue)),
+  (3pt, 2pt + red, (thickness: 3pt, paint: red)),
+  (1pt + green, .1em, (thickness: 1pt, paint: green)),
+)
+#for (own, configured, expected) in OUTLINES {
+  assert.eq(bubble_outline(own, configured), expected, message: repr((own, configured)))
+}
+#rule[A bubble's outline: a choice's `stroke` over `config`'s `bubble-stroke`, field by field.]
+#cases(
+  ([`stroke`], [`bubble-stroke`], [outline]),
+  ..OUTLINES.map(((o, c, x)) => (raw(repr(o)), raw(repr(c)), raw(repr(x)))),
+)
 
 // --- the color a bubble's content is set in ---
 // A probe reporting the text color in force where the bubble's content sits.
@@ -619,8 +645,8 @@
 
 // `bubble_style` draws the outline at the thickness it is given, and a
 // filled-in bubble keeps the solution color at any thickness.
-#assert.eq(bubble_style(true, _colors, 2pt).stroke, 2pt + blue)
-#assert.eq(bubble_style(false, _colors, 2pt).stroke, 2pt)
+#assert.eq(bubble_style(true, _colors, (thickness: 2pt)).stroke, 2pt + blue)
+#assert.eq(bubble_style(false, _colors, (thickness: 2pt)).stroke, stroke(2pt))
 
 // --- how thick an outline is drawn ---
 // An outline is drawn centered on the shape's edge, so a thick one would

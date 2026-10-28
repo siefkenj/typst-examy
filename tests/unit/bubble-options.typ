@@ -80,16 +80,24 @@
 }
 
 // --- the outline: `stroke`, over `bubble-stroke` ---
-#probed("strokes", [`bubble-stroke: .05em`; then `stroke: .15em` given to `choice` and to `choices`.], {
-  show: e.set_(config, bubble-stroke: .05em)
-  bubble[configured]
-  h(1em)
-  bubble(stroke: .15em)[its own]
-  choices(stroke: .15em, inline: true, ([a], [b]))
-})
+#probed(
+  "strokes",
+  [`bubble-stroke: .05em`; then `stroke: .15em` given to `choice` and to `choices`, and `stroke: blue`,
+    which keeps the configured thickness.],
+  {
+    show: e.set_(config, bubble-stroke: .05em)
+    bubble[configured]
+    h(1em)
+    bubble(stroke: .15em)[its own]
+    choices(stroke: .15em, inline: true, ([a], [b]))
+    h(1em)
+    bubble(stroke: blue)[blue]
+  },
+)
 #context {
   let widths = circles("strokes").map(c => c.stroke.thickness)
-  assert.eq(widths, (.5pt, 1.5pt, 1.5pt, 1.5pt), message: "stroke wins over bubble-stroke: " + repr(widths))
+  assert.eq(widths, (.5pt, 1.5pt, 1.5pt, 1.5pt, .5pt), message: "stroke wins over bubble-stroke: " + repr(widths))
+  assert.eq(circles("strokes").last().stroke.paint, blue, message: "a color alone keeps the thickness")
 }
 
 // --- the labels' font: `label-font`, over `bubble-label-font` ---
@@ -141,6 +149,19 @@
   measure(bubble(outset: (left: 1em))[x]),
   measure(bubble[x]),
   message: "an outset on the left widens a bubble",
+)
+
+// --- `choices`' `size` and `outset`: those of each of its bubbles ---
+#alike(
+  [`choices(size: 1.6em, outset: (left: 1em))` lays out as `bubble-size: 1.6em` and
+    `bubble-outset: (left: 1em)` do;],
+  choices(size: 1.6em, outset: (left: 1em), inline: true, three),
+  { show: e.set_(config, bubble-size: 1.6em, bubble-outset: (left: 1em)); choices(inline: true, three) },
+)
+#context assert.ne(
+  measure(choices(size: 1.6em, inline: true, three)),
+  measure(choices(inline: true, three)),
+  message: "choices' size sizes its bubbles",
 )
 
 // --- `choices`' layout: its own, or `config`'s ---

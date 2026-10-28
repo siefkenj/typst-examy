@@ -18,7 +18,7 @@
     let total = if data == none { none } else { data.map(q => q.total_points).sum(default: 0) }
     [#metadata((where: where, total: total))<probe>]
   }
-  [_#where:_ #num-questions questions, #num-points points.]
+  [_#where:_ #context num-questions() questions, #context num-points() points.]
 }
 
 #rule[Before the first exam: about the first (3 points).]

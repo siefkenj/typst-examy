@@ -1,6 +1,6 @@
 #import "../prelude.typ": *
 #import "../constants.typ": SHOW_RUBRICS_OVERRIDE, SHOW_SOLUTIONS_OVERRIDE
-#import "../config.typ": config, solution_colors
+#import "../config.typ": config, configured_show_rubrics, solution_colors
 #import "../scan.typ": glue_rubrics, is_multi_par, rubric_markers
 #import "../signature.typ": declare_function, define
 
@@ -20,13 +20,15 @@
 /// (for `auto`) whether solutions are.
 #let show_rubrics(get) = {
   if SHOW_RUBRICS_OVERRIDE != none { return SHOW_RUBRICS_OVERRIDE }
-  let value = get(config).show-rubrics
+  let value = configured_show_rubrics(get(config))
   if value == auto { show_solutions(get) } else { value }
 }
 
 #let _SHOW_SOLUTIONS = declare_function(
   "show-solutions",
-  doc: "Returns whether solutions are shown. Use this instead of reading `show-solutions` directly from `config`, since it takes the `--input show-solutions=..` command-line option into account. Useful for content that `#solution[..]` cannot wrap (e.g. to show a solution curve on plot). Must be used with elembic's `get` function. E.g., `e.get(get => if show-solutions(get) [..])`.",
+  doc: "Returns whether solutions are shown. Use this instead of reading `show-solutions` directly from `config`, since it takes the `--input show-solutions=..` command-line option into account. Useful for content that `#solution[..]` cannot wrap (e.g. to show a solution curve on a plot). Must be used with elembic's `get` function. E.g., `e.get(get => if show-solutions(get) [..])`.
+
+  Note: do not use it to show or hide a question/part/subpart. The exam cannot see a question/part/subpart inside `e.get`, so it is drawn as plain text, unnumbered, under a warning.",
   fields: (
     e.field(
       "get",

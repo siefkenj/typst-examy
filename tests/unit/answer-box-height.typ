@@ -5,7 +5,7 @@
 // on the answer key; with no height given, solutions take no height, so the
 // key lays out exactly like the exam; and a height of its own opts out of
 // that, so the box holds its solutions. `height: auto` is `config`'s
-// `answer-box-height`, `none` unless configured.
+// `answer-box-height`, whose own `auto` (unless configured) is as `none`.
 //
 // Every box checked is also drawn, under a description of what is expected
 // of it, so the rendered test reads as its own documentation: the exam
@@ -191,7 +191,8 @@
     answer-box(width: 100%, height: 3cm, five_choices),
     equals: 3cm,
   )
-  // `auto` is `config`'s `answer-box-height`: `none`, unless configured.
+  // `auto` is `config`'s `answer-box-height`: its `auto`, as `none`, unless
+  // configured.
   check(
     "Empty, `height: auto`: as `none`, " + DEFAULT_TEXT + " tall.",
     answer-box(width: 100%, height: auto)[],

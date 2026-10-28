@@ -41,7 +41,7 @@
   ("choices", "(1, 2), correct: 0, columns: 2", (body: (1, 2), correct: 0, columns: 2)),
   ("maketitle", "term: [Fall]", (term: [Fall], institution: auto)),
   ("name-block", "title: [Quiz]", (title: [Quiz], fields: m-exam.DEFAULT_NAME_FIELDS)),
-  ("get-num-points-page", "bonus: true", (page: auto, bonus: true)),
+  ("num-points-page", "intent: \"bonus\"", (page: auto, intent: "bonus")),
 )
 
 #for (name, args, expected) in ACCEPTED {
@@ -79,7 +79,7 @@
   ("maketitle", "[Title]", "maketitle: takes no positional arguments, got 1"),
   ("name-block", "fields: [Name]", "name-block: `fields` must be (dictionary | content)[]"),
   ("show-solutions", "", "show-solutions: missing its `get` argument"),
-  ("get-num-points-page", "page: \"1\"", "get-num-points-page: `page` must be auto | int"),
+  ("num-points-page", "page: \"1\"", "num-points-page: `page` must be auto | int"),
 )
 
 #for (name, args, expected) in REJECTED {

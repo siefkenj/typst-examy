@@ -5,8 +5,10 @@
 ### Breaking changes
 
 - `points-table`, `page-score-box` and `rubric-list` are functions: write
-  `#points-table()`. A bare `#points-table` now shows its name instead of a
-  table.
+  `#points-table()`.
+- `num-points` and `num-questions` are functions that return a number, and
+  need context: write `#context num-points()` to show it, or compute with it,
+  as in `#context calc.ceil(num-points() * .6)`.
 - `maketitle` and `name-block` use the document's font instead of DejaVu Sans
   Mono. To keep the old look, set the font around them, e.g.
   `#{ set text(font: "DejaVu Sans Mono"); maketitle() }`.
@@ -14,8 +16,6 @@
   2cm tall. Give it a `height` to keep room to write below a prompt.
 - `question`, `part` and `subpart` no longer take `solution:`. Write
   `#solution[..]` in the body, where it should be drawn.
-- `config`'s `show-rubric` is now `show-rubrics`, and so is its command-line
-  option, `--input show-rubrics=..`.
 - `show-solutions` is `true` or `false` (`true` by default); `none` is no
   longer accepted.
 - `exam` is a function, not an elembic element, so `e.set_(exam, ..)` and
@@ -36,8 +36,8 @@
   `points-format` and `bonus-points-format`; totals of parts
   (`points-show-totals`); points tables by question, part, subpart or page
   (`granularity`), vertical, with Score and Bonus rows, split over several
-  rows of columns; points per page (`num-points-page`, `page-score-box`); and
-  the counts as numbers to compute with (`get-num-points()` and the others).
+  rows of columns; points per page (`num-points-page()`, `page-score-box`);
+  and bonus and practice totals (`num-points(intent: "bonus")`).
 - Numbering: `numbering` and `numbering-full`, and `strings` to translate the
   words examy prints. A `config` rule inside an exam can number some questions
   differently, e.g. a "Bonus 1." section.
@@ -78,6 +78,8 @@
   and `default-width`.
 - `presets.utoronto.name_fields`: use `presets.utoronto.name-fields`.
 - `solution`'s `boxed`: ignored. Solutions are always drawn in a box.
+- `config`'s `show-rubric` and `--input show-rubric=..`: use `show-rubrics`.
+- `config`'s `solution-text-color`: use `solution-color`.
 
 ### Fixed
 

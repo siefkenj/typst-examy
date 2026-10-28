@@ -1,8 +1,8 @@
 #import "../prelude.typ": *
-#import "../config.typ": DEFAULT_BUBBLE_LABEL_FONT, DEFAULT_BUBBLE_STROKE, config
+#import "../config.typ": BUBBLE_STROKE, DEFAULT_BUBBLE_LABEL_FONT, DEFAULT_BUBBLE_STROKE, config
 #import "bubble.typ": (
-  bubble, check_enumerate, choice_label, draw_choice, enumerate_count_error, enumerate_error, shape_error, shape_name,
-  square_bubble,
+  bubble, check_enumerate, choice_label, draw_choice, enumerate_count_error, enumerate_error, outset_error, shape_error,
+  shape_name, square_bubble,
 )
 #import "../signature.typ": declare_function, define
 #import "../markers.typ": excerpt
@@ -214,7 +214,7 @@
 
 #let _CHOICES = declare_function(
   "choices",
-  doc: "Used for creating multiple-choice questions. Accepts a list, with each list item becoming a `#choice[..]` with a bubble. Correct choice use `+` and incorrect choices use `-` as their list item designator.
+  doc: "Used for creating multiple-choice questions. Accepts a list, with each list item becoming a `#choice[..]` with a bubble. Correct choices start with `+` and incorrect choices with `-`.
   
   For example, to specify a list of choices, `a`, `b`, `c`, with `c` being the correct choice, use:
   ```
@@ -237,7 +237,7 @@
     e.field(
       "correct",
       e.types.union(none, int, str, content, array),
-      doc: "The correct choice, by index (`0`-indexed) or by label if `enumerate: true` is set (e.g. `\"A\"` for `enumerate: true`), or an array of indices/labels. Additive with choices marked with `+`.",
+      doc: "The correct choice, by index (`0`-indexed) or, when the bubbles are labelled (see `enumerate`), by label (e.g. `\"A\"`), or an array of indices/labels. Additive with choices marked with `+`.",
       default: none,
       meta: (hint: "name choices by their index (`correct: 1` for the second) or label (`correct: \"B\"`), several in an array (`correct: (0, 2)`), or start a correct choice with `+` instead of `-`"),
     ),
@@ -280,9 +280,23 @@
       meta: (config: "choices-gap", hint: "give a length, such as `1em`"),
     ),
     e.field(
-      "stroke",
+      "size",
       e.types.smart(length),
-      doc: "The outline thickness of the bubbles. Setting to `auto` uses `config`'s `bubble-stroke`.",
+      doc: "The diameter of the bubbles. Setting to `auto` uses `config`'s `bubble-size`.",
+      default: auto,
+      meta: (config: "bubble-size", hint: "such as `1.2em` or `12pt`"),
+    ),
+    e.field(
+      "outset",
+      e.types.union(auto, length, dictionary),
+      doc: "The space around each bubble, specified like `#choice[..]`'s `outset`. Sides given replace those of `config`'s `bubble-outset`; the others are kept. Setting to `auto` uses `config`'s `bubble-outset`.",
+      default: auto,
+      meta: (config: "bubble-outset", check: v => outset_error("choices", v, allow-auto: true)),
+    ),
+    e.field(
+      "stroke",
+      e.types.smart(BUBBLE_STROKE),
+      doc: "The outline of the bubbles, specified like `config`'s `bubble-stroke` (e.g. `.15em`, `blue`, or `.15em + blue`). What it leaves out, its thickness or its color, is `config`'s. Setting to `auto` uses `config`'s `bubble-stroke`.",
       default: auto,
       meta: (config: "bubble-stroke"),
     ),
@@ -391,6 +405,8 @@
         enumerate: enumerate,
         index: i,
         inline: inline,
+        size: it.size,
+        outset: it.outset,
         stroke: it.stroke,
         label-font: it.label-font,
         color: it.solution-color,

@@ -9,17 +9,17 @@
   #question(points: 2)[First.]
   #question(points: 3)[Second.]
   #question(points: 1, intent: "bonus")[Bonus.]
-  Points on this page: #num-points-page.
+  Points on this page: #context num-points-page().
   #context [#metadata((
-      points: get-num-points-page(),
-      bonus: get-num-points-page(bonus: true),
-      page: get-num-points-page(page: 1),
+      points: num-points-page(),
+      bonus: num-points-page(intent: "bonus"),
+      page: num-points-page(page: 1),
     ))<page-points>]
   #points-table(granularity: "page", bonus: true)
   #pagebreak()
   #question(points: 4)[On page 2.]
-  Points on this page: #num-points-page.
-  #context [#metadata(get-num-points-page())<page-2-points>]
+  Points on this page: #context num-points-page().
+  #context [#metadata(num-points-page())<page-2-points>]
   #context {
     let first = query(<page-points>).map(m => m.value)
     assert(first.len() == 2, message: "expected one record per document, got " + str(first.len()))

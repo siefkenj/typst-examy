@@ -439,3 +439,23 @@
 #context for n in (18, 19) {
   assert.eq(summary(n), (("Question 1", (("item", 1), ("item", 2))),), message: "exam " + str(n))
 }
+
+// ---------------------------------------------------------------------------
+// The deprecated `show-rubric` (regression)
+// ---------------------------------------------------------------------------
+// 0.4 named the option `show-rubric`. A document written for it must still
+// compile, and show its rubrics when it asks to. Given both names, the new
+// one wins where it is set.
+#import "/src/elements/solution.typ": show_rubrics
+#[
+  #show: e.set_(config, show-rubric: true)
+  #e.get(get => assert.eq(show_rubrics(get), true, message: "show-rubric still shows rubrics"))
+]
+#[
+  #show: e.set_(config, show-rubric: true, show-rubrics: auto, show-solutions: false)
+  #e.get(get => assert.eq(show_rubrics(get), false, message: "show-rubrics wins: auto, with no solutions"))
+]
+#rule[The deprecated `show-rubric: true`: the rubric is shown.]
+#block(stroke: .3pt + gray, inset: 6pt, exam(show-rubric: true)[
+  #question(rubric: rubric(points: 1)[Shown.])[A question.]
+])

@@ -8,8 +8,9 @@ A #api("choices", arg: "[...]") accepts a mixed list with both
 #typst-link("reference/model/list/")[```typ -```] and
 #typst-link("reference/model/enum/")[```typ +```] starting a line or an
 #typst-link("reference/foundations/array/")[array] of content. Lines starting with ```typ +``` are
-recorded as correct choices. Alternatively, correct choices can be specified by supplying a
-0-indexed array.
+recorded as correct choices. Alternatively, correct choices can be given with `correct:`, by their
+0-based index (`correct: 1`), by their label when the bubbles are labelled (`correct: "B"`), or as an
+array of these (`correct: (0, 2, 3)`).
 
 #example(
   ```typ
@@ -23,7 +24,7 @@ recorded as correct choices. Alternatively, correct choices can be specified by 
     ]
   ]
   #question(points: 1)[
-    Which cities lie on the Canada's southern border? _Select all that apply._
+    Which cities lie on Canada's southern border? _Select all that apply._
     #choices(
       bubble: "square",
       correct: (0,2,3),
@@ -67,7 +68,7 @@ columns.
 
 The shape of a choice's bubble can be set using `bubble: "circle"` (default) or `bubble: "square"` (often used for select-all-that-apply questions).
 
-Setting `enumerate: true` will label each bubbles with the letters A, B, C, … in sequence. 
+Setting `enumerate: true` will label the bubbles with the letters A, B, C, … in sequence. 
 For custom lettering, you can supply a
 #typst-link("reference/model/numbering/")[numbering string], an array, or a function that
 determines the label.
@@ -94,7 +95,7 @@ determines the label.
   width: 9cm,
 )
 
-If you would like to set exam-wite defaults for choices, use the global #api("config").
+If you would like to set exam-wide defaults for choices, use the global #api("config").
 ```typ
 #show: exam.with(choices-enumerate: "a", bubble-stroke: .06em)
 ```
@@ -109,11 +110,13 @@ Relevant options are:
   Typst).
 / `bubble-size`: The size of every round bubble (by default, `1em`). Square bubbles are drawn a
   little smaller, in the same proportion as by default.
-/ `bubble-stroke`: The outline thickness of every bubble (by default, `.1em`).
+/ `bubble-stroke`: The outline of every bubble: a thickness (by default, `.1em`), a color, or both
+  (e.g. `.06em + gray`).
 / `bubble-outset`: The space around every bubble, as `outset` gives it.
 
-A single `choice` takes `size`, `stroke`, and `outset` itself, and a single `choices` takes
-`stroke` and `label-font`. Each wins over the global option. Both also take `solution-color` and
+A single `choice` takes `size`, `stroke`, and `outset` itself, and a single `choices` takes those
+and `label-font` for all its bubbles. Each wins over the global option, and a `stroke` that gives
+only a color (e.g. `stroke: blue`) keeps the global thickness. Both also take `solution-color` and
 `solution-background-color`, which set the colors of a correct bubble on the answer key in place of
 the global options of the same names.
 

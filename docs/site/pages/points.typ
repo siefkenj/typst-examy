@@ -2,14 +2,14 @@
 
 Supplying a question/part/subpart with `points: x` will cause an "(x points)" annotation to be shown
 next to the question/part/subpart. Points defined this way will show up in the
-#api("points-table", arg: "()") as well as related functions like #api("num-points", arg: ""),
-#api("num-questions", arg: ""), etc..
+#api("points-table", arg: "()") as well as related functions like #api("num-points", arg: "()"),
+#api("num-questions", arg: "()"), etc..
 
 #example(
   ```typ
   #show: exam
 
-  This exam has #num-questions questions worth #num-points points.
+  This exam has #context num-questions() questions worth #context num-points() points.
 
   #align(center, points-table())
 
@@ -87,7 +87,7 @@ The display of points can be fully customized by setting the `points-format` and
 
 With `points-show-totals: true`, a question/part/subpart will show subtotals with the cumulative
 number of points of all descendants. These additional subtotals are for display only and do not show
-up in #api("num-points") or the points table.
+up in #api("num-points", arg: "()") or the points table.
 
 #example(
   ```typ
@@ -143,7 +143,8 @@ Multiple points tables can be included in an exam, and a points table can be cus
 )
 
 By default, a points table has a column per question. Specifying `granularity:` as `"part"` or
-`"subpart"` will create columns for each part or subpart instead.
+`"subpart"` will create columns for each part or subpart instead, and `"page"` a column for each page
+(of the questions/parts/subparts that start on it).
 
 #example(
   ```typ
@@ -190,35 +191,29 @@ Examy includes some fixed strings which can be localized via the `strings` optio
 
 == Computing with points
 
-The globally accessible variables #api("num-points", arg: ""), #api("num-bonus-points", arg: "") and
-#api("num-points-page", arg: "") can be used to show point totals anywhere in an exam. However,
-because these return content wrapped in #typst-link("reference/context/")[`context {...}`], you
-cannot do computations with them.
+#api("num-questions", arg: "()"), #api("num-points", arg: "()") and
+#api("num-points-page", arg: "()") return numbers, which can be shown or computed with anywhere in
+the document. They read the exam's points, so they must be called inside of a
+#typst-link("reference/context/")[`context`] (e.g. `#context num-points()`).
 
-
-To compute with or test a points value, use the `get-*` versions of these functions (#api(
-  "get-num-points",
-  body: raw("get-num-points()"),
-), #api("get-num-bonus-points", body: raw("get-num-bonus-points()")), and #api(
-  "get-num-points-page",
-  body: raw("get-num-points-page()"),
-)). These functions must be called inside of a Typst `context[...]`.
+`num-points` and `num-points-page` count the regular points by default. Give them an `intent`
+(`"bonus"` or `"practice"`, as on a question/part/subpart) to count those points instead.
 
 #example(
   ```typ
   #show: exam
 
   #context [
-    This exam is worth #get-num-points() points over
-    #get-num-questions() questions. 
-    
+    This exam is worth #num-points() points over
+    #num-questions() questions.
+
     You have 50 minutes: about
-    #calc.round(50 / get-num-points(), digits: 1) minutes per point.
+    #calc.round(50 / num-points(), digits: 1) minutes per point.
 
-    A pass is #calc.ceil(get-num-points() * .6) points or more.
+    A pass is #calc.ceil(num-points() * .6) points or more.
 
-    #if get-num-bonus-points() > 0 [
-      There are also #get-num-bonus-points() bonus points.
+    #if num-points(intent: "bonus") > 0 [
+      There are also #num-points(intent: "bonus") bonus points.
     ]
   ]
 
@@ -234,7 +229,7 @@ To compute with or test a points value, use the `get-*` versions of these functi
 
 === Showing points per page
 
-You can use #api("num-points-page", arg: "") or #api("get-num-points-page", arg: "()") in a
+You can use #api("num-points-page", arg: "()") in a
 #typst-link("reference/layout/page/#parameters-header")[page header] or
 #typst-link("reference/layout/page/#parameters-footer")[footer] (or anywhere else on the page) to
 shows the number of points on the current page, subtotalling each question/part/subpart appearing on
@@ -247,9 +242,9 @@ page.
 #set page(footer: align(right, page-score-box()))
 
 // Or one of your own:
-#set page(footer: context if get-num-points-page() > 0 [
+#set page(footer: context if num-points-page() > 0 [
   Page total:
   #box(width: 2em, stroke: (bottom: .5pt))
-  out of #num-points-page
+  out of #num-points-page()
 ])
 ```

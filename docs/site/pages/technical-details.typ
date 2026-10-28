@@ -58,7 +58,7 @@ then runs through the following steps.
   #api(
     "points-table",
     arg: "()",
-  ), #api("num-points"), etc.
+  ), #api("num-points", arg: "()"), etc.
 
 #note[
   _Note._ The downside of this parsing is that "click back" in tools like #link(
@@ -69,7 +69,7 @@ then runs through the following steps.
 
 == Settings and elembic
 
-The global #api("config") object as well as question references is controlled by elembic, which is
+The global #api("config") object and question references are controlled by elembic, which is
 re-exported as #api("e").
 
 / Settings: The global #api("config") is an elembic element that is never drawn; its fields are

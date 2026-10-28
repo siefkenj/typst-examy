@@ -13,7 +13,7 @@
   duration: duration(minutes: 60),
 )
 
-There are #num-questions questions worth #num-points points.
+There are #context num-questions() questions worth #context num-points() points.
 
 #points-table()
 

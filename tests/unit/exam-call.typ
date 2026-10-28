@@ -78,7 +78,7 @@
   #show: exam.with(points-position: "end")
   #probe("outer cover")
   #context [#metadata(exam_points_data())<outer-cover>]
-  _Cover:_ #num-questions questions, #num-points points.
+  _Cover:_ #context num-questions() questions, #context num-points() points.
   #exam[
     #question(points: 2)[First. #probe("inner")]
     #question(points: 3)[Second.]

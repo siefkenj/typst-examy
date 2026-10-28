@@ -547,7 +547,7 @@
     // room.
     place(anchor)
   }
-  // Where `get-num-points-page` finds the division's points, and where the
+  // Where `num-points-page` finds the division's points, and where the
   // points table links its label to.
   if d.fields.points != none { points_marker(d.fields.points, d.fields.intent) }
   division_marker(d.address)

@@ -1,5 +1,5 @@
 #import "../prelude.typ": *
-#import "../config.typ": DEFAULT_BUBBLE_LABEL_FONT, DEFAULT_BUBBLE_OUTSET, DEFAULT_BUBBLE_STROKE, config, solution_colors
+#import "../config.typ": BUBBLE_STROKE, DEFAULT_BUBBLE_LABEL_FONT, DEFAULT_BUBBLE_OUTSET, DEFAULT_BUBBLE_STROKE, config, solution_colors
 #import "solution.typ": show_solutions
 #import "../scan.typ": is_multi_par
 #import "../signature.typ": declare_function, define
@@ -135,16 +135,34 @@
 #let round_shape(size, ..style) = circle(radius: size / 2, ..style)
 #let square_shape(size, ..style) = square(size: size, ..style)
 
+/// A bubble's outline, as a dictionary of a stroke's fields: `own`, a
+/// choice's `stroke` (`auto` for none), over `configured`, `config`'s
+/// `bubble-stroke`, field by field, so that `stroke: blue` keeps the
+/// configured thickness. A thickness neither gives is
+/// `DEFAULT_BUBBLE_STROKE`; any other field neither gives is left out, for
+/// the shape's own.
+#let bubble_outline(own, configured) = {
+  let fields(s) = if s == auto { (:) } else {
+    let s = std.stroke(s)
+    (paint: s.paint, thickness: s.thickness, cap: s.cap, join: s.join, dash: s.dash, miter-limit: s.miter-limit)
+      .pairs()
+      .filter(((_, v)) => v != auto)
+      .to-dict()
+  }
+  (thickness: DEFAULT_BUBBLE_STROKE) + fields(configured) + fields(own)
+}
+
 /// The look of a bubble's shape: when filled in, the same pair a solution is
 /// drawn with — an outline in the solution color around the solution
 /// background — so a marked bubble and a highlighted solution read as the
-/// same annotation; a plain outline when it is not. Pure, so the color
+/// same annotation; its plain outline when it is not. Pure, so the color
 /// decision can be checked without rendering and measuring pixels.
-/// `thickness` is the outline's (see `draw_choice`'s `stroke`).
-#let bubble_style(filled, colors, thickness) = if filled {
-  (stroke: thickness + colors.color, fill: colors.background)
+/// `outline` is the outline's fields (see `bubble_outline`); filled in, its
+/// paint is the solution color, whatever it is otherwise.
+#let bubble_style(filled, colors, outline) = if filled {
+  (stroke: std.stroke(outline + (paint: colors.color)), fill: colors.background)
 } else {
-  (stroke: thickness, fill: none)
+  (stroke: std.stroke(outline), fill: none)
 }
 
 /// How large the check mark in a filled-in bubble is, as a share of the
@@ -472,10 +490,12 @@
     if message != none { assert(false, message: message) }
     let sides = resolve_sides(cfg.bubble-outset, base: resolve_sides(_OUTSET))
     if outset != auto { sides = resolve_sides(outset, base: sides) }
-    // Capped on every bubble, filled in or not, so that the exam and the
-    // answer key draw the same ring.
-    let (thickness, source) = if stroke != auto { (stroke, caller + ": `stroke`") } else {
-      (cfg.bubble-stroke, "config: `bubble-stroke`")
+    // Its thickness capped on every bubble, filled in or not, so that the
+    // exam and the answer key draw the same ring.
+    let outline = bubble_outline(stroke, cfg.bubble-stroke)
+    let thickness = outline.thickness
+    let source = if stroke != auto and std.stroke(stroke).thickness != auto { caller + ": `stroke`" } else {
+      "config: `bubble-stroke`"
     }
     assert(
       thickness.to-absolute() >= 0pt,
@@ -496,7 +516,7 @@
       baseline: bubble_drop(size, cap_center()) + sides.bottom,
       inset: sides,
       {
-        (shape.draw)(size, ..bubble_style(filled, colors, thickness))
+        (shape.draw)(size, ..bubble_style(filled, colors, outline + (thickness: thickness)))
         if label != none {
           // Ringed only once filled in, so on the exam every label reads
           // alike and the answers do not stand out. The label fits inside
@@ -580,8 +600,8 @@
     ),
     e.field(
       "stroke",
-      e.types.smart(length),
-      doc: "The outline thickness of the bubble. Setting to `auto` uses `config`'s `bubble-stroke`.",
+      e.types.smart(BUBBLE_STROKE),
+      doc: "The outline of the bubble, specified like `config`'s `bubble-stroke` (e.g. `.15em`, `blue`, or `.15em + blue`). What it leaves out, its thickness or its color, is `config`'s. Setting to `auto` uses `config`'s `bubble-stroke`.",
       default: auto,
       meta: (config: "bubble-stroke"),
     ),

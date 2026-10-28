@@ -44,7 +44,7 @@ have a traceback line. To hide or show the traceback line of a single rubric ite
 )
 
 
-An rubric item's `points` can be positive or negative. No accounting/checking is done by examy, and
+A rubric item's `points` can be positive or negative. No accounting/checking is done by examy, and
 it is the author's responsibility to make sure that rubric points add up to the correct total.
 
 == Visibility

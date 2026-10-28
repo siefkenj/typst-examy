@@ -52,12 +52,7 @@
 #let OMITTED = (
   "bubble",
   "square-bubble",
-  "num-bonus-points",
   "num-points-page",
-  "get-num-points",
-  "get-num-questions",
-  "get-num-bonus-points",
-  "get-num-points-page",
   "page-score-box",
   "presets",
   "show-solutions",

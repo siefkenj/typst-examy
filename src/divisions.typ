@@ -10,6 +10,7 @@
 #import "markers.typ": begin_marker, end_marker, outside_check
 #import "constants.typ": DEBUG_PANIC
 #import "signature.typ": declare_function, define
+#import "config.typ": _RELATIVE
 
 /// The arguments of a question, part, or subpart, which take identical ones.
 #let _DIVISION_FIELDS = (
@@ -45,8 +46,8 @@
   ),
   e.field(
     "height",
-    e.types.union(auto, length, fraction),
-    doc: "The height of the question/part/subpart, including its parts. A length or fraction (e.g. `1fr`) makes it a single block of that height, which cannot break across pages.
+    e.types.union(auto, .._RELATIVE, fraction),
+    doc: "The height of the question/part/subpart, including its parts. A length (e.g. `5cm`, or `50%` of the page), or a fraction (e.g. `1fr`), makes it a single block of that height, which cannot break across pages.
 
     Note: prefer `#answer-box[..]` (e.g. `#answer-box(width: 100%, height: 3cm)[]`) over setting a question's height if your goal is to give students a space to write in.",
     default: auto,
@@ -54,7 +55,7 @@
   e.field(
     "indent",
     e.types.smart(length),
-    doc: "The indentation level to use for the question/part/subpart. Setting to `auto` uses `config`'s `indent`.",
+    doc: "How far this question/part/subpart is indented from the question/part it is in (a question, from the left edge of the text). Setting to `auto` uses `config`'s `indent`.",
     default: auto,
     meta: (config: "indent"),
   ),

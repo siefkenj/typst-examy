@@ -50,8 +50,8 @@ default.
 
 #note[
   _Note._ #api("maketitle", arg: "()") and #api("name-block", arg: "()") are typeset in the
-  document's #typst-link("reference/text/text/#parameters-font")[font]. Use the usual
-  `#set: text(font: ...)` commands to change the font.
+  document's #typst-link("reference/text/text/#parameters-font")[font]. Use a `set` rule to change
+  the font, e.g. `#{ set text(font: "DejaVu Sans Mono"); name-block() }`.
 ]
 
 === Customizing

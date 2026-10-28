@@ -10,7 +10,7 @@
 
 // `num-questions`, `num-points`, and `points-table` work anywhere in the
 // document — even before the questions.
-This exam has #num-questions questions worth #num-points points.
+This exam has #context num-questions() questions worth #context num-points() points.
 
 #{
   set align(center)

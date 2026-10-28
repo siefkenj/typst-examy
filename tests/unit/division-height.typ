@@ -90,6 +90,21 @@
   assert(y("box-2") - y("box-1") > 1cm.to-absolute(), message: "the first box took no share")
 }
 
+// A ratio is of the page's height (its area within the margins).
+#rule[A question `25%` of the page tall, then one with no height.]
+#exam(questions: [
+  #question(height: 25%)[A quarter of the page.#mark("quarter")]
+  #question[After.#mark("after-quarter")]
+])
+#context {
+  let difference = (y("after-quarter") - y("quarter")) - (y("after-plain") - y("plain"))
+  let frame = (8in - 2 * .4in) / 4
+  assert(
+    difference > frame - 14pt and difference <= frame + .5pt,
+    message: "the frame is not a quarter of the page tall: the distances differ by " + repr(difference),
+  )
+}
+
 // On a page of its own: `height: 1fr` takes what is left of it.
 #pagebreak()
 #rule[A part 2cm tall that starts with a subpart 1cm tall: all three numbers on the subpart's first line.]

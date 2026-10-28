@@ -112,7 +112,7 @@ typst compile --features bundle -f bundle bundle.typ out/
 
 === Colors
 
-The solution environments colors can be set via the global #api("config") with:
+The colors of solutions can be set via the global #api("config") with:
 
 / `solution-color`: The color of a solution's text. The highlight behind it is derived from it,
   unless set too.
@@ -181,11 +181,12 @@ as the input for most functions, like those that draw graphics.
 
 An alternative is to pass #api("exam", arg: "[...]") a function of the form `solutions-only => ...`.
 The first argument is a function which returns its content only when solutions are rendered and
-returns its `otherwise:` argument otherwise.
+returns its `otherwise:` argument otherwise. This needs `#exam(solutions-only => [..])` around the
+questions; with `#show: exam`, the exam is given content, not a function.
 
 #example(
   ```typ
-  #exam(questions: solutions-only => [
+  #exam(solutions-only => [
     #question[
       Mark the top and right sides of the box.
 
@@ -203,7 +204,7 @@ This can also be used to achieve effects like changing a question's height betwe
 
 #example(
   ```typ
-  #exam(questions: solutions-only => [
+  #exam(solutions-only => [
     _An exam with a compact key._
     #question[
       Find the derivative of $f(x) = x^3 - 2x$.

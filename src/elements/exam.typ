@@ -260,11 +260,12 @@
 })
 
 /// `config`'s options, by name, that `exam` takes: all but the internal
-/// ones.
+/// ones, whose names start with `_`. The deprecated ones, internal too so
+/// as to be left out of the reference, are taken under their old names.
 #let _OPTIONS = {
   let fields = e.data(config).at("user-fields")
   let out = (:)
-  for (name, f) in fields { if not f.internal { out.insert(name, f) } }
+  for (name, f) in fields { if not (f.internal and name.starts-with("_")) { out.insert(name, f) } }
   out
 }
 

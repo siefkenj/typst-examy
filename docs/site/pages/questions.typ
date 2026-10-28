@@ -123,7 +123,7 @@ questions/parts/subparts after the rule, up to the end of its scope.
 The `indent` option sets how far each part and subpart is indented from the question/part it is in
 (by default, `1.5em`). A question/part/subpart given `indent` itself uses its own.
 
-== A question's height
+== Height and writing space
 
 To allow students a space to write, use #api("answer-box", arg: "(height: ...)[]"). However, if you
 need a question and all its part/subparts to cumulatively take up a fixed amount of space, you can
@@ -149,7 +149,7 @@ provide a `height: ...` argument directly on a question.
 #warning[
   _Warning._
   A question/part/subpart with a `height` is laid out as a single block, so it cannot break across
-  pages, and the height of its part/subparts cannot be shared with other questions. Usually, you wan
+  pages, and the height of its part/subparts cannot be shared with other questions. Usually, you want
   to use something like #api("answer-box", arg: "(width: 100%, stroke: none, height: ...)[]")
   instead.
 ]
