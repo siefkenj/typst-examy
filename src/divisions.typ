@@ -59,14 +59,6 @@
     meta: (config: "indent"),
   ),
   e.field(
-    "numbering",
-    e.types.union(auto, str, function, e.types.array(e.types.union(str, function))),
-    doc: "Determines how the question/part/subpart and those inside it are numbered. This option behaves like [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering), taking a numbering pattern (e.g. `\"1.a.i.\"`) or a function that generates a label. In addition, `numbering` also accepts an array of numbering patterns (e.g. `(\"Bonus 1.\", \"(i)\")`), with the left-most pattern applying to the highest level (almost always the `#question[]`), even when set on a part.
-
-    Setting to `auto` uses the `numbering` of the enclosing question/part, or `config`'s `numbering` if there is none.",
-    default: auto,
-  ),
-  e.field(
     "label",
     e.types.option(label),
     doc: "A label for referencing the question/part/subpart with `@name` (e.g. `label: <derivative>`).",
@@ -102,7 +94,6 @@
     number: it.number,
     height: it.height,
     indent: it.indent,
-    numbering: it.numbering,
     label: it.label,
     name: spec.name,
   ))

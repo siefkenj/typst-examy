@@ -79,8 +79,8 @@ re-exported as #api("e").
   #api("show-solutions", arg: "(get)") takes `get`.
 
   The exam reads its options where it starts. A `config` rule inside the exam applies to the
-  questions in its scope, except for `numbering`, `numbering-full`, `strings`, and `show-rubrics`,
-  which hold for the whole exam.
+  questions in its scope, except for `numbering-full`, `strings`, and `show-rubrics`, which hold
+  for the whole exam.
 
 / References: Each labelled question/part/subpart leaves an invisible elembic element as its anchor.
   Elembic lets an element decide how references to it are drawn, so a reference can show "1 (a)" or

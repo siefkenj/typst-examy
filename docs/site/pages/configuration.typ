@@ -34,11 +34,11 @@ using elembic's `#show: e.set_(config, ..)` mechanism.
 
 Inside of an exam, values can be set with elembic's `#show: e.set_(..)` mechanism. Such values will
 affect the exam from that point onwards. However, some values _cannot_ be set in an exam. For
-example, the `numbering` cannot be set inside an exam (it would lead to ambiguous references).
+example, `numbering-full` cannot be set inside an exam (it would lead to ambiguous references).
 
 #warning[
-  _Warning._ A few options cannot be changed in the middle of an exam: `numbering`,
-  `numbering-full`, `strings`, and `show-rubrics`. Set these with `#show: exam.with(..)`.
+  _Warning._ A few options cannot be changed in the middle of an exam: `numbering-full`, `strings`,
+  and `show-rubrics`. Set these with `#show: exam.with(..)`.
 ]
 
 #example(

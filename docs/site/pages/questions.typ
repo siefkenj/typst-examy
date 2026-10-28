@@ -52,13 +52,13 @@ content. To omit a number completely, you can set `number: none`.
 == Numbering styles
 
 The numbering style of each level is set for the document via the global #api("config")'s
-`numbering` option. It takes an array of
-#typst-link("reference/model/numbering/")[numbering patterns] (e.g., `("1.", "(a)", "(i)")`) or
-#typst-link("reference/model/numbering/")[numbering strings] following the same format as an
-#typst-link("reference/model/enum/#parameters-numbering")[`enum`'s `numbering` argument] (e.g.,
-`"1.a.i."`).
-Questions/parts/subparts are labelled hierarchically with the left-most numbering pattern being
-assigned to the outer-most question/part/subpart.
+`numbering` option. It takes an array of #typst-link("reference/model/numbering/")[numbering
+  patterns] (e.g., `("1.", "(a)", "(i)")`) or #typst-link("reference/model/numbering/")[numbering
+  strings] following the same format as an #typst-link(
+  "reference/model/enum/#parameters-numbering",
+)[`enum`'s `numbering` argument] (e.g., `"1.a.i."`). Questions/parts/subparts are labelled
+hierarchically with the left-most numbering pattern being assigned to the outer-most
+question/part/subpart.
 
 #example(
   ```typ
@@ -80,8 +80,9 @@ assigned to the outer-most question/part/subpart.
 )
 
 To force each question/part/subpart to be labeled with a globally unique identifier, use
-`numbering-full: true`. This is similar to setting the
-#typst-link("reference/model/enum/#parameters-full")[`full` argument] on an `enum`.
+`numbering-full: true`. This is similar to setting the #typst-link(
+  "reference/model/enum/#parameters-full",
+)[`full` argument] on an `enum`.
 
 #example(
   ```typ
@@ -96,25 +97,31 @@ To force each question/part/subpart to be labeled with a globally unique identif
   inset: 3em,
 )
 
-A single question/part/subpart can be numbered differently by giving it a `numbering` of its own.
-It takes the same values as the global `numbering` option and replaces it for that
-question/part/subpart and everything inside it. The levels still count from the question, so the
-first pattern always numbers questions. References and the points table use the same numbers.
+To number some questions/parts/subparts differently, set `numbering` with a #api("config") rule
+inside the exam. It takes the same values as the global `numbering` option and applies to the
+questions/parts/subparts after the rule, up to the end of its scope.
+
+#note[_Note._ Setting the `numbering` `config` rule does not change the question's `number`. Set
+  `number` on the question/part/subpart if you additionally want the counting in the question label
+  to reset.]
 
 #example(
   ```typ
   #question[What is $3 + 4$?]
-  #question(numbering: ("Bonus 1.", "(i)"))[
-    #part[Name a prime number larger than 100.]
-    #part(label: <largest>)[Name the largest prime number you know.]
+  #[
+    #show: e.set_(config, numbering: ("Bonus 1.", "(i)"))
+    #question[
+      #part[Name a prime number larger than 100.]
+      #part(label: <largest>)[Name the largest prime number you know.]
+    ]
   ]
   #question[Is your answer to @largest really prime?]
   ```,
   inset: 4em,
 )
 
-The `indent` option sets how far each part and subpart is indented from the question/part it is
-in (by default, `1.5em`). A question/part/subpart given `indent` itself uses its own.
+The `indent` option sets how far each part and subpart is indented from the question/part it is in
+(by default, `1.5em`). A question/part/subpart given `indent` itself uses its own.
 
 == A question's height
 
@@ -150,8 +157,7 @@ provide a `height: ...` argument directly on a question.
 == Pagebreaks
 
 #typst-link("reference/layout/pagebreak/")[`#pagebreak()`] works inside questions, parts, and
-subparts. The question/part/subpart continues on
-the next page with the same indentation.
+subparts. The question/part/subpart continues on the next page with the same indentation.
 
 #example(
   ```typ

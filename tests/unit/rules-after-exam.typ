@@ -23,7 +23,7 @@
   (
     "set_(config, strings: .., numbering: ..)",
     [#show: e.set_(config, strings: (question: "Q"), numbering: ("1.", "(a)")); x],
-    ("strings", "numbering"),
+    ("strings",),
   ),
   (
     "apply(set_(config, ..), set_(config, ..))",

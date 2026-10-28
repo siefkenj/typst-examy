@@ -172,7 +172,10 @@
     (indent: 0pt, points-position: "margin-left"),
     c => [
       #question(points: 4)[#T(c, 1, 1)A question.]
-      #question(numbering: n => [The widest label of this exam, #n:], points: 1)[A label wider than the margin.]
+      #[
+        #show: e.set_(config, numbering: n => [The widest label of this exam, #n:])
+        #question(points: 1)[A label wider than the margin.]
+      ]
       #question(points: 10)[#T(c, 1, 3)Another question.]
     ],
     false,

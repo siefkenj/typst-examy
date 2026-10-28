@@ -38,8 +38,9 @@
   (`granularity`), vertical, with Score and Bonus rows, split over several
   rows of columns; points per page (`num-points-page`, `page-score-box`); and
   the counts as numbers to compute with (`get-num-points()` and the others).
-- Numbering: `numbering` and `numbering-full`, for the whole exam or for one
-  question and its parts, and `strings` to translate the words examy prints.
+- Numbering: `numbering` and `numbering-full`, and `strings` to translate the
+  words examy prints. A `config` rule inside an exam can number some questions
+  differently, e.g. a "Bonus 1." section.
 - Answer boxes: set rules (`#show: e.set_(answer-box, ..)`), `stroke`,
   `fill`, `radius`, `outset` and `clip`, a fractional width (`width: 1fr`),
   and `config` options for every box's size and look (`answer-box-*`).
@@ -51,7 +52,7 @@
   `correct:` by label (`correct: "C"`), and options for the bubbles' size,
   outline, spacing, label font and colors, and for the layout of every
   `choices` (`choices-inline`, `choices-columns`, `choices-gap`).
-- A `config` rule inside an exam can change `points-format`,
+- A `config` rule inside an exam can change `numbering`, `points-format`,
   `bonus-points-format`, `points-position`, `points-show-totals`, the
   `rubric-*` options and `indent` for the questions after it, e.g.
   `#show: e.set_(config, points-position: "end")` before a section of the

@@ -16,8 +16,6 @@
   number: auto,
   height: auto,
   indent: auto,
-  // An option of its own: `auto` for `config`'s.
-  numbering: auto,
   label: none,
   // Name of the constructor ("question"/"part"/...); used only for diagnostics.
   name: "division",

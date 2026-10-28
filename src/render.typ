@@ -91,19 +91,15 @@
 /// The badge a division shows (see `assign_badges`).
 #let _badge(d) = d.badge
 
-/// The items with what each division takes for itself resolved (see
-/// `DIVISION_OPTIONS`): its `indent`, `opts`' where it gives none; and in
-/// `own`, the options it, or a division it is in, gives of its own, which
-/// `opts_of` lays it out with. A division giving none, in one giving none,
-/// has no `own`. With a `numbering` in `own`, `numberings` holds that of
-/// each level of its address, `auto` for the exam's (see
-/// `level_numberings`).
-///
-/// The `config` rules inside the exam around a division (its `_scoped`
-/// field, see `tokenize`) give it options too, which it takes over its
-/// parent's when they were set nearer, inside the parent; its own arguments
-/// win over both. Their `indent` is that of every division in their scope
-/// not given one.
+/// The items with each division's options resolved: its `indent`, `opts`'
+/// where it gives none; and in `own`, the options the `config` rules inside
+/// the exam around it (its `_scoped` field, see `tokenize`) give it, or the
+/// division it is in, which `opts_of` lays it out with. It takes a rule's
+/// over its parent's when the rule was set nearer, inside the parent. A
+/// division under no such rule, in one under none, has no `own`. With a
+/// `numbering` in `own`, `numberings` holds that of each level of its
+/// address, `auto` for the exam's (see `level_numberings`). A rule's
+/// `indent` is that of every division in its scope not given one.
 #let localize(items, opts) = {
   for (i, it) in items.enumerate() {
     if it.kind != "division" { continue }
@@ -122,7 +118,6 @@
       if value == auto and key == "bonus-points-format" { value = p => default_points_format(p, bonus: true) }
       own.insert(key, value)
     }
-    if f.numbering != auto { own.insert("numbering", f.numbering) }
     if "numbering" in own {
       // Its parent's, if it has them: `own` starts as the parent's.
       let above = own.at("numberings", default: (auto,) * (it.level - 1))

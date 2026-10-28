@@ -271,7 +271,9 @@
     e.field(
       "numbering",
       e.types.union(str, function, e.types.array(e.types.union(str, function))),
-      doc: "Determines how questions, parts, and subparts are numbered. This option behaves like [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering), taking a numbering pattern (e.g. `\"1.a.i.\"`) or a function that generates a label. In addition, `numbering` also accepts an array of numbering patterns (e.g. `(\"Problem 1.\", \"(a)\", \"i.\")`), with the left-most pattern applying to the highest level (almost always the `#question[]`).",
+      doc: "Determines how questions, parts, and subparts are numbered. This option behaves like [`enum`'s `numbering`](https://typst.app/docs/reference/model/enum/#parameters-numbering), taking a numbering pattern (e.g. `\"1.a.i.\"`) or a function that generates a label. In addition, `numbering` also accepts an array of numbering patterns (e.g. `(\"Problem 1.\", \"(a)\", \"i.\")`), with the left-most pattern applying to the highest level (almost always the `#question[]`).
+
+      A `config` rule inside an exam (e.g. `#show: e.set_(config, numbering: (\"Bonus 1.\", \"(i)\"))`) sets the numbering of the questions/parts/subparts after it in its scope. Its left-most pattern still applies to questions, even when the rule is inside a question.",
       default: DEFAULT_NUMBERING,
       // Set as a whole: the default folding of arrays would append to it.
       folds: false,
@@ -513,16 +515,12 @@
   "indent",
 )
 
-/// The options of `EXAM_WIDE_OPTIONS` that a question, part, or subpart
-/// takes for itself too, under the same name (see divisions.typ).
-#let DIVISION_OPTIONS = ("numbering", "indent")
-
 /// The options of `EXAM_WIDE_OPTIONS` that a `config` set rule inside an
 /// exam may set: the exam applies them to the questions, parts, and subparts
 /// in the rule's scope (see `scoped_options_set`, and `localize` in
-/// render.typ). The others are read once for all of them: `numbering` too,
-/// as references across the exam would no longer read alike.
+/// render.typ). The others are read once for all of them.
 #let SCOPED_OPTIONS = (
+  "numbering",
   "points-format",
   "bonus-points-format",
   "points-position",

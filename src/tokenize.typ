@@ -17,7 +17,7 @@
 #import "prelude.typ": e
 #import "constants.typ": BATCH
 #import "markers.typ": is_outside_check, marker_value
-#import "config.typ": DIVISION_OPTIONS, exam_wide_options_set, scoped_options_set
+#import "config.typ": exam_wide_options_set, scoped_options_set
 #import "scan.typ": STYLED_FUNC, elembic_rule, is_break, scan, unwrap
 
 /// A token's style stack (see `apply_styles`), as tokens and items keep it:
@@ -99,8 +99,6 @@
   if names.len() == 0 { return none }
   let list = names.map(n => "`" + n + "`").join(", ", last: " and ")
   let one = names.len() == 1
-  // Those a question takes for itself, which is what such a rule is after.
-  let own = names.filter(n => n in DIVISION_OPTIONS)
   (
     "examy: a `config` rule inside an exam, around some of its questions, sets "
       + list
@@ -115,15 +113,6 @@
       + ": ..)`, or set "
       + (if one { "it" } else { "them" })
       + " in a `config` rule above `#show: exam`."
-      + if own.len() > 0 {
-        (
-          " A question, part, or subpart takes "
-            + own.map(n => "`" + n + "`").join(", ", last: " and ")
-            + " of its own: `#question("
-            + own.first()
-            + ": ..)[..]`."
-        )
-      } else { "" }
   )
 }
 
