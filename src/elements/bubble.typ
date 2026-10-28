@@ -403,7 +403,7 @@
   set_label(calc.max(s, calc.min(least, fit(limit))))
 }
 
-/// Draw a choice: a bubble of the shape named `shape`, followed by `body`.
+/// Draw a choice: a bubble of the shape named `bubble-shape`, followed by `body`.
 /// `choice` checks its arguments and calls this; `choices` calls it directly,
 /// to give each bubble its label.
 ///
@@ -444,7 +444,7 @@
 /// own anyway.
 #let draw_choice(
   body,
-  shape: "circle",
+  bubble-shape: "circle",
   correct: false,
   size: auto,
   outset: auto,
@@ -457,7 +457,7 @@
   inline: true,
   caller: "choice",
 ) = {
-  let shape = _SHAPES.at(shape)
+  let bubble_shape = _SHAPES.at(bubble-shape)
 
   show: it => if inline { box(it) } else { it }
   e.get(get => {
@@ -465,8 +465,8 @@
     // `bubble-size` is the round bubble's; a square one keeps its proportion
     // to it (see `_SQUARE_SIZE`).
     let size = if size != auto { size } else if cfg.bubble-size != auto {
-      cfg.bubble-size * (shape.size / _BUBBLE_SIZE)
-    } else { shape.size }
+      cfg.bubble-size * (bubble_shape.size / _BUBBLE_SIZE)
+    } else { bubble_shape.size }
     let filled = is_filled(correct, get)
     let colors = solution_colors(get, color: color, background: background)
     let label = if index == none { none } else { choice_label(enumerate, index) }
@@ -516,14 +516,14 @@
       baseline: bubble_drop(size, cap_center()) + sides.bottom,
       inset: sides,
       {
-        (shape.draw)(size, ..bubble_style(filled, colors, outline + (thickness: thickness)))
+        (bubble_shape.draw)(size, ..bubble_style(filled, colors, outline + (thickness: thickness)))
         if label != none {
           // Ringed only once filled in, so on the exam every label reads
           // alike and the answers do not stand out. The label fits inside
           // the ring on the exam too, so it is the same size on both.
           let ring = ring_geometry(size.to-absolute(), thickness)
           if filled {
-            place(center + horizon, (shape.draw)(ring.size, stroke: ring.thickness + colors.color, fill: none))
+            place(center + horizon, (bubble_shape.draw)(ring.size, stroke: ring.thickness + colors.color, fill: none))
           }
           place(center + horizon, label_mark(
             size,
@@ -642,7 +642,7 @@
   if body != none and type(body) != content { body = [#body] }
   draw_choice(
     body,
-    shape: shape_name(it.bubble, "choice"),
+    bubble-shape: shape_name(it.bubble, "choice"),
     correct: it.correct,
     size: it.size,
     outset: it.outset,
@@ -659,10 +659,10 @@
 /// are equal.
 #let choice(..args) = {
   let named = args.named()
-  let shape = named.at("bubble", default: none)
-  if type(shape) == function {
-    if shape == choice.with(bubble: "circle") { named.bubble = "circle" }
-    if shape == choice.with(bubble: "square") { named.bubble = "square" }
+  let bubble_shape = named.at("bubble", default: none)
+  if type(bubble_shape) == function {
+    if bubble_shape == choice.with(bubble: "circle") { named.bubble = "circle" }
+    if bubble_shape == choice.with(bubble: "square") { named.bubble = "square" }
   }
   _choice(..args.pos(), ..named)
 }

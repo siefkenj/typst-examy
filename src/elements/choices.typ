@@ -353,7 +353,7 @@
 /// line is not indented by it.
 #let choices = define(_CHOICES, it => {
   let enumerate = it.enumerate
-  let shape = choices_shape(it.bubble)
+  let bubble_shape = choices_shape(it.bubble)
   // Every layout is a block — a paragraph of its own, so that choices
   // written on the line after a question start below it rather than running
   // on from its text, and one an answer box can see, so that it fits them
@@ -400,7 +400,7 @@
       .enumerate()
       .map(((i, c)) => draw_choice(
         c.body,
-        shape: shape,
+        bubble-shape: bubble_shape,
         correct: c.correct,
         enumerate: enumerate,
         index: i,

@@ -574,10 +574,10 @@
 #case([`#choice[]`, or content of only spaces, is a bare bubble, exactly as `#choice()` is.], {
   for (name, body) in BLANKS {
     for correct in (false, true) {
-      for shape in ("circle", "square") {
-        let id = name + "-" + shape + "-" + repr(correct)
+      for bubble_shape in ("circle", "square") {
+        let id = name + "-" + bubble_shape + "-" + repr(correct)
         let args = if body == none { () } else { (body,) }
-        [#probe("l-blank-" + id)#choice(..args, bubble: shape, correct: correct)#probe("r-blank-" + id)X ]
+        [#probe("l-blank-" + id)#choice(..args, bubble: bubble_shape, correct: correct)#probe("r-blank-" + id)X ]
       }
     }
   }
@@ -589,11 +589,11 @@
   }
   for (name, _) in BLANKS {
     for correct in (false, true) {
-      for shape in ("circle", "square") {
-        let id = name + "-" + shape + "-" + repr(correct)
+      for bubble_shape in ("circle", "square") {
+        let id = name + "-" + bubble_shape + "-" + repr(correct)
         assert(
-          calc.abs((width(id) - width("none-" + shape + "-false")).pt()) < 0.01,
-          message: "a choice with " + name + " content should take the space of a bare " + shape
+          calc.abs((width(id) - width("none-" + bubble_shape + "-false")).pt()) < 0.01,
+          message: "a choice with " + name + " content should take the space of a bare " + bubble_shape
             + " bubble, got " + repr(width(id)) + " (correct: " + repr(correct) + ")",
         )
       }
