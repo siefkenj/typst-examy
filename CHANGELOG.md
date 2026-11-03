@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `embed-metadata` attaches data for grading tools such as Gradescope to the
+  PDF: the rubrics (`"rubric"`, as `examy-rubric.json`), where each question,
+  its answer boxes, and the name block's lines are on the page
+  (`"question-extents"`, as `examy-regions.json`, also left as
+  `<examy-regions>`), or both (`true`).
+
 ## 1.0.0 — 2026-10-28
 
 ### Breaking changes

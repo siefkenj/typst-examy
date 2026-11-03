@@ -8,6 +8,7 @@
 #import "plan.typ": cumulative_indent, frame_plan, hold, indent_of, items_of
 #import "config.typ": DEFAULT_EXAM_OPTIONS, default_points_format
 #import "points.typ": conflict_warning, division_marker, points_marker
+#import "regions.typ": resume_mark, start_mark
 #import "refs.typ": (
   display_number, division_anchor, enum_numbering, level_numberings, reference_body, update_current_address,
 )
@@ -768,6 +769,8 @@
   // with it, not with the box's first line.
   let dy = if _labels_above(labels, inline_label, x) { 0pt } else { dy }
   let body = {
+    // Where it starts, for the exam's regions (see regions.typ).
+    start_mark(it.id, opts)
     // First, before the paragraph it is level with: a `place` aligned to the
     // block in the middle of a paragraph would break it in two.
     if _badges_stacked(opts, _margin_side(items, line, opts)) {
@@ -814,7 +817,10 @@
       if child.kind == "chunk" {
         chunk_run.push(c_idx)
       } else {
-        if after_child and chunk_run.len() > 0 { update_current_address(it.address) }
+        if after_child and chunk_run.len() > 0 {
+          update_current_address(it.address)
+          resume_mark(it.id, opts)
+        }
         render_chunks(items, chunk_run, o, base: it_styles.len())
         end_badge
         end_badge = none
@@ -824,7 +830,10 @@
         after_child = true
       }
     }
-    if after_child and chunk_run.len() > 0 { update_current_address(it.address) }
+    if after_child and chunk_run.len() > 0 {
+      update_current_address(it.address)
+      resume_mark(it.id, opts)
+    }
     render_chunks(items, chunk_run, o, base: it_styles.len())
     end_badge
     if end and o.rubric.position == "end" and _drawn(it, opts) { _rubric_end(it, opts) }
@@ -879,6 +888,9 @@
   }
 
   let body = {
+    // Where the divisions it starts start, for the exam's regions (see
+    // regions.typ).
+    for d_idx in seg.label_divisions { start_mark(items_of(items).at(d_idx).id, opts) }
     let (inline: inline_label, dy: dy) = _chunks_lead(items, seg.items)
     // Gutter labels: possibly several divisions share this segment's first
     // line (e.g. a question whose body starts with a part), drawn on a line
@@ -902,8 +914,10 @@
           _division_head(items, d_idx, opts, inline: inline_label)
         }
       } else {
-        // Continuation: no label, but references inside still belong here.
+        // Continuation: no label, but references inside still belong here,
+        // and answer boxes.
         update_current_address(owner.address)
+        resume_mark(owner.id, opts)
       }
       if carried.len() > 0 { _carried_rubrics(carried) }
     }
@@ -1145,7 +1159,10 @@
       // Between divisions: a rubric here is no division's (see `OWNER`).
       let it = items_of(items).at(instr.item)
       let styles = stack_of(it.styles)
-      if resets.at(n) { update_current_address(()) }
+      if resets.at(n) {
+        update_current_address(())
+        resume_mark(none, opts)
+      }
       apply_styles(it.body, styles.slice(calc.min(depth, styles.len())))
     } else if instr.kind == "rubrics" {
       _carried_rubrics(instr.items.map(i => items_of(items).at(i)))
@@ -1229,5 +1246,8 @@
   while open.len() > 1 { open = close(open) }
   shift + open.first().parts.join()
   // A frame's instructions are inside its division, which goes on after them.
-  if root == none and in_division { update_current_address(()) }
+  if root == none and in_division {
+    update_current_address(())
+    resume_mark(none, opts)
+  }
 }

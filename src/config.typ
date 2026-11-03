@@ -175,6 +175,20 @@
       default: auto,
     ),
     e.field(
+      "embed-metadata",
+      e.types.union(bool, "rubric", "question-extents"),
+      doc: "Whether to embed extra metadata into to the PDF (as attached JSON files).
+      
+      `true`: Embed all metadata.
+      
+      `false`: Don't embed metadata.
+
+      `\"rubric\"`: Embed rubric data as `examy-rubric.json` (the same data as `<examy-rubric>`).
+
+      `\"question-extents\"`: Embed rectangles indicating where each question/part/subpart starts, where its answer boxes are, where the lines of a `#name-block()` are, and the size and margins of each page, as `examy-regions.json`.",
+      default: false,
+    ),
+    e.field(
       "solution-color",
       e.types.union(auto, color),
       doc: "The primary color for solutions; i.e., the color of the text of a solution or the outline and check mark of a filled-in bubble. Setting to `auto` derives it from `solution-background-color`",
@@ -514,6 +528,8 @@
       width: cfg.rubric-width,
     ),
     indent: cfg.indent,
+    // What the exam attaches to its PDF (see `embedded` in regions.typ).
+    embed-metadata: cfg.embed-metadata,
   )
 }
 
@@ -536,6 +552,7 @@
   "rubric-trace",
   "rubric-width",
   "indent",
+  "embed-metadata",
 )
 
 /// The options of `EXAM_WIDE_OPTIONS` that a `config` set rule inside an
@@ -642,4 +659,5 @@
     width: auto,
   ),
   indent: DEFAULT_INDENT,
+  embed-metadata: false,
 )

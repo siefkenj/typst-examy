@@ -9,6 +9,7 @@
 
 #import "prelude.typ": *
 #import "rubric.typ": RECORD, _exam_number, division_rubric, exam_bounds
+#import "points.typ": PAGES, _document_index
 
 #let SPACE = [ ].func()
 
@@ -145,14 +146,29 @@
   rubric: rubric_entries(r.nodes),
 ))
 
+/// The name of a file the exam that ends at `here()` attaches, `base` +
+/// `ext`: the first exam of a document attaches it as named; another, with
+/// its number among the document's exams (`examy-rubric-2.json`), so
+/// that each attaches a file of its own. `base` is a path from the root,
+/// `/examy-rubric`, as the PDF names a file by its path from the root, and
+/// one from examy's own files would be named `src/examy-rubric.json`.
+/// Needs context.
+#let attached_name(base, ext) = {
+  let doc = _document_index(here())
+  let n = query(selector(PAGES).before(here())).filter(m => m.value.doc == doc).len()
+  if n <= 1 { base + ext } else { base + "-" + str(n) + ext }
+}
+
 /// Each division's rubric recorded (see `RECORD`), and the exam's rubrics
 /// as `metadata` labelled `<examy-rubric>`: `(exam, questions)`, `exam`
 /// counted from 1 and `questions` each division with a rubric, in order
 /// (see `rubric_data`). Emitted at the end of an exam with rubrics, whatever
 /// `show-rubrics` says, all in one place, so that it costs the same however
 /// many divisions there are. `divisions`: those that may have a rubric, in
-/// order, each `(id, address, field, info)` (see `rubric_info`).
-#let rubric_export(divisions) = context {
+/// order, each `(id, address, field, info)` (see `rubric_info`). With
+/// `attach`, also attached to the PDF as `examy-rubric.json`, an array of
+/// this one exam's (see `config`'s `embed-metadata`).
+#let rubric_export(divisions, attach: false) = context {
   let exam = _exam_number(here())
   let bounds = exam_bounds()
   let records = ()
@@ -162,5 +178,14 @@
     records.push((exam: exam, address: d.address, heading: d.info.heading, points: d.info.points, nodes: nodes))
   }
   for r in records [#metadata(r)#RECORD]
-  [#metadata((exam: exam, questions: rubric_data(records)))<examy-rubric>]
+  let data = (exam: exam, questions: rubric_data(records))
+  [#metadata(data)<examy-rubric>]
+  if attach and target() == "paged" {
+    pdf.attach(
+      attached_name("/examy-rubric", ".json"),
+      bytes(json.encode((data,))),
+      mime-type: "application/json",
+      description: "The exam's rubrics",
+    )
+  }
 }

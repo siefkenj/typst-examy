@@ -194,3 +194,32 @@ Rubric text is converted to Markdown and math is written as LaTeX between ```txt
   ```,
 )
 
+
+== Attaching data to the PDF
+
+Grading tools such as Gradescope can read data attached to an exam's PDF. Set the global `config`'s
+#api("config", field: "embed-metadata") option to attach it.
+
+```typ
+#show: exam.with(show-solutions: false, embed-metadata: true)
+```
+
+/ `embed-metadata: false`: (default) Nothing is attached.
+/ `embed-metadata: "rubric"`: The rubrics are attached as `examy-rubric.json`. It holds the same
+  data as `<examy-rubric>`, in a list.
+/ `embed-metadata: "question-extents"`: Where each question is on the page is attached as
+  `examy-regions.json`.
+/ `embed-metadata: true`: Both are attached.
+
+`examy-regions.json` records where each question/part/subpart starts, where its answer boxes
+are, where the lines of a #api("name-block") are, and the size and margins of each page. A box is
+recorded to the outside of its outline, as it is drawn. Positions are in points from the top left
+of the page, to a tenth of a point. The same data can be read from the command line.
+
+```bash
+typst eval --in exam.typ --pretty 'query(<examy-regions>).first().value' > examy-regions.json
+```
+
+Attaching data does not change the layout of the exam, so the PDF students write on can carry it.
+If a document holds several exams, the second exam's files are named `examy-rubric-2.json` and
+`examy-regions-2.json`, and so on.

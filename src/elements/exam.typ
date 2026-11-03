@@ -14,6 +14,7 @@
 #import "../markers.typ": exam_marker, marker_value
 #import "../rubric.typ": exam_end, exam_start
 #import "../export.typ": rubric_export
+#import "../regions.typ": embedded, name_label_mark, name_line_marks, page_mark, plain, regions_export
 #import "../signature.typ": declare_function, define, parse_args
 
 /// The exam title block (in the spirit of LaTeX's `\maketitle`): the
@@ -118,13 +119,17 @@
   }
   let prefix = entry.at("prefix", default: none)
   let suffix = entry.at("suffix", default: none)
+  let inset = (bottom: .35em, x: .2em)
   (
-    align(right + bottom, box(inset: (bottom: .35em), prefix)),
+    // With invisible markers, for the regions an exam may attach to its PDF
+    // (see regions.typ): the prefix, and the line's ends.
+    align(right + bottom, box(inset: (bottom: .35em), name_label_mark(prefix) + prefix)),
     align(bottom, box(
       width: 100%,
       stroke: (bottom: 1pt),
-      inset: (bottom: .35em, x: .2em),
+      inset: inset,
       {
+        name_line_marks(inset)
         h(1fr)
         // An invisible character keeps empty lines the same height as ones
         // with a suffix.
@@ -206,22 +211,34 @@
       .dedup()
   }
   let data = compute_points_data(items, numbering: opts.numbering, full: opts.numbering-full)
+  // What it attaches to its PDF (see `config`'s `embed-metadata`).
+  let embed = embedded(opts.at("embed-metadata", default: false))
   // Each exam keeps its own data, and marks where it starts and ends, so
   // that a reader can tell which exam it is about (see `exam_points_data`).
   EXAMS_STARTED.step()
   points_data_state.update(all => all + (data,))
   if present { exam_start }
+  // Where its pages are, for its regions (see regions.typ), from the first.
+  if embed.extents { page_mark }
   // Around what it draws, for the points on each page (see `pages_record`).
   pages_start
   let held = hold(items)
-  render(held, plan(held), opts: opts)
+  if embed.extents {
+    // The boxes it does not draw, that draw themselves (in an `align`, say),
+    // mark their corners too, as those it draws do (see `resolve_boxes`).
+    show: e.set_(answer_box, regions: true)
+    render(held, plan(held), opts: opts)
+  } else {
+    render(held, plan(held), opts: opts)
+  }
   pages_record
+  if embed.extents { regions_export(data, opts.at("exam-name", default: none)) }
   // Its rubrics recorded, and as data for the command line (see export.typ).
   if present {
     let divisions = range(items.len())
       .filter(i => items.at(i).kind == "division" and items.at(i).at("rubric", default: false))
       .map(i => (id: i, address: items.at(i).address, field: items.at(i).fields.rubric, info: rubric_info(items.at(i), opts)))
-    rubric_export(divisions)
+    rubric_export(divisions, attach: embed.rubric)
     exam_end
   }
   EXAMS_ENDED.step()
@@ -245,6 +262,10 @@
   let opts = exam_options(get)
   opts.rubric.shown = show_rubrics(get)
   opts.insert("wide-names", wide_names)
+  // The exam's name in its regions (see regions.typ).
+  opts.insert("exam-name", plain(get(config).exam-name))
+  // Whether its answer boxes mark their corners, for its regions.
+  let marks = embedded(opts.embed-metadata).extents
   if type(questions) == function {
     // A function of a helper that shows its argument only on the key.
     let solutions_only(content, otherwise: none) = {
@@ -258,9 +279,9 @@
         otherwise
       }
     }
-    process_questions(resolve_boxes(questions(solutions_only), ..boxes, before: before), opts)
+    process_questions(resolve_boxes(questions(solutions_only), ..boxes, before: before, marks: marks), opts)
   } else {
-    process_questions(resolve_boxes(questions, ..boxes, before: before), opts)
+    process_questions(resolve_boxes(questions, ..boxes, before: before, marks: marks), opts)
   }
 })
 

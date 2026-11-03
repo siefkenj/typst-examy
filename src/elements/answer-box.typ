@@ -10,6 +10,7 @@
 #import "../tokenize.typ": _elembic_show
 #import "../markers.typ": height_hint
 #import "../constants.typ": BATCH
+#import "../regions.typ": box_marks
 
 /// The box's own inset: the space between its outline and its content.
 #let _INSET = 5pt
@@ -208,8 +209,10 @@
   ),
 )
 
-/// Draw an answer box from all of its fields (see `answer_box`).
-#let _draw(it) = {
+/// Draw an answer box from all of its fields (see `answer_box`). With
+/// `marks`, invisible markers at its outline's corners, for the exam's
+/// regions (see regions.typ).
+#let _draw(it, marks: false) = {
   let stroke = it.stroke
   // The `solution:` argument is a `#solution[..]` after the body, in a
   // paragraph of its own (alone in an empty box): drawn as one written
@@ -328,6 +331,8 @@
     outset: it.outset,
     clip: it.clip,
   )
+  // First in what it holds, where they take no room.
+  if marks { box_marks(_INSET, it.outset, stroke) }
   // A body holding only a `context` cannot be told blank or not until it is
   // laid out: `#context [A prompt.]` shows something on the exam, while
   // `#e.get(get => if show-solutions(get) [42])` shows nothing there and
@@ -371,12 +376,18 @@
   prefix: PREFIX,
   doc: _SPEC.doc,
   construct: constructor => (..args) => constructor(..args.pos(), .._renamed(args.named())),
+  // `config` read only for the fields left to it.
   display: it => if _needs_config(it) {
-    e.get(get => _draw(_configured(it, config_options(get))))
+    e.get(get => _draw(_configured(it, config_options(get)), marks: it.regions))
   } else {
-    _draw(it)
+    _draw(it, marks: it.regions)
   },
-  fields: _SPEC.fields.values(),
+  fields: _SPEC.fields.values() + (
+    // Set by an exam that leaves its regions, for the boxes that draw
+    // themselves in it (see `exam`): whether to mark the box's corners (see
+    // `_draw`).
+    e.field("regions", bool, default: false, internal: true, doc: "Internal."),
+  ),
 )
 
 #let _EID = e.data(answer_box).eid
@@ -627,8 +638,9 @@
 /// elembic applies a `show_`, `cond-set`, or `filtered` rule on
 /// `answer-box` to each box as it draws it, and so not to the boxes of an
 /// exam, which it does not draw, so one is an error; and the names of the
-/// set rules, which a `revoke` in the exam would undo.
-#let resolve_boxes(c, fields, cfg, before: NO_RULES_BEFORE) = {
+/// set rules, which a `revoke` in the exam would undo. `marks`: whether the
+/// boxes mark their corners (see `_draw`).
+#let resolve_boxes(c, fields, cfg, before: NO_RULES_BEFORE, marks: false) = {
   let is_box(y) = box_args(y) != none or _tag_args(y) != none
   // Content holding no answer box is left as it is, wrappers and all.
   if _find(c, is_box, first: true).len() == 0 { return c }
@@ -642,13 +654,16 @@
     let all = _given(at.fields, args)
     // Its body is drawn with the rules in force here, whose names a `revoke`
     // in it might name too.
-    all.body = resolve_boxes(all.body, at.fields, at.cfg, before: (
-      names: before.names + at.names,
-      error: none,
-    ))
+    all.body = resolve_boxes(
+      all.body,
+      at.fields,
+      at.cfg,
+      before: (names: before.names + at.names, error: none),
+      marks: marks,
+    )
     // On the `box` or `block` it draws, which the exam keeps whole, so that
     // the label stays.
-    let drawn = [#_draw(_configured(all, at.cfg))#_SHOWN]
+    let drawn = [#_draw(_configured(all, at.cfg), marks: marks)#_SHOWN]
     if lbl == none { return drawn }
     // A label of its own goes around it, for a `query` or a link to find:
     // on `styled` content, with a show rule that matches nothing, as the
