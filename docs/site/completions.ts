@@ -1,11 +1,13 @@
-// What the playground's editor (see playground.ts and editor.ts) completes:
-// examy's exports after a `#`, and, in a call's arguments, the arguments the
-// function takes by name, each with its type, default and description. Inside
-// `exam(..)` or `exam.with(..)`, and `e.set_(config, ..)`, those are
-// `config`'s options. The exports and their arguments come from the
-// reference's own data (live/completions.json, written by site.typ).
+// What the editors of the playground and the live editor (see playground.ts,
+// live.ts and editor.ts) complete: examy's exports after a `#`, and, in a
+// call's arguments, the arguments the function takes by name, each with its
+// type, default and description. Inside `exam(..)` or `exam.with(..)`, and
+// `e.set_(config, ..)`, those are `config`'s options. The exports and their
+// arguments come from the reference's own data (live/completions.json,
+// written by site.typ).
 
 import type { Completion, CompletionContext, CompletionResult, CompletionSource } from "@codemirror/autocomplete";
+import { siteFile } from "./compiler";
 
 /** An argument, as the reference documents it. */
 interface Arg {
@@ -205,4 +207,19 @@ export function examyCompletions(exports: Export[], base: string): CompletionSou
       validFor: new RegExp(`^${IDENT}$`),
     };
   };
+}
+
+/** examy's completions, fetched once for the page. */
+let loaded: Promise<CompletionSource | undefined> | null = null;
+
+/**
+ * examy's completions, from the reference's data, or none if it cannot be
+ * fetched (an editor then completes nothing of examy's).
+ */
+export function loadCompletions(): Promise<CompletionSource | undefined> {
+  loaded ??= fetch(siteFile("live/completions.json"))
+    .then((r) => (r.ok ? (r.json() as Promise<Export[]>) : null))
+    .then((exports) => (exports ? examyCompletions(exports, siteFile("./")) : undefined))
+    .catch(() => undefined);
+  return loaded;
 }

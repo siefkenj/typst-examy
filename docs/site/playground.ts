@@ -11,7 +11,6 @@
 // (`#import "@preview/examy:..."`); the playground compiles it with the
 // package's own source, which the site is built from, whatever the version.
 
-import type { Export } from "./completions";
 import { describe, element, isLoaded, loadCompiler, siteFile, withSource, type Typst } from "./compiler";
 import type { Editor } from "./editor";
 
@@ -169,13 +168,9 @@ export function mount(root: HTMLElement): void {
   // The editor, in place of the highlighted code once it has loaded, with
   // completions once they have too (or without them, if they cannot be).
   let editor: Editor | null = null;
-  const exports = fetch(siteFile("live/completions.json"))
-    .then((r) => (r.ok ? (r.json() as Promise<Export[]>) : null))
-    .catch(() => null);
-  void Promise.all([import("./editor"), import("./completions"), exports]).then(
-    ([{ createEditor }, { examyCompletions }, exports]) => {
+  void Promise.all([import("./editor"), import("./completions").then((c) => c.loadCompletions())]).then(
+    ([{ createEditor }, completions]) => {
       const holder = element("div", { className: "live-code" });
-      const completions = exports ? examyCompletions(exports, siteFile("./")) : undefined;
       editor = createEditor(holder, code, changed, "Document", completions);
       codeBox.replaceChildren(holder);
     },

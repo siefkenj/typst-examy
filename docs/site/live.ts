@@ -129,8 +129,12 @@ function enhance(figure: HTMLElement): void {
         const holder = element("div", { innerHTML: svgs[i] });
         const svg = holder.querySelector("svg");
         if (!svg) return;
-        // As wide as the build's own rendering, which is the same page.
+        // As wide as the build's own rendering, which is the same page: an
+        // inline SVG's width, or, for an image, the page's own width, in
+        // points as the image gives it (typst.ts gives it in pixels, which
+        // would show it at three quarters of the size).
         if (old?.style.width) svg.style.width = old.style.width;
+        else if (old instanceof HTMLImageElement) svg.style.width = `${svg.viewBox.baseVal.width}pt`;
         if (old) old.replaceWith(svg);
         else paper.append(svg);
       });
@@ -178,7 +182,9 @@ function enhance(figure: HTMLElement): void {
       showEditor(false);
       return;
     }
-    editor ??= import("./editor").then(({ createEditor }) => createEditor(holder, code, changed));
+    editor ??= Promise.all([import("./editor"), import("./completions").then((c) => c.loadCompletions())]).then(
+      ([{ createEditor }, completions]) => createEditor(holder, code, changed, undefined, completions),
+    );
     editor.then(
       (e) => {
         // Unless editing was done with before the editor was ready.
