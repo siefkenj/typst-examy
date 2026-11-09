@@ -10,6 +10,7 @@
 /// to the division whose text it is in.
 
 #import "prelude.typ": *
+#import "constants.typ": page_size
 #import "markers.typ": RUBRIC_LABEL, rubric_marker, rubric_value
 #import "scan.typ": SEQUENCE_FUNC, STYLED_FUNC, is_whitespace_content
 #import "points.typ": EXAMS_ENDED, EXAMS_STARTED
@@ -368,13 +369,17 @@
 /// of its exam (see export.typ).
 #let RECORD = label("_examy_rubric_record")
 
-/// The label of where each rubric is drawn, for stacking those in a margin.
+/// The label of where each rubric is drawn, for finding it.
 #let AREA = label("_examy_rubric_area")
 
 /// The label of the marker at the start of each block of division `id`'s
-/// content, which its leaders are drawn from (see `rubric_leaders`): one of
-/// its own, to be found without looking through every division's.
+/// content, from which its rubrics are looked for (see `rubric_leaders`): one
+/// of its own, to be found without looking through every division's.
 #let _head_label(id) = label("_examy_rubric_head_" + str(id))
+
+/// The label of the marker at the top left of the block division `id`'s leaders
+/// are drawn in, in the page or column it ends in (see `rubric_leaders`).
+#let leaders_anchor(id) = label("_examy_rubric_leaders_" + str(id))
 
 /// The marker at the start of a block of division `id`'s content
 /// (invisible).
@@ -387,29 +392,44 @@
 #let OUTER = .18in
 #let STACK_GAP = 5pt
 
-/// The label of the probes that tell how much a rubric is scaled (see
-/// `_scale`).
-#let SCALE = label("_examy_rubric_scale")
+/// The label of the probes on page `page` of exam `exam` that tell how much a
+/// rubric is scaled (see `_scale`): one for each, for each to read only its own,
+/// as there may be a query for every rubric and badge. (A bundle's documents
+/// share one introspection, so the page alone would not do.)
+#let _scale_label(exam, page) = label("_examy_rubric_scale_" + str(exam) + "_" + str(page))
 
 /// Two invisible probes, 100pt apart: put them in what a `context` places,
-/// for it to read with `_scale`.
-#let _scale_probes = {
-  place(top + left, [#metadata(0)#SCALE])
-  place(top + left, dx: 100pt, [#metadata(1)#SCALE])
+/// for it to read with `_scale`, in exam `exam`. Needs context.
+#let _scale_probes(exam) = {
+  let name = _scale_label(exam, here().page())
+  place(top + left, [#metadata(0)#name])
+  place(top + left, dx: 100pt, [#metadata(1)#name])
 }
 
 /// How much the content at `here()` is scaled (by `scale`, say, in a figure
 /// shrunk to fit), as found from the next `_scale_probes`: 1 until they are
 /// laid out. Positions are reported on the page, scaled, but placing is done
 /// in the content's own lengths: a distance between two positions is divided
-/// by this to place something across it. Needs context.
-#let _scale() = {
-  let probes = query(selector(SCALE).after(here()))
+/// by this to place something across it. `exam`: the exam it is in. Needs
+/// context.
+#let _scale(exam) = {
+  let probes = query(selector(_scale_label(exam, here().page())).after(here()))
   if probes.len() < 2 { return 1 }
   let (a, b) = probes.slice(0, 2).map(m => m.location().position())
   if a.page != b.page or b.x == a.x { return 1 }
   (b.x - a.x) / 100pt
 }
+
+/// The label of the records of what is drawn in the margin on `side` of page
+/// `page` of exam `exam`, for stacking them: one for each, as all the areas before
+/// one, for every one, would take time growing with the square of an exam's length.
+/// (A bundle's documents share one introspection, so the page alone would not do.)
+#let _margin_label(exam, page, side) = label("_examy_rubric_margin_" + str(exam) + "_" + str(page) + "_" + side)
+
+/// The label of a mark that page `page` of exam `exam` has something in a column
+/// that is drawn in its margin on `side`: other margin badges on that page are
+/// stacked with it (see `stacked_badges`).
+#let _in_column_label(exam, page, side) = label("_examy_rubric_in_column_" + str(exam) + "_" + str(page) + "_" + side)
 
 /// The width of the page's margin on `side` (`"margin-left"` or
 /// `"margin-right"`), resolved. Needs context.
@@ -432,7 +452,8 @@
   // As Typst resolves them: on a page of `auto` width, a margin's ratio is of
   // nothing, and an `auto` margin is of the smaller side that is not `auto`
   // (A4's width if neither is).
-  let width = if page.width == auto { 0pt } else { page.width }
+  let width = page_size().first()
+  let width = if width == auto { 0pt } else { width }
   if m == auto {
     let sides = (page.width, page.height).filter(x => x != auto)
     return 2.5 / 21 * if sides.len() == 0 { 21cm } else { calc.min(..sides) }
@@ -451,67 +472,139 @@
   r + (id: (exam: _exam_number(here()), address: address))
 }
 
-/// Where an area in the margin on `side` whose natural top on the page is
-/// `top_y` goes, in the exam numbered `exam`: there, or below the areas
-/// before it on its page, page position `p`, if they reach down to it. `k`:
-/// its scale (see `_scale`). Needs context.
-#let _stacked(exam, p, side, top_y, k) = {
+/// Whether what is drawn here is in columns: the exam's, if `in_columns`, or the
+/// page's. Needs context.
+#let columned(in_columns) = in_columns or page.columns > 1
+
+/// The label of the marks of how far exam `exam` is in from the page's text (see
+/// `exam_edges`).
+#let _edges_label(exam) = label("_examy_rubric_edges_" + str(exam))
+
+/// How far the sides of the exam are in from those of the page's text, as an
+/// exam set in a box of its own may be: invisible marks, for what is drawn in its
+/// `columns` to find its edge from, not being beside it (see `_text_edge`). Each
+/// reads what it needs where it is, as the page may change after it. In the
+/// page's columns, nothing: they all share the page's margins, and the exam is
+/// only as wide as one of them. Takes no room, but on a page of its own would be
+/// one: put it after any `#set page(..)`.
+#let exam_edges = {
+  let mark(side) = context {
+    let x = here().position().x
+    let width = page_size().first()
+    let inset = if page.columns > 1 { 0pt } else if side == "margin-left" { x - _margin(side) } else if width != auto {
+      width - _margin(side) - x
+    }
+    [#metadata((side: side, inset: inset))#_edges_label(_exam_number(here()))]
+  }
+  place(top + left, mark("margin-left"))
+  place(top + right, mark("margin-right"))
+}
+
+/// How far exam `exam` is in from the page's text on `side` (see `exam_edges`).
+/// Needs context.
+#let _exam_inset(exam, side) = {
+  let found = query(_edges_label(exam)).find(m => m.value.side == side)
+  if found == none or found.value.inset == none { 0pt } else { found.value.inset }
+}
+
+/// How far right of `p`, the start of a block in columns, the text of exam `exam`
+/// ends on `side`, in the content's own lengths (`k`, see `_scale`): what its margin
+/// starts from, which is not beside a column as it is beside the text. `none` on
+/// a page of `auto` width, which is not set in columns. Needs context.
+#let _text_edge(exam, side, p, k) = {
+  let inset = _exam_inset(exam, side)
+  if side == "margin-left" { return (_margin(side) + inset - p.x) / k }
+  let width = page_size().first()
+  if width != auto { (width - _margin(side) - inset - p.x) / k }
+}
+
+/// `body`, `width` wide, placed in the margin on `side`, `gap` clear of the text
+/// and `dy` below the top of the block it is drawn in, whose content starts
+/// `indent` right of the text's left edge; or, in columns, `edge` right of the
+/// block's start (see `_text_edge`).
+#let margin_place(side, body, width, gap, dy, indent: 0pt, edge: none) = {
+  if side != "margin-right" {
+    place(top + left, dx: (if edge == none { -indent } else { edge }) - gap - width, dy: dy, body)
+  } else if edge == none {
+    place(top + right, dx: gap + width, dy: dy, body)
+  } else {
+    place(top + left, dx: edge + gap, dy: dy, body)
+  }
+}
+
+/// Where an area `h` tall in the margin on `side` whose natural top on the
+/// page is `top_y` goes, in the exam numbered `exam`: there, or else the first
+/// place below that clear of the areas before it on its page, page position
+/// `p`. Those of the next of `columns` start back up the page, level with
+/// those before them. `k`: its scale (see `_scale`). Needs context.
+#let _stacked(exam, p, side, top_y, h, k) = {
   // Each area records only its natural top and height, which do not depend
   // on the stacking, and every area redoes the stacking of those before it
   // on its page: recording where each was moved to would chain them, a
   // layout pass each, and a page of several would not converge. They are
   // recorded in the content's own lengths, and scaled here, so that this
   // does not wait for another area's scale to be known either.
-  let bottom = none
-  // Only this exam's: a bundle's documents share one introspection, so the
-  // first page of another document would read as this page. Those before it
-  // on its page come last before it: read back to the first that is not.
-  let before = query(selector(AREA).before(here()))
-  let n = before.rev().position(m => m.value.id.exam != exam or m.value.page != p.page)
-  let same = if n == none { before } else { before.slice(before.len() - n) }
-  for m in same.filter(m => m.value.side == side) {
-    let natural_top = m.value.py + m.value.dy * k
-    let top = if bottom == none { natural_top } else { calc.max(natural_top, bottom + STACK_GAP * k) }
-    bottom = top + m.value.natural * k
+  let gap = STACK_GAP * k
+  // Those before it, each where it wants to be and how tall, and then itself.
+  let before = query(selector(_margin_label(exam, p.page, side)).before(here()))
+  let wanted = before.map(m => (m.value.py + m.value.dy * k, m.value.natural * k))
+  // Those placed so far, from the top down, none over another.
+  let taken = ()
+  let y = top_y
+  for (want, height) in (..wanted, (top_y, h)) {
+    // Past those that end above it, from the last, as most do: the rest of an
+    // exam's areas come in order, down the page.
+    let i = taken.len()
+    while i > 0 and taken.at(i - 1).bottom + gap > want { i -= 1 }
+    // Down past those it would run into, to the first gap it fits in.
+    y = want
+    while i < taken.len() and y + height + gap > taken.at(i).top {
+      y = calc.max(y, taken.at(i).bottom + gap)
+      i += 1
+    }
+    taken.insert(i, (top: y, bottom: y + height))
   }
-  if bottom == none { top_y } else { calc.max(top_y, bottom + STACK_GAP * k) }
+  y
 }
 
 /// The record of an area (see `AREA`): `id` its exam and its division's
 /// address (`none` for badges), at page position `p`, drawn at `dy` below
 /// it, `natural` tall, in its own lengths; at `top_y` on the page, moved to
 /// `y` (see `_stacked`).
-#let _area_record(id, p, side, dy, natural, top_y, y, k) = [#metadata((
-  id: id,
-  page: p.page,
-  side: side,
+#let _area_record(id, p, side, dy, natural, top_y, y, k) = {
   // Where its block starts, on the page, and how far below that, and how
   // tall, it is in its own lengths: for the stacking.
-  py: p.y,
-  dy: dy,
-  natural: natural,
+  [#metadata((py: p.y, dy: dy, natural: natural))#_margin_label(id.exam, p.page, side)]
   // On the page: where it would be, where it is (moved down below the area
-  // before it), and how tall; for the tests.
-  y: top_y,
-  top: y,
-  h: natural * k,
-))#AREA]
+  // before it), and how tall; for the tests, and with its own height, for the
+  // documentation (see `_overhang` in docs/site/render.typ).
+  [#metadata((id: id, page: p.page, side: side, natural: natural, y: top_y, top: y, h: natural * k))#AREA]
+}
 
 /// Points badges `body` in the margin on `side` where rubrics are drawn too:
 /// stacked with them (see `rubric_area`), so that neither covers the other.
-/// `placed(dy)` places them `dy` below the top of their block, where they
-/// are drawn. Emitted at the start of the block, before the rubrics of its
-/// first line, so that they come first.
-#let stacked_badges(body, side, placed, dy: 0pt) = context {
+/// `placed(dy, edge: ..)` places them `dy` below the top of their block, where
+/// they are drawn, and in columns (the `columns` of `in_columns`, or the page's)
+/// beside the text's `edge`, not the block's (see `_text_edge`). Emitted at the
+/// start of the block, before the rubrics of its first line, so that they come
+/// first. Unless `always`, for badges where rubrics are not drawn, they are only
+/// stacked on a page with something from a column in that margin: elsewhere,
+/// each is simply placed, as if the exam had no columns.
+#let stacked_badges(body, side, placed, dy: 0pt, in_columns: false, always: true) = context {
   let p = here().position()
-  let k = _scale()
+  let exam = _exam_number(here())
+  let in_column = columned(in_columns)
+  let mark = _in_column_label(exam, p.page, side)
+  if not always and not in_column and query(mark).len() == 0 { return placed(dy) }
+  let k = _scale(exam)
   let top_y = p.y + dy * k
   let natural = measure(body).height
-  let id = (exam: _exam_number(here()), address: none)
-  let y = _stacked(id.exam, p, side, top_y, k)
+  let id = (exam: exam, address: none)
+  let y = _stacked(exam, p, side, top_y, natural * k, k)
   _area_record(id, p, side, dy, natural, top_y, y, k)
-  placed((y - p.y) / k)
-  _scale_probes
+  if in_column [#metadata(none)#mark]
+  placed((y - p.y) / k, edge: if in_column { _text_edge(exam, side, p, k) })
+  _scale_probes(exam)
 }
 
 /// A division's rubric in the margin, emitted at the start of its block,
@@ -521,7 +614,9 @@
 /// rubrics are shown: see render.typ.) `indent` is how far right of the
 /// text's left edge the block's content is, and `dy` how far below its top
 /// the first line is. `division` is its id, and `address` its address.
-/// `info`: `heading` and `points` (see `rubric_info`).
+/// `info`: `heading` and `points` (see `rubric_info`). In columns (`opts`'
+/// `in-columns`, or the page's), it is drawn in the page's margin, not beside the
+/// column.
 #let rubric_area(division, address, field, info, opts, indent: 0pt, dy: 0pt) = context {
   let r = _drawn(division, address, field)
   if r == none { return }
@@ -529,34 +624,32 @@
   let width = if opts.rubric.width == auto { _margin(side) - GAP - OUTER } else { opts.rubric.width }
   let p = here().position()
   // Positions are on the page, lengths here are the content's (see `_scale`).
-  let k = _scale()
+  let k = _scale(r.id.exam)
   let body = draw_card(info.heading, r.nodes, keys: r.keys, scale: k)
   let top_y = p.y + dy * k
   let natural = measure(block(width: width, body)).height
   let h = natural * k
-  let y = _stacked(r.id.exam, p, side, top_y, k)
-  let on_right = side == "margin-right"
+  let y = _stacked(r.id.exam, p, side, top_y, h, k)
+  let in_column = columned(opts.at("in-columns", default: false))
+  let edge = if in_column { _text_edge(r.id.exam, side, p, k) }
   // A box of its own height: placed, it would otherwise be laid out in what
   // is left of the region it is placed in, as short as the exam is when the
   // exam is set in a box of its own height, and its items squeezed into it.
   let card = box(width: width, height: natural, body)
   _area_record(r.id, p, side, dy, natural, top_y, y, k)
-  if on_right {
-    place(top + right, dx: GAP + width, dy: (y - p.y) / k, card)
-  } else {
-    place(top + left, dx: -indent - GAP - width, dy: (y - p.y) / k, card)
-  }
-  _scale_probes
+  if in_column [#metadata(none)#_in_column_label(r.id.exam, p.page, side)]
+  margin_place(side, card, width, GAP, (y - p.y) / k, indent: indent, edge: edge)
+  _scale_probes(r.id.exam)
 }
 
 /// A division's rubric at its `"end"`: a block in the flow, after its parts.
 #let rubric_end_area(division, address, field, info, opts) = context {
   let r = _drawn(division, address, field)
   if r == none { return }
-  let k = _scale()
+  let k = _scale(r.id.exam)
   block(width: 100%, above: .8em, below: .8em, breakable: false, {
     place(top + right, [#metadata((id: r.id, page: here().page(), side: "end"))#AREA])
-    _scale_probes
+    _scale_probes(r.id.exam)
     draw_card(info.heading, r.nodes, keys: r.keys, size: .85em, scale: k)
   })
 }
@@ -581,67 +674,70 @@
 /// drawn with the rubric, before the content, a solution's background would
 /// cover them. Takes no room. Only those traced (see `is_traced`).
 ///
-/// They are drawn from the top of the block, where its `rubric_head` is,
-/// rather than from where they are emitted: laid out in a `measure` (to size
-/// what holds the exam, say), a `context` sees its own position in the
-/// measured layout, but every other element's on the page, and leaders
-/// drawn from their own position would not match those on the page. A
-/// block that runs onto a later page has its top on another page, and there
-/// they are drawn from where they are emitted.
-#let rubric_leaders(id, owners, side, trace: true) = context {
-  let here_loc = here()
-  let head = query(selector(_head_label(id)).before(here_loc)).at(-1, default: none)
-  if head == none { return }
-  // The rubrics in the block, between its head and here.
-  // Those traced: by their own `trace`, else by `trace`.
-  let mine = _owned_rubrics(head.location(), here_loc)
-    .filter(((a, owner)) => owner in owners and is_traced(a.value, trace))
-    .map(((a, owner)) => a)
-  if mine.len() == 0 { return }
-  let from_head = head.location().page() == here_loc.page()
-  let o = if from_head { head.location().position() } else { here().position() }
-  let edge_name = if side == "margin-right" { "left" } else { "right" }
-  let stroke = (paint: COLORS.trace.transparentize(15%), thickness: .6pt, dash: (1.6pt, 1.2pt), cap: "round")
-  // Below the rubric's line, in the gap before the next: below its
-  // descenders, about .22em deep, and above the next line's capitals, .65em
-  // down with the default leading.
-  let draw = for a in mine {
-    // Its index among every rubric placed (see `_exam_rubrics`).
-    let key = query(selector(RUBRIC_LABEL).before(a.location())).len() - 1
-    let row = query(row_label(key, edge_name)).at(0, default: none)
-    if row == none { continue }
-    let ap = a.location().position()
-    let rp = row.location().position()
-    if ap.page != o.page or rp.page != o.page { continue }
-    // Scaled as the rubric they lead to is (see `_scale`).
-    let k = row.value.scale
-    // The text's edge beside the rubric, from the box's edge: the card's
-    // inset, and in a margin the gap between the card and the text.
-    let edge = if side == "margin-right" {
-      rp.x - (CARD_INSET + GAP) * k
-    } else if side == "margin-left" {
-      rp.x + (CARD_INSET + GAP) * k
-    } else {
-      rp.x + CARD_INSET * k
+/// They are drawn from the top left of the block, in the page or column it
+/// ends in, where `leaders_anchor` is placed for them to read, rather than
+/// from where they are emitted: laid out in a `measure` (to size what holds the
+/// exam, say), a `context` sees its own position in the measured layout, but
+/// every other element's on the page, and leaders drawn from their own position
+/// would not match those on the page. Nor from the block's `rubric_head`, which
+/// a block that runs on into the next page or column has left behind.
+#let rubric_leaders(id, owners, side, trace: true) = {
+  place(top + left, [#metadata(id)#leaders_anchor(id)])
+  context {
+    let here_loc = here()
+    let head = query(selector(_head_label(id)).before(here_loc)).at(-1, default: none)
+    let anchor = query(selector(leaders_anchor(id)).before(here_loc)).at(-1, default: none)
+    if head == none or anchor == none { return }
+    // The rubrics in the block, between its head and here.
+    // Those traced: by their own `trace`, else by `trace`.
+    let mine = _owned_rubrics(head.location(), here_loc)
+      .filter(((a, owner)) => owner in owners and is_traced(a.value, trace))
+      .map(((a, owner)) => a)
+    if mine.len() == 0 { return }
+    let o = anchor.location().position()
+    let edge_name = if side == "margin-right" { "left" } else { "right" }
+    let stroke = (paint: COLORS.trace.transparentize(15%), thickness: .6pt, dash: (1.6pt, 1.2pt), cap: "round")
+    // Below the rubric's line, in the gap before the next: below its
+    // descenders, about .22em deep, and above the next line's capitals, .65em
+    // down with the default leading.
+    let draw = for a in mine {
+      // Its index among every rubric placed (see `_exam_rubrics`).
+      let key = query(selector(RUBRIC_LABEL).before(a.location())).len() - 1
+      let row = query(row_label(key, edge_name)).at(0, default: none)
+      if row == none { continue }
+      let ap = a.location().position()
+      let rp = row.location().position()
+      if ap.page != o.page or rp.page != o.page { continue }
+      // Scaled as the rubric they lead to is (see `_scale`).
+      let k = row.value.scale
+      // The text's edge beside the rubric, from the box's edge: the card's
+      // inset, and in a margin the gap between the card and the text.
+      let edge = if side == "margin-right" {
+        rp.x - (CARD_INSET + GAP) * k
+      } else if side == "margin-left" {
+        rp.x + (CARD_INSET + GAP) * k
+      } else {
+        rp.x + CARD_INSET * k
+      }
+      let ay = ap.y + .43em.to-absolute() * k
+      // The middle of the box's first line.
+      let ry = rp.y + k * if side == "end" { 9.5pt } else { 8.5pt }
+      // On the page, then in the content's own lengths, from `o`.
+      let pts = if side == "margin-right" {
+        ((ap.x, ay), (edge + 4pt * k, ay), (rp.x - 5pt * k, ry), (rp.x, ry))
+      } else if side == "margin-left" {
+        ((ap.x, ay), (edge - 4pt * k, ay), (rp.x + 5pt * k, ry), (rp.x, ry))
+      } else {
+        ((ap.x, ay), (edge + 6pt * k, ay), (edge + 6pt * k, ry), (rp.x, ry))
+      }
+      let pts = pts.map(((x, y)) => ((x - o.x) / k, (y - o.y) / k))
+      let (a, z) = (pts.first(), pts.last())
+      place(top + left, curve(stroke: stroke, curve.move(a), ..pts.slice(1).map(p => curve.line(p))))
+      place(top + left, dx: a.at(0) - 1.6pt, dy: a.at(1) - 1.6pt, circle(radius: 1.6pt, fill: COLORS.trace))
+      place(top + left, dx: z.at(0) - 1.25pt, dy: z.at(1) - 3pt, rect(width: 2.5pt, height: 6pt, fill: COLORS.trace, radius: 1pt))
     }
-    let ay = ap.y + .43em.to-absolute() * k
-    // The middle of the box's first line.
-    let ry = rp.y + k * if side == "end" { 9.5pt } else { 8.5pt }
-    // On the page, then in the content's own lengths, from `o`.
-    let pts = if side == "margin-right" {
-      ((ap.x, ay), (edge + 4pt * k, ay), (rp.x - 5pt * k, ry), (rp.x, ry))
-    } else if side == "margin-left" {
-      ((ap.x, ay), (edge - 4pt * k, ay), (rp.x + 5pt * k, ry), (rp.x, ry))
-    } else {
-      ((ap.x, ay), (edge + 6pt * k, ay), (edge + 6pt * k, ry), (rp.x, ry))
-    }
-    let pts = pts.map(((x, y)) => ((x - o.x) / k, (y - o.y) / k))
-    let (a, z) = (pts.first(), pts.last())
-    place(top + left, curve(stroke: stroke, curve.move(a), ..pts.slice(1).map(p => curve.line(p))))
-    place(top + left, dx: a.at(0) - 1.6pt, dy: a.at(1) - 1.6pt, circle(radius: 1.6pt, fill: COLORS.trace))
-    place(top + left, dx: z.at(0) - 1.25pt, dy: z.at(1) - 3pt, rect(width: 2.5pt, height: 6pt, fill: COLORS.trace, radius: 1pt))
+    place(top + left, draw)
   }
-  if from_head { place(top + left, draw) } else { place(dx: 0pt, dy: 0pt, draw) }
 }
 
 // ---------------------------------------------------------------------------

@@ -152,6 +152,10 @@ shows how you might create a fully custom cover page with the exam's name and te
 
 === #page-link("rubrics.html")[Rubrics]
 
-#config-options("show-rubrics", "rubric-position", "rubric-trace", "rubric-width", "embed-metadata")
+#config-options("show-rubrics", "rubric-position", "rubric-trace", "rubric-width")
+
+=== #page-link("metadata.html")[Exam metadata]
+
+#config-options("embed-metadata")
 
 #config-options-check()

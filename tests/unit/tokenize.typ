@@ -36,7 +36,7 @@
     let set_fields = ("points", "label").filter(k => t.fields.at(k) != none)
     set_fields.map(k => k + ": " + repr(t.fields.at(k)))
   } else if t.kind == "break" {
-    (t.target + if t.weak { ", weak" } else { "" },)
+    (t.target + if t.weak == true { ", weak" } else { "" },)
   } else if t.kind == "chunk" {
     (short(repr(t.body)),)
     if t.fr != none { ("fr: " + repr(t.fr),) }
@@ -85,11 +85,26 @@
   assert(kinds(toks).filter(k => k == "end").len() == 2)
 })
 
+#case([A `columns` holding markers is looked through, and each token inside it knows it is.], "#question[before #columns(2)[#part[a] #colbreak() between]]", toks => {
+  assert(shape(toks) == ("begin", "chunk", "begin", "chunk", "end", "chunk", "break", "chunk", "end"), message: repr(kinds(toks)))
+  let start = toks.position(t => t.columns != none)
+  assert(toks.at(start).kind != "end" and start >= 2, message: repr(start))
+  let inside = toks.slice(start).filter(t => t.kind != "end")
+  assert(inside.all(t => t.columns != none and t.columns == inside.first().columns), message: repr(inside.map(t => t.columns)))
+  assert(inside.first().columns.depth == 1)
+})
+
+#case([A `columns` with no marker stays one chunk, with whatever it holds.], "#question[#columns(2)[a #colbreak() b]]", toks => {
+  assert(shape(toks) == ("begin", "chunk", "end"), message: repr(kinds(toks)))
+  assert(toks.at(1).columns == none)
+})
+
 #case([A page break becomes a break token.], "#question[before #pagebreak() after]", toks => {
   assert(shape(toks) == ("begin", "chunk", "break", "chunk", "end"), message: repr(kinds(toks)))
   let brk = toks.find(t => t.kind == "break")
   assert(brk.target == "page")
-  assert(brk.weak == false)
+  // Not given, for a `#set pagebreak(weak: ..)` to apply.
+  assert(brk.weak == none)
 })
 #case([A column break.], "#question[a #colbreak() b]", toks => {
   assert(toks.find(t => t.kind == "break").target == "col")

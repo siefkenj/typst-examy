@@ -65,11 +65,13 @@
   (doc: tag.value.doc, rule: tag.value.rule)
 }
 
-#let EMPTY_SCAN = (has_marker: false, has_break: false, fr: none, marker_names: ())
+#let EMPTY_SCAN = (has_marker: false, has_break: false, has_pagebreak: false, columns_pagebreak: false, fr: none, marker_names: ())
 
 #let _merge_scans(a, b) = (
   has_marker: a.has_marker or b.has_marker,
   has_break: a.has_break or b.has_break,
+  has_pagebreak: a.has_pagebreak or b.has_pagebreak,
+  columns_pagebreak: a.columns_pagebreak or b.columns_pagebreak,
   fr: if a.fr == none { b.fr } else if b.fr == none { a.fr } else { a.fr + b.fr },
   marker_names: a.marker_names + b.marker_names,
 )
@@ -128,6 +130,16 @@
   out
 }
 
+/// What a walk looking through sequences, styled content, and elembic rules looks
+/// inside (see `_find`).
+#let _through(x) = {
+  let kids = unwrap(x)
+  if kids == none { () } else { kids }
+}
+
+/// What `c` holds, looked through as `_through` says.
+#let _leaves(c) = _find(c, x => type(x) == content and unwrap(x) == none, inside: _through)
+
 /// The scan (see `scan`) of one element: not a sequence, styled content, or
 /// an elembic rule, which `scan` looks through itself. A function of its
 /// own, so that Typst memoizes it, and an element scanned once, as a field
@@ -148,7 +160,29 @@
     }
     return EMPTY_SCAN
   }
-  if is_break(c) { return EMPTY_SCAN + (has_break: true) }
+  if is_break(c) { return EMPTY_SCAN + (has_break: true, has_pagebreak: c.func() == pagebreak) }
+  if c.func() == columns {
+    // What it holds, walked once, as `scan` would, and for the most `fr` any of
+    // its columns has: its column breaks written there split it, as far as they
+    // can be told from here. The columns are side by side, so what they hold
+    // shares the height they are given column by column, and those of different
+    // columns do not add up: an element around a `columns` is sized by its
+    // tallest.
+    let (inner, most, this) = (EMPTY_SCAN, none, none)
+    for x in _leaves(c.body) {
+      let s = _scan_element(x, scan)
+      inner = _merge_scans(inner, s)
+      if is_break(x) { this = none } else if s.fr != none {
+        this = if this == none { s.fr } else { this + s.fr }
+        if most == none or this > most { most = this }
+      }
+    }
+    // A column break in a `columns` moves on to its next column, and stays in it.
+    if not inner.has_pagebreak { inner.has_break = false }
+    inner.columns_pagebreak = inner.has_pagebreak
+    inner.fr = most
+    return inner
+  }
   // An `answer-box` the exam did not draw itself (see `resolve_boxes`), inside
   // an element it does not look into: what its call gives of its height,
   // and what its body holds. Recognized by the tag that ends an elembic
@@ -182,9 +216,13 @@
 
 /// Scan `c` (content, array, or anything else) and report:
 /// - `has_marker`: a division begin/end marker occurs somewhere inside
-/// - `has_break`: a pagebreak/colbreak occurs somewhere inside
+/// - `has_break`: a pagebreak/colbreak occurs somewhere inside, and not just a
+///   colbreak in a `columns` of its own
+/// - `has_pagebreak`: a pagebreak occurs somewhere inside
+/// - `columns_pagebreak`: a pagebreak occurs inside a `columns` somewhere inside
 /// - `fr`: the summed `fraction` heights of children (heights inside
-///   explicitly-sized containers do not propagate past their container)
+///   explicitly-sized containers do not propagate past them; those in a
+///   `columns` count as its tallest column's, see `_scan_element`)
 /// - `marker_names`: constructor names of found markers (for diagnostics)
 ///
 /// Sequences, styled content, and elembic rules are looked through with
@@ -192,13 +230,7 @@
 /// as deep as they are written, and are scanned recursively (see
 /// `_scan_element`).
 #let scan(c) = {
-  // Not content, or a sequence, styled content, or an elembic rule.
-  let through(x) = {
-    let kids = unwrap(x)
-    if kids == none { () } else { kids }
-  }
-  let leaves = _find(c, x => type(x) == content and unwrap(x) == none, inside: through)
-  leaves.fold(EMPTY_SCAN, (acc, x) => _merge_scans(acc, _scan_element(x, scan)))
+  _leaves(c).fold(EMPTY_SCAN, (acc, x) => _merge_scans(acc, _scan_element(x, scan)))
 }
 
 /// Element functions whose content participates in inline (paragraph)
@@ -344,6 +376,24 @@
     return it.at("children").all(is_whitespace_content)
   }
   false
+}
+
+/// What is drawn in a flow, stays where it is written when the page is full, and
+/// takes none of the room left: a counter's or a state's update, spacing (cut
+/// off at the end of a page), and what is placed out of the flow.
+#let _NO_ROOM_FUNCS = (counter("").update(0).func(), state("").update(0).func(), v, place)
+
+/// Whether `c` takes no room in the flow, as `_NO_ROOM_FUNCS` say, and so does
+/// not move on to the next page when there is none left. Not a floating `place`,
+/// which does.
+#let takes_no_room(c) = {
+  let room(x) = (
+    type(x) == content
+      and unwrap(x) == none
+      and not is_whitespace_content(x)
+      and not (_NO_ROOM_FUNCS.contains(x.func()) and not x.at("float", default: false))
+  )
+  _find(c, room, inside: _through, first: true).len() == 0
 }
 
 /// Whether `c` holds only what runs in a paragraph's lines as text does:

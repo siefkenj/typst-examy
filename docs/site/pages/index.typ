@@ -123,6 +123,11 @@ to write their name (see #page-link("cover-pages.html")[Cover pages]).
   ),
   ("cover-pages.html", [Cover pages], [Functions for creating name/exam info areas.]),
   (
+    "metadata.html",
+    [Exam metadata],
+    [Export rubrics and where each question is on the page as JSON, or attach them to the PDF.],
+  ),
+  (
     "configuration.html",
     [Configuration],
     [Configuration options that affect the look and feel of your test.],

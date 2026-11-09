@@ -27,6 +27,10 @@
 )
 #set text(size: 10.5pt)
 #set par(justify: true)
+// Lists ragged right: justified, the first line of an item that wraps would
+// stretch its spaces, those in its inline code too, so that a term list's
+// terms would not line up.
+#show selector(terms).or(list).or(enum): set par(justify: false)
 #set heading(numbering: "1.1")
 #show heading.where(level: 1): it => {
   pagebreak(weak: true)

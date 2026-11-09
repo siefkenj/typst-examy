@@ -9,6 +9,7 @@
 )
 #import "../refs.typ": own_exam_refs
 #import "../config.typ": config, exam_options, exam_wide_names
+#import "../constants.typ": EMBED_METADATA_OVERRIDE
 #import "./solution.typ": show_rubrics, show_solutions
 #import "../scan.typ": _find, rubric_markers
 #import "../markers.typ": exam_marker, marker_value
@@ -210,6 +211,13 @@
       .map(it => opts_of(it, opts).rubric.position)
       .dedup()
   }
+  // The divisions whose rubric is drawn at the `"end"`, after all they hold:
+  // `plan` says where (see `_with_rubric_ends`).
+  if opts.rubric.drawn and "end" in opts.rubric.positions {
+    items = items.map(it => if it.kind == "division" and it.at("rubric", default: false) and (
+      opts_of(it, opts).rubric.position == "end"
+    ) { (..it, rubric_end: true) } else { it })
+  }
   let data = compute_points_data(items, numbering: opts.numbering, full: opts.numbering-full)
   // What it attaches to its PDF (see `config`'s `embed-metadata`).
   let embed = embedded(opts.at("embed-metadata", default: false))
@@ -223,22 +231,30 @@
   // Around what it draws, for the points on each page (see `pages_record`).
   pages_start
   let held = hold(items)
+  let instructions = plan(held, fr-unit: opts.fr-unit)
   if embed.extents {
     // The boxes it does not draw, that draw themselves (in an `align`, say),
     // mark their corners too, as those it draws do (see `resolve_boxes`).
     show: e.set_(answer_box, regions: true)
-    render(held, plan(held), opts: opts)
+    render(held, instructions, opts: opts)
   } else {
-    render(held, plan(held), opts: opts)
+    render(held, instructions, opts: opts)
   }
   pages_record
   if embed.extents { regions_export(data, opts.at("exam-name", default: none)) }
   // Its rubrics recorded, and as data for the command line (see export.typ).
   if present {
+    let rows = data.map(r => (str(r.id), r)).to-dict()
     let divisions = range(items.len())
       .filter(i => items.at(i).kind == "division" and items.at(i).at("rubric", default: false))
-      .map(i => (id: i, address: items.at(i).address, field: items.at(i).fields.rubric, info: rubric_info(items.at(i), opts)))
-    rubric_export(divisions, attach: embed.rubric)
+      .map(i => (
+        id: i,
+        address: items.at(i).address,
+        field: items.at(i).fields.rubric,
+        info: rubric_info(items.at(i), opts),
+        row: rows.at(str(i)),
+      ))
+    rubric_export(divisions, opts.at("exam-name", default: none), attach: embed.rubric)
     exam_end
   }
   EXAMS_ENDED.step()
@@ -264,6 +280,10 @@
   opts.insert("wide-names", wide_names)
   // The exam's name in its regions (see regions.typ).
   opts.insert("exam-name", plain(get(config).exam-name))
+  // What it attaches to its PDF, as the command line or `config` says: for
+  // `auto`, its regions, and its rubrics only on the answer key.
+  let embed = if EMBED_METADATA_OVERRIDE != none { EMBED_METADATA_OVERRIDE } else { opts.embed-metadata }
+  opts.embed-metadata = if embed != auto { embed } else if show_solutions(get) { true } else { "question-regions" }
   // Whether its answer boxes mark their corners, for its regions.
   let marks = embedded(opts.embed-metadata).extents
   if type(questions) == function {

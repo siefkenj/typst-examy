@@ -8,7 +8,8 @@
     "dev": "vite --config docs/site/vite.config.ts",
     "preview": "vite preview --config docs/site/vite.config.ts",
     "typecheck": "tsc --noEmit -p docs/site",
-    "check:examples": "node docs/site/check-full-examples.mjs"
+    "check:examples": "node docs/site/check-full-examples.mjs",
+    "check:schema": "node docs/site/check-metadata-schema.mjs"
   },
   "devDependencies": {
     "@codemirror/autocomplete": "6.20.3",

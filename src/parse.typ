@@ -3,10 +3,10 @@
 /// totals. Everything here is pure data → data (no layout, no context).
 ///
 /// Item kinds:
-/// - (kind: "division", id, level, fields, styles, parent, children, number,
-///    address, total_points, total_bonus_points)
-/// - (kind: "chunk", body, styles, has_inner_break, fr, parent)
-/// - (kind: "break", target, weak, styles, parent)
+/// - (kind: "division", id, level, fields, styles, columns, parent, children,
+///    number, address, total_points, total_bonus_points)
+/// - (kind: "chunk", body, styles, has_inner_break, fr, columns, parent)
+/// - (kind: "break", target, weak, to, styles, columns, parent)
 ///
 /// `parent`/`children` are indices into the items array (`none` for top
 /// level), and a division's `id` is its own: what tells it apart from every
@@ -15,6 +15,8 @@
 /// `number` is the resolved number: 0-based int for auto/int numbering,
 /// content/str for custom numbers, or `none` for unnumbered divisions.
 /// `address` is the full path of resolved numbers, root first.
+/// `columns` is the `columns` around the item (see tokenize.typ), which is no
+/// level of the tree: a division in it is its parent's all the same.
 
 /// Build the item tree from tokens (structure only; no numbering yet).
 #let build_items(tokens) = {
@@ -30,6 +32,7 @@
         level: stack.len() + 1,
         fields: tok.fields,
         styles: tok.styles,
+        columns: tok.columns,
         parent: parent,
         children: (),
         number: none,
@@ -193,14 +196,16 @@
 /// The error for a page or column break inside a division given a
 /// `height`, which is laid out as one block of that height and so cannot
 /// break across pages; `none` when there is no such break. A break inside
-/// other content (a `#pagebreak()` in a block, say) counts too.
+/// other content (a `#pagebreak()` in a block, say) counts too. A column break
+/// in a `columns` inside the division stays in the block, moving to the next
+/// column of that `columns`: only a page break leaves `d` from there.
 #let fixed_height_break_error(items) = {
   for it in items {
     if not (it.kind == "break" or it.kind == "chunk" and it.has_inner_break) { continue }
     let cur = it.parent
     while cur != none {
       let d = items.at(cur)
-      if d.fields.height != auto {
+      if d.fields.height != auto and (it.columns == d.columns or it.kind == "break" and it.target == "page") {
         return (
           "examy: a page or column break inside a `"
             + d.fields.name

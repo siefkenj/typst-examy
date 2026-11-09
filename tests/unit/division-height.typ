@@ -1,7 +1,8 @@
 // A question, part, or subpart given a `height` is laid out as one block of
 // that height (a "frame"): `fr` answer boxes inside it share what its text
 // leaves of it, the exam lays it out whole, and a page or column break
-// inside it is an error, as a block cannot break across pages.
+// inside it is an error, as a block cannot break across pages; but not a column
+// break that stays in a `columns` inside it.
 #import "/src/tokenize.typ": tokenize
 #import "/src/parse.typ": build_items, fixed_height_break_error, parse
 #import "/src/plan.typ": plan
@@ -42,12 +43,26 @@
   ("#question(height: 3cm)[#part[A. #colbreak() B.]]", true),
   ("#question[#part(height: 2cm)[A.] #pagebreak() #part[B.]]", false),
   ("#question[A. #pagebreak() B.]", false),
+  // In a `columns` inside it, a column break stays inside it; in or out of
+  // one around it, or after one inside it, it does not.
+  ("#question(height: 3cm)[#columns(2)[#part[A.] #colbreak() #part[B.]]]", false),
+  ("#question(height: 3cm)[#columns(2)[A. #colbreak() B.]]", false),
+  ("#question(height: 3cm)[#columns(2)[#part[A.]] #colbreak() #part[B.]]", true),
+  ("#columns(2)[#question(height: 3cm)[A. #colbreak() B.]]", true),
+  ("#columns(2)[#question(height: 3cm)[A.] #colbreak() #question[B.]]", false),
 )
 #for (src, fails) in BREAKS {
   let error = fixed_height_break_error(build_items(tokenize(content(src))))
   assert.eq(error != none, fails, message: "break check of " + src + ": " + repr(error))
   if fails { assert(error.contains("`question` with a `height`"), message: error) }
 }
+
+// One of a part's own height, in a `columns` in a question: it leaves the part.
+#assert(
+  fixed_height_break_error(build_items(tokenize(content(
+    "#question(height: 3cm)[#columns(2)[#part(height: 1cm)[A. #colbreak() B.]]]",
+  )))).contains("`part` with a `height`"),
+)
 
 #rule[What the planner makes of a division with a height, and which breaks are errors.]
 #cases(

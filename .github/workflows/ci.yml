@@ -21,6 +21,7 @@ jobs:
             npm ci
             npm run build
             npm run check:examples
+            npm run check:schema
             typst compile --root . -f pdf examples/final-exam.typ final-exam.pdf
             typst compile --root . -f pdf examples/quiz.typ quiz.pdf
             typst compile --root . -f pdf --input show-solutions=true examples/quiz.typ quiz-solutions.pdf

@@ -157,7 +157,7 @@
       e.types.union("margin-left", "margin-right", "end"),
       doc: "Determines where rubrics are displayed.
 
-      `\"margin-left\"` or `\"margin-right\"`: in the page margin, next to the question/part/subpart they belong to (see `rubric-width`).
+      `\"margin-left\"` or `\"margin-right\"`: in the page margin, next to the question/part/subpart they belong to (see `rubric-width`). Those of every column go in that margin, stacked.
 
       `\"end\"`: after the question/part/subpart, taking up space on the page, so an exam with visible rubrics is laid out differently from one without.",
       default: "margin-right",
@@ -176,16 +176,18 @@
     ),
     e.field(
       "embed-metadata",
-      e.types.union(bool, "rubric", "question-extents"),
-      doc: "Whether to embed extra metadata into to the PDF (as attached JSON files).
-      
+      e.types.union(bool, auto, "rubric", "question-regions"),
+      doc: "Whether to embed extra metadata into the PDF (as attached JSON files). The `--input embed-metadata=..` command-line option overrides this setting.
+
       `true`: Embed all metadata.
-      
+
       `false`: Don't embed metadata.
+
+      `auto`: Embed the question regions, and the rubric data only when solutions are shown.
 
       `\"rubric\"`: Embed rubric data as `examy-rubric.json` (the same data as `<examy-rubric>`).
 
-      `\"question-extents\"`: Embed rectangles indicating where each question/part/subpart starts, where its answer boxes are, where the lines of a `#name-block()` are, and the size and margins of each page, as `examy-regions.json`.",
+      `\"question-regions\"`: Embed rectangles indicating where each question/part/subpart starts and ends, where its answer boxes are, where the lines of a `#name-block()` are, and the size and margins of each page, as `examy-regions.json`.",
       default: false,
     ),
     e.field(
@@ -337,7 +339,7 @@
       
       `\"start\"`: before the question text.
       
-      `\"margin-left\"` or `\"margin-right\"`: in the page margin.
+      `\"margin-left\"` or `\"margin-right\"`: in the page margin. Those of every column go in that margin, stacked.
       
       `\"end\"`: right-aligned, after the question text",
       default: "start",

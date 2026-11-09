@@ -7,8 +7,31 @@
 - `embed-metadata` attaches data for grading tools such as Gradescope to the
   PDF: the rubrics (`"rubric"`, as `examy-rubric.json`), where each question,
   its answer boxes, and the name block's lines are on the page
-  (`"question-extents"`, as `examy-regions.json`, also left as
-  `<examy-regions>`), or both (`true`).
+  (`"question-regions"`, as `examy-regions.json`, also left as
+  `<examy-regions>`), or both (`true`). With `auto`, the regions always, and
+  the rubrics only when solutions are shown. `--input embed-metadata=..` sets
+  it from the command line.
+- Questions, parts, and subparts can go inside `#columns(..)`. A question's text
+  outside the columns stays across the page. Points and rubrics in a margin go
+  in the page's margin from any column, stacked there, in a page's own columns
+  too; `fr` heights share what is left of their column; and a `#pagebreak()`
+  inside the columns splits them, and the same columns go on on the next page.
+
+### Breaking changes
+
+- The rubric data, `<examy-rubric>`, has a new format: `(format, exam-name,
+  rubrics)` instead of `(exam, questions)`. Each rubric gives its question's
+  `address`, `display-name`, `level`, `points`, and `bonus-points` instead of
+  `number` and `title`, and `points` counts only the points given to it
+  directly, not its parts'. See the manual's "Exam metadata" page for the
+  whole format.
+
+### Fixed
+
+- `#pagebreak(to: "odd")` and `#pagebreak(to: "even")` between or inside questions
+  keep their `to`.
+- `#set pagebreak(weak: true)` and `#set colbreak(weak: true)` apply to breaks
+  between or inside questions.
 
 ## 1.0.0 — 2026-10-28
 

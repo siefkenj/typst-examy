@@ -70,6 +70,7 @@ typst init @preview/examy
 - **[Smart cross-references](https://siefkenj.github.io/typst-examy/cross-references.html)**:
   a `@name` reference to a question will show a minimal string that uniquely identifies the question/part/subpart.
 - **[Cover pages](https://siefkenj.github.io/typst-examy/cover-pages.html)**: basic commands for creating name/exam info areas.
+- **[Exam metadata](https://siefkenj.github.io/typst-examy/metadata.html)**: rubrics and where each question is on the page, as JSON or attached to the PDF for grading tools.
 
 <p align="center">
   <img src="examples/images/multiple-choice.png" width="45%" alt="Multiple-choice questions with empty round and square bubbles, one per line, in columns, inline, and in a table">

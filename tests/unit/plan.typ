@@ -36,7 +36,7 @@
     if i.sticky { ("sticky",) }
     if i.has_inner_break { ("has_inner_break",) }
   } else if i.kind == "break" {
-    (i.target + if i.weak { ", weak" } else { "" },)
+    (i.target + if i.weak == true { ", weak" } else { "" },)
   } else if i.kind == "nested" {
     (name(i.root),)
   } else { () }
@@ -63,6 +63,26 @@
   assert(shape(instr).contains("nested"), message: repr(shape(instr)))
   assert(not shape(instr).contains("segment"))
   assert(shape(instr).at(0) == "verbatim")
+})
+
+#case([Questions all in a `columns` stay in one piece each: they are drawn in the same scope.], "#columns(2)[\n#question[a #part[b]]\n#question[c]\n]", (items, instr) => {
+  assert(not shape(instr).contains("segment"), message: repr(shape(instr)))
+  assert.eq(shape(instr).filter(k => k == "nested").len(), 2)
+})
+
+#case([A `columns` inside a question splits it: its own text before and after them are segments of their own, and the whitespace at either end of them is dropped.], "#question[\nbefore\n#columns(2)[\n#part[a]\ntext in them\n#colbreak()\n#part[b]\n]\nafter\n]", (items, instr) => {
+  assert.eq(shape(instr), ("segment", "segment", "segment", "break", "segment", "segment"))
+  let segs = instr.filter(i => i.kind == "segment")
+  assert.eq(segs.first().columns, none)
+  assert.eq(segs.last().columns, none)
+  assert(segs.slice(1, -1).all(s => s.columns != none), message: repr(segs.map(s => s.columns)))
+  assert(instr.at(3).styles.value.len() == 1, message: "the column break is in the `columns`")
+})
+
+#case([A question starting with a `columns`: its number goes in with the first part, and a break after them is out of them.], "#question[#columns(2)[#part[a]]\n#colbreak()\n#part[b]]", (items, instr) => {
+  assert.eq(shape(instr), ("segment", "break", "segment"))
+  assert.eq(instr.first().label_divisions.len(), 2)
+  assert.eq(instr.at(1).styles.value.len(), 0)
 })
 
 #case([A page break splits that question only.], "#question[q1 #pagebreak() q1 continued]\n#question[q2, no breaks]", (items, instr) => {
@@ -97,6 +117,13 @@
   assert(instr.map(s => s.hoisted) == (false, true, false))
   // Only the segment feeding the fr peer is sticky.
   assert(instr.map(s => s.sticky) == (true, false, false))
+})
+
+#case([An fr height in a `columns` is hoisted the same: the prose before the `columns` is glued to it.], "#question[prose #columns(2)[#v(1fr)]]", (items, instr) => {
+  assert(shape(instr) == ("segment", "segment"), message: repr(shape(instr)))
+  let (prose, fill) = (instr.at(0), instr.at(1))
+  assert(prose.sticky == true and prose.columns == none, message: repr(prose))
+  assert(fill.hoisted == true and fill.fr == 1fr and fill.columns != none, message: repr(fill))
 })
 
 #case(
@@ -206,6 +233,10 @@
   ("#question[plain]", false),
   ("#question[#v(1fr)]", true),
   ("#question[#part[#pagebreak()]]", true),
+  // A `columns` with no division in it is one piece of the question's text.
+  ("#question[#columns(2)[a #colbreak() b]]", false),
+  // One with a part in it holds only some of the question.
+  ("#question[#columns(2)[#part[a]]]", true),
 )
 #for (src, expected) in SPLITS {
   let (items, _) = pipeline(src)

@@ -179,3 +179,52 @@ subparts. The question/part/subpart continues on the next page with the same ind
   #question[The next question.]
   ```,
 )
+
+== Columns
+
+Questions, parts, and subparts can go inside
+#typst-link("reference/layout/columns/")[`#columns`]. They are numbered and given their points as
+usual, and a question's text outside the columns stays across the page.
+
+#example(
+  ```typ
+  #question[
+    Find the derivative of each function.
+    #columns(2)[
+      #part(points: 1)[
+        $f(x) = x^3$
+        #answer-box(width: 100%, height: 1cm)[]
+      ]
+      #part(points: 1)[
+        $g(x) = sin(x)$
+        #answer-box(width: 100%, height: 1cm)[]
+      ]
+      #colbreak()
+      #part(points: 1)[
+        $h(x) = e^(2x)$
+        #answer-box(width: 100%, height: 1cm)[]
+      ]
+      #part(points: 1)[
+        $k(x) = ln(x)$
+        #answer-box(width: 100%, height: 1cm)[]
+      ]
+    ]
+  ]
+  #question(points: 2)[State the chain rule.]
+  ```,
+)
+
+Typst fills the first column before it starts the next, so use
+#typst-link("reference/layout/colbreak/")[`#colbreak()`] where the next column should start. Columns
+continue onto the next page by themselves. A `#pagebreak()` inside them moves what comes after it to
+the next page, where the same columns start again from the first column.
+
+An answer box with a fractional height, such as `height: 1fr`, shares what is left of its own column
+down to the bottom of the page. Whatever follows the columns then starts on the next page. A
+question or part given a `height` has no next page to move to, so inside one, the columns must come
+last, and no other box with a fractional height can come before them.
+
+Points and rubrics in a margin go in the margin of the page, whichever column they come from. Each
+stays level with its question if it can, and otherwise moves down until it is clear of the others.
+Those from different columns can then mix, out of the order of the questions, so
+`points-position: "start"` is usually clearer inside columns.

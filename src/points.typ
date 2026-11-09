@@ -75,29 +75,40 @@
 
 /// The point data of an exam, from its parsed items: a row per division, in
 /// order, with its `id`, `level`, `address`, `number`, and `label` (see
-/// `_division_label`); its own regular, bonus and practice points, `own`,
-/// `own-bonus` and `own-practice`; and its `total_points` and `total_bonus_points`, its own
-/// with all of its parts' (see `assign_points`).
+/// `_division_label`); its `path`, its place among the divisions in its
+/// parent at each level, from its question's down, counted from 0 (`(1, 0)`
+/// for the second question's first part), however they are numbered; its
+/// own regular, bonus and practice points, `own`, `own-bonus` and
+/// `own-practice`, and those as given, `given` (`none`: not given), of its
+/// `intent`; and its `total_points` and `total_bonus_points`, its own with
+/// all of its parts' (see `assign_points`).
 #let compute_points_data(items, numbering: DEFAULT_NUMBERING, full: false) = {
-  items
-    .filter(it => it.kind == "division")
-    .map(d => {
-      let p = if d.fields.points == none { 0 } else { d.fields.points }
-      (
-        id: d.id,
-        level: d.level,
-        address: d.address,
-        number: d.number,
-        // A division numbered by its own `numbering` (see `localize`) is
-        // labelled so too.
-        label: _division_label(d, numbering, full),
-        own: if d.fields.intent == none { p } else { 0 },
-        own-bonus: if d.fields.intent == "bonus" { p } else { 0 },
-        own-practice: if d.fields.intent == "practice" { p } else { 0 },
-        total_points: d.total_points,
-        total_bonus_points: d.total_bonus_points,
-      )
-    })
+  // The path of the division before, which the next one's goes on from: as
+  // a sibling of it or of a division around it, or into it.
+  let path = ()
+  let rows = ()
+  for d in items.filter(it => it.kind == "division") {
+    path = if path.len() >= d.level { path.slice(0, d.level - 1) + (path.at(d.level - 1) + 1,) } else { path + (0,) }
+    let p = if d.fields.points == none { 0 } else { d.fields.points }
+    rows.push((
+      id: d.id,
+      level: d.level,
+      address: d.address,
+      number: d.number,
+      path: path,
+      // A division numbered by its own `numbering` (see `localize`) is
+      // labelled so too.
+      label: _division_label(d, numbering, full),
+      own: if d.fields.intent == none { p } else { 0 },
+      own-bonus: if d.fields.intent == "bonus" { p } else { 0 },
+      own-practice: if d.fields.intent == "practice" { p } else { 0 },
+      given: d.fields.points,
+      intent: d.fields.intent,
+      total_points: d.total_points,
+      total_bonus_points: d.total_bonus_points,
+    ))
+  }
+  rows
 }
 
 /// The columns of a points table of `rows` (see `compute_points_data`) by

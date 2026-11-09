@@ -3,16 +3,26 @@
 /// containers and elembic rules (`#show: e.set_(..)`) can be unwrapped
 /// (their styles and rules are recorded on a stack and re-applied at render
 /// time), and one that turns out to hold no marker is put back together as
-/// one `chunk`. Everything else stays an opaque `chunk`.
+/// one `chunk`. A `columns` holding markers, a page break, or an `fr` height is
+/// unwrapped too, recorded on the stack as a rule that draws what it holds in
+/// columns. Everything else stays an opaque `chunk`.
 ///
 /// Token kinds (plain dictionaries):
-/// - (kind: "begin", fields: (..), styles: (..)), `fields` holding, as
-///   `_scoped`, the options of the `config` rules around the division that
-///   it is laid out with (see `scoped_options_set`), if there are any
+/// - (kind: "begin", fields: (..), styles: (..), columns: scope), `fields`
+///   holding, as `_scoped`, the options of the `config` rules around the
+///   division that it is laid out with (see `scoped_options_set`), if there
+///   are any
 /// - (kind: "end")
-/// - (kind: "break", target: "page" | "col", weak: bool, styles: (..))
+/// - (kind: "break", target: "page" | "col", weak: bool | none, to: "even" | "odd" | none,
+///    styles: (..), columns: scope)
+///   `weak` and `to` are `none` when not given.
 /// - (kind: "chunk", body: content, styles: (..), has_inner_break: bool,
-///    fr: fraction | none)
+///    fr: fraction | none, columns: scope)
+///
+/// `columns` is the innermost `columns` unwrapped around the token, or `none`:
+/// `(id, depth, outer, parent)`, its `id` on the style stack (see `apply_styles`),
+/// how deep the stack is with it, and with the outermost of them, on top, and the
+/// `columns` it is in itself, or `none`.
 
 #import "prelude.typ": e
 #import "constants.typ": BATCH
@@ -38,7 +48,9 @@
 /// function, the show rule of an elembic rule; `id` the container it was
 /// recorded from, numbered by `tokenize`, the same for all it holds. (Two
 /// `styles` never compare equal, even the same one: the ids tell whether
-/// two pieces of content are in the same scope of a rule, see `render`.)
+/// two pieces of content are in the same scope of a rule, see `render`.) A
+/// `columns`' also has `again`, what `apply` is each time after the first that it
+/// is drawn (see `_columns_rule`).
 #let apply_styles(body, styles) = {
   let ret = body
   for s in stack_of(styles).rev() {
@@ -53,25 +65,40 @@
 /// that.
 #let _elembic_show(rule) = e.apply(_ => [#metadata(none)#metadata((rule: rule))])
 
-#let _chunk(c, styles, info) = (
+#let _chunk(c, styles, info, cols) = (
   kind: "chunk",
   body: c,
   styles: _kept(styles),
   has_inner_break: info.has_break,
   fr: info.fr,
+  columns: cols,
 )
+
+/// The rule (see `apply_styles`) drawing what is in the `columns` element `c`
+/// in columns, as `c` would: with the arguments it was given, so that a
+/// `#set columns(..)` still applies to those it was not, and, if `named`, its
+/// label, which only one of the `columns` a page break splits `c` into can have.
+#let _columns_rule(c, named: true) = {
+  let count = if c.has("count") { (c.count,) } else { () }
+  let gutter = if c.has("gutter") { (gutter: c.gutter) } else { (:) }
+  let name = if named { c.at("label", default: none) }
+  body => {
+    let drawn = columns(..count, ..gutter, body)
+    if name == none { drawn } else { [#drawn#name] }
+  }
+}
 
 /// The chunk that a container `c` (see `unwrap`) holding no marker is put
 /// back together as, from `tokens`, what it was tokenized as: what they say
 /// of breaks and `fr` heights is what `scan(c)` would.
-#let _rejoin(c, styles, tokens) = {
+#let _rejoin(c, styles, tokens, cols) = {
   let has_break = false
   let fr = none
   for t in tokens {
     if t.kind == "break" or t.has_inner_break { has_break = true }
     if t.kind == "chunk" and t.fr != none { fr = if fr == none { t.fr } else { fr + t.fr } }
   }
-  _chunk(c, styles, (has_break: has_break, fr: fr))
+  _chunk(c, styles, (has_break: has_break, fr: fr), cols)
 }
 
 /// The error for an elembic rule (its data, see `elembic_rule`) around
@@ -129,28 +156,32 @@
   let tokens = ()
   // How many begin and end tokens there are so far.
   let markers = 0
+  // How many tokens there are so far that what is around them must stay apart
+  // from, and not be put back together around: a `columns` the exam draws, or a
+  // page break that ends one.
+  let splits = 0
   // How many containers with styles or a rule were unwrapped (see
   // `apply_styles`).
   let scopes = 0
   // What is left to tokenize, last first, each with its styles and the
-  // options the `config` rules around it set (`scoped`); or a container whose
-  // content is tokenized, with where its tokens start and how many markers
-  // there were before them.
-  let stack = ((c: c, styles: (), scoped: (:)),)
+  // options the `config` rules around it set (`scoped`), and the `columns`
+  // around it (`cols`); or a container whose content is tokenized, with where
+  // its tokens start and how many markers there were before them.
+  let stack = ((c: c, styles: (), scoped: (:), cols: none),)
   while stack.len() > 0 {
     // In batches (see `BATCH`).
     let round = 0
     while stack.len() > 0 and round < BATCH {
       round += 1
-      let (c, styles, scoped, ..done) = stack.pop()
+      let (c, styles, scoped, cols, ..done) = stack.pop()
       if done.len() > 0 {
-        if markers == done.markers {
+        if markers == done.markers and splits == done.splits {
           // Popped, not sliced off: a slice copies all of `tokens`, every
           // container. A `for` loop has no limit on its rounds.
           let mine = ()
           for _ in range(tokens.len() - done.start) { mine.push(tokens.pop()) }
-          tokens.push(_rejoin(c, styles, mine))
-        } else {
+          tokens.push(_rejoin(c, styles, mine, cols))
+        } else if markers != done.markers {
           // Around divisions, a rule may not set what the exam reads once.
           let rule = elembic_rule(c)
           let error = if rule != none { exam_wide_rule_error(rule.rule, wide_names: wide_names) }
@@ -159,11 +190,11 @@
         continue
       }
       if type(c) == array {
-        for x in c.rev() { stack.push((c: x, styles: styles, scoped: scoped)) }
+        for x in c.rev() { stack.push((c: x, styles: styles, scoped: scoped, cols: cols)) }
         continue
       }
       if type(c) != content {
-        tokens.push(_chunk([#c], styles, scan(c)))
+        tokens.push(_chunk([#c], styles, scan(c), cols))
         continue
       }
 
@@ -174,22 +205,27 @@
       if m != none {
         tokens.push(if m.kind == "begin" {
           markers += 1
-          (kind: "begin", fields: if scoped.len() > 0 { (..m.fields, _scoped: scoped) } else { m.fields }, styles: _kept(styles))
+          (kind: "begin", fields: if scoped.len() > 0 { (..m.fields, _scoped: scoped) } else { m.fields }, styles: _kept(styles), columns: cols)
         } else if m.kind == "end" {
           markers += 1
           (kind: "end")
         } else {
           // Other marker kinds (e.g. height hints) travel as ordinary chunks.
-          _chunk(c, styles, scan(c))
+          _chunk(c, styles, scan(c), cols)
         })
         continue
       }
       if is_break(c) {
+        // Stays apart from what is around it, for it to end the `columns`
+        // there (see `plan_split`), and not to be put back into a chunk.
+        if cols != none and c.func() == pagebreak { splits += 1 }
         tokens.push((
           kind: "break",
           target: if c.func() == pagebreak { "page" } else { "col" },
-          weak: c.at("weak", default: false),
+          weak: c.at("weak", default: none),
+          to: c.at("to", default: none),
           styles: _kept(styles),
+          columns: cols,
         ))
         continue
       }
@@ -197,7 +233,7 @@
       // A container: unwrapped, with its styles or rule for what it holds.
       let kids = unwrap(c)
       if kids != none {
-        stack.push((c: c, styles: styles, scoped: scoped, start: tokens.len(), markers: markers))
+        stack.push((c: c, styles: styles, scoped: scoped, cols: cols, start: tokens.len(), markers: markers, splits: splits))
         let rule = elembic_rule(c)
         let apply = if rule != none { _elembic_show(rule.rule) } else if c.func() == STYLED_FUNC { c.styles }
         let inner = if apply != none {
@@ -206,14 +242,49 @@
         } else { styles }
         // What a `config` rule sets for the divisions in its scope.
         let inner_scoped = if rule != none { scoped + scoped_options_set(rule.rule) } else { scoped }
-        for x in kids.rev() { stack.push((c: x, styles: inner, scoped: inner_scoped)) }
+        for x in kids.rev() { stack.push((c: x, styles: inner, scoped: inner_scoped, cols: cols)) }
         continue
       }
 
       let info = scan(c)
+      // A `columns` around divisions, or what only the exam can draw of them: a
+      // page break, which ends them, or an `fr` height, of a column's own. What
+      // it holds goes in one more scope, which `render` draws once around all
+      // of it, and what is around it is not put back together.
+      if c.func() == columns and (info.has_marker or info.has_pagebreak or info.fr != none) {
+        splits += 1
+        scopes += 1
+        let inner = styles + ((id: scopes, apply: _columns_rule(c), again: _columns_rule(c, named: false)),)
+        let outer = if cols == none { inner.len() } else { cols.outer }
+        stack.push((c: c.body, styles: inner, scoped: scoped, cols: (id: scopes, depth: inner.len(), outer: outer, parent: cols)))
+        continue
+      }
+
       if not info.has_marker {
+        // Inside an element, a page break cannot be lifted out to end the
+        // `columns`, and would be a break to the next column.
+        if info.columns_pagebreak {
+          panic(
+            "examy: a `columns` with a `pagebreak` in it, inside a `"
+              + repr(c.func())
+              + "`: a page break can only split `columns` that are directly in the exam, or in a "
+              + "question, part, or subpart. Move the `columns` out of the `"
+              + repr(c.func())
+              + "`.",
+          )
+        }
+        if cols != none and info.has_pagebreak {
+          panic(
+            "examy: a `pagebreak` inside a `"
+              + repr(c.func())
+              + "` in a `columns`: a page break can only split the `columns` from directly in them, or in a "
+              + "question, part, or subpart in them. Move it out of the `"
+              + repr(c.func())
+              + "`.",
+          )
+        }
         // No structure inside: keep as one opaque chunk. Never destructured.
-        tokens.push(_chunk(c, styles, info))
+        tokens.push(_chunk(c, styles, info, cols))
         continue
       }
 

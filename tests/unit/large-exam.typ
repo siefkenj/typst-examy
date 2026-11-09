@@ -48,7 +48,7 @@
 #rule[An exam of #Q questions, with math, parts, answer boxes, and rubrics; its counts, then the exam, in small type]
 #context {
   let data = exam_points_data()
-  let rubrics = query(<examy-rubric>).first().value.questions
+  let rubrics = query(<examy-rubric>).first().value.rubrics
   let items = rubrics.map(q => q.rubric.len()).sum()
   assert.eq(data.len(), Q, message: "questions")
   assert.eq(data.map(q => q.total_points).sum(), 4 * Q, message: "points")

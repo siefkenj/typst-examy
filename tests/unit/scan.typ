@@ -7,7 +7,7 @@
 // the visual record at the end can show it as written.
 #import "/src/scan.typ": (
   extract_height, has_rubric, is_break, is_whitespace_content, rubric_markers, scan,
-  split_first_par, starts_inline, trim_leading_space,
+  split_first_par, starts_inline, takes_no_room, trim_leading_space,
 )
 #import "/src/markers.typ": begin_marker, end_marker, height_hint
 #import "/src/divisions.typ": part, question
@@ -77,11 +77,54 @@
   ("a #pagebreak() b", true),
   ("a b", false),
   ("#block[#colbreak()]", true),
+  // A column break in a `columns` stays there; a page break, or one outside
+  // them, does not.
+  ("#columns(2)[a #colbreak() b]", false),
+  ("#block[#columns(2)[a #colbreak() b]]", false),
+  ("#columns(2)[a #pagebreak() b]", true),
+  ("#colbreak() #columns(2)[a]", true),
   // Before a rule spliced into the same sequence (see `RUBRIC_CASES`).
   ("#([a #pagebreak()] + { show: e.set_(config, indent: 1em); [b] })", true),
 ))
 
+#let SCAN_PAGEBREAKS = check("scan(..).has_pagebreak", c => scan(c).has_pagebreak, (
+  ("a #pagebreak() b", true),
+  ("a #colbreak() b", false),
+  ("#block[#pagebreak()]", true),
+  ("#columns(2)[a #pagebreak() b]", true),
+))
+
+#let SCAN_COLUMNS_PAGEBREAKS = check("scan(..).columns_pagebreak", c => scan(c).columns_pagebreak, (
+  ("#pagebreak() #columns(2)[a]", false),
+  ("#block[#pagebreak()]", false),
+  ("#columns(2)[a #colbreak() b]", false),
+  ("#columns(2)[a #pagebreak() b]", true),
+  ("#columns(2)[#block[a #pagebreak() b]]", true),
+  ("#block[#columns(2)[a #pagebreak() b]]", true),
+))
+
+#let TAKES_NO_ROOM = check("takes_no_room", takes_no_room, (
+  (" ", true),
+  ("#counter(\"x\").update(1) #state(\"x\").update(1)", true),
+  ("#metadata(1) #v(1cm)", true),
+  ("#place(top)[a]", true),
+  ("#set text(fill: red)\n#counter(\"x\").step()", true),
+  // A float moves on to another page if it does not fit, as text does.
+  ("#place(top, float: true)[a]", false),
+  ("a", false),
+  ("#counter(\"x\").update(1) a", false),
+  ("#block[#metadata(1)]", false),
+))
+
 #let SCAN_FR = check("scan(..).fr", c => scan(c).fr, (
+  // Those in a `columns` share their own column: only those of one add up.
+  ("#columns(2)[#v(1fr) #colbreak() #v(1fr)]", 1fr),
+  ("#columns(2)[#v(1fr) #v(2fr) #colbreak() #v(1fr)]", 3fr),
+  ("#columns(2)[#v(1fr) #colbreak() #v(2fr)]", 2fr),
+  ("#block[#columns(2)[#v(2fr)]]", 2fr),
+  ("#columns(2)[#columns(2)[#v(1fr)]]", 1fr),
+  ("#columns(2)[a]", none),
+  ("#v(1fr) #columns(2)[#v(1fr)]", 2fr),
   ("#v(1fr)", 1fr),
   ("#v(1fr) #v(2fr)", 3fr),
   ("#block(height: 1fr)[x]", 1fr),
@@ -224,7 +267,10 @@
 #record([`scan(..).has_marker`: a division's marker anywhere inside.], c => scan(c).has_marker, SCAN_MARKERS)
 #record([`scan(..).marker_names`: which markers.], c => scan(c).marker_names, SCAN_NAMES)
 #record([`scan(..).has_break`: a break anywhere inside.], c => scan(c).has_break, SCAN_BREAKS)
+#record([`scan(..).has_pagebreak`: a page break anywhere inside.], c => scan(c).has_pagebreak, SCAN_PAGEBREAKS)
+#record([`scan(..).columns_pagebreak`: a page break anywhere inside a `columns`.], c => scan(c).columns_pagebreak, SCAN_COLUMNS_PAGEBREAKS)
 #record([`scan(..).fr`: the fr height a chunk negotiates with.], c => scan(c).fr, SCAN_FR)
+#record([`takes_no_room`: what stays where it is on a full page.], takes_no_room, TAKES_NO_ROOM)
 #record([`rubric_markers(..).len()`: how many rubrics are inside.], c => rubric_markers(c).len(), RUBRIC_MARKERS)
 #record([`has_rubric`: a rubric anywhere inside.], has_rubric, HAS_RUBRIC)
 #rule[`rubric_markers(.., kept: true)`: also in the fields elembic keeps, each once]

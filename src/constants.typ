@@ -24,6 +24,10 @@
 /// call, hashing its arguments, the walk's stack among them, every round.)
 #let BATCH = 9999
 
+/// The page's width and height as it is turned: `page.width` and `page.height`
+/// are what it was given. Needs context.
+#let page_size() = if page.flipped { (page.height, page.width) } else { (page.width, page.height) }
+
 /// A `--input name=true|false` flag as a bool; `none` when it is absent.
 /// `alias`, its name in the singular, is read too, so that either spelling
 /// works; given both, they must agree. Any other value is an error.
@@ -48,6 +52,22 @@
 
 #let SHOW_SOLUTIONS_OVERRIDE = _bool_input("show-solutions", alias: "show-solution")
 #let SHOW_RUBRICS_OVERRIDE = _bool_input("show-rubrics", alias: "show-rubric")
+
+/// `--input embed-metadata=..`: `config`'s `embed-metadata`, as it is given
+/// there (`true`, `false`, `auto`, `"rubric"`, or `"question-regions"`),
+/// written without quotes; `none` when it is absent. Any other value is an
+/// error.
+#let EMBED_METADATA_OVERRIDE = {
+  let values = ("true": true, "false": false, "auto": auto, "rubric": "rubric", "question-regions": "question-regions")
+  let value = sys.inputs.at("embed-metadata", default: none)
+  assert(
+    value == none or value in values,
+    message: "examy: `--input embed-metadata` must be `true`, `false`, `auto`, `rubric`, or `question-regions`, got `"
+      + repr(value).trim("\"")
+      + "`",
+  )
+  if value != none { values.at(value) }
+}
 
 /// `--input _debug_panic=..`: what the check every question carries does
 /// when no exam lays the question out (see `outside_check`).

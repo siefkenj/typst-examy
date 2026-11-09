@@ -48,6 +48,7 @@
   (path: "solutions.html", title: "Solutions", file: "pages/solutions.typ"),
   (path: "rubrics.html", title: "Rubrics", file: "pages/rubrics.typ"),
   (path: "cover-pages.html", title: "Cover pages", file: "pages/cover-pages.typ"),
+  (path: "metadata.html", title: "Exam metadata", file: "pages/metadata.typ"),
   (path: "configuration.html", title: "Configuration", file: "pages/configuration.typ"),
   (path: "technical-details.html", title: "Technical details", file: "pages/technical-details.typ"),
   (path: "reference.html", title: "Reference", file: "pages/reference.typ"),
@@ -494,7 +495,8 @@
   let key = if key == auto { has_key(src) } else { key }
   for solutions in if key { (false, true) } else { (false,) } {
     document(_paged_path(ex.paged-name, solutions), {
-      set page(width: auto, height: auto, margin: 0pt)
+      let size = ex.at("page-size", default: auto)
+      set page(..if size == auto { (width: auto, height: auto) } else { size }, margin: 0pt)
       render(
         src,
         solutions: solutions,
@@ -572,6 +574,16 @@
 ///   which Typst's HTML export does not keep inside a frame (a rubric's
 ///   dotted lines). site.typ makes the images, finding the example in the
 ///   page's source (see `paged_examples`).
+/// - `page-size`: with `paged-name`, the size of the page its images are
+///   drawn on, `(width: .., height: ..)`, for output that reads the page's
+///   size (the regions' `pages`, which a page of no fixed size has none
+///   of); `auto`, as large as what it renders to. What it renders to must
+///   fit on the page, as an image is of one page. Not in the PDF, where it
+///   is drawn on the manual's page.
+/// - `pdf-output`: whether the PDF shows what it renders to, after its code;
+///   `false` for output that tells where it is on the page (the regions):
+///   drawn on the manual's page, that is never the same twice, so the
+///   manual's layout would not settle. A note says the site shows it.
 ///
 /// On the site, the example is also shown as a whole document, which compiles
 /// as it is in a document of its own (see `full_source`), in a second code
@@ -591,6 +603,8 @@
   pdf-height: none,
   stacked: false,
   paged-name: none,
+  page-size: auto,
+  pdf-output: true,
 ) = {
   // An import line shows the version this site documents, whatever the page
   // says, so that a new version needs no change to the pages.
@@ -601,31 +615,36 @@
   let paged() = {
     // Not kept with what it renders to: a page may break between the two.
     raw(src, lang: "typ", block: true)
-    // Laid out as on the site, not as the manual's text is, nor centered
-    // as the panel is: both ways, since an alignment set one way only keeps
-    // the other from around it, and the panel centers its papers vertically.
-    let view(solutions) = {
-      set par(justify: false)
-      set align(start + top)
-      let h = if type(pdf-height) == array { pdf-height.at(if solutions { 1 } else { 0 }) } else {
-        pdf-height
+    if not pdf-output {
+      emph[Its output is shown in the #link(toml("/typst.toml").package.homepage)[online documentation].]
+    } else {
+      // Laid out as on the site, not as the manual's text is, nor centered
+      // as the panel is: both ways, since an alignment set one way only
+      // keeps the other from around it, and the panel centers its papers
+      // vertically.
+      let view(solutions) = {
+        set par(justify: false)
+        set align(start + top)
+        let h = if type(pdf-height) == array { pdf-height.at(if solutions { 1 } else { 0 }) } else {
+          pdf-height
+        }
+        let height = if h in (none, auto) { height } else { h }
+        render(
+          src,
+          solutions: solutions,
+          wrap: wrap,
+          width: width,
+          height: height,
+          inset: inset,
+          margin: margin,
+        )
       }
-      let height = if h in (none, auto) { height } else { h }
-      render(
-        src,
-        solutions: solutions,
-        wrap: wrap,
-        width: width,
-        height: height,
-        inset: inset,
-        margin: margin,
-      )
+      block(breakable: false, _paged_output(
+        views.map(((solutions, label)) => (view(solutions), label)),
+        stacked: stacked,
+        wide: rendered_width(width, inset, margin),
+      ))
     }
-    block(breakable: false, _paged_output(
-      views.map(((solutions, label)) => (view(solutions), label)),
-      stacked: stacked,
-      wide: rendered_width(width, inset, margin),
-    ))
   }
   _either(
     () => html.elem(

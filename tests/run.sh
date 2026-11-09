@@ -78,6 +78,42 @@ if [[ -z "$filter" || "constants" == *"$filter"* ]]; then
     check_input SHOW_RUBRICS_OVERRIDE "must be \`true\` or \`false\`, got \`yes\`" show-rubric=yes
     check_input SHOW_RUBRICS_OVERRIDE "must be \`true\` or \`false\`, got \`yes\`" show-rubrics=true show-rubric=yes
     check_input SHOW_SOLUTIONS_OVERRIDE "must be \`true\` or \`false\`, got \`1\`" show-solutions=1
+    check_input EMBED_METADATA_OVERRIDE null
+    check_input EMBED_METADATA_OVERRIDE '"auto"' embed-metadata=auto
+    check_input EMBED_METADATA_OVERRIDE '"question-regions"' embed-metadata=question-regions
+    check_input EMBED_METADATA_OVERRIDE "must be \`true\`, \`false\`, \`auto\`, \`rubric\`, or \`question-regions\`, got \`yes\`" embed-metadata=yes
+fi
+
+# tests/unit/embed-metadata-auto.typ is an exam with `embed-metadata: auto`
+# and `show-solutions: false`. Check what its PDF attaches (listed by
+# pdfdetach, from poppler-utils) with the command line's `show-solutions`
+# and `embed-metadata`, which override them.
+if [[ -z "$filter" || "embed-metadata-auto.typ" == *"$filter"* ]]; then
+    check_attached() {
+        local expected="$1"
+        shift
+        local args=()
+        for i in "$@"; do args+=(--input "$i"); done
+        local pdf got
+        pdf="$(mktemp --suffix .pdf)"
+        got="$(typst compile --root . "${args[@]}" tests/unit/embed-metadata-auto.typ "$pdf" 2>&1 \
+            && pdfdetach -list "$pdf" | sed -n 's/^[0-9]*: //p' | sort | paste -sd, -)"
+        rm -f "$pdf"
+        if [[ "$got" == "$expected" ]]; then
+            pass=$((pass + 1))
+            echo "PASS embed-metadata-auto.typ (${*:-no input}: ${expected:-nothing})"
+        else
+            fail=$((fail + 1))
+            echo "FAIL embed-metadata-auto.typ (${*:-no input}): expected ${expected:-nothing}, got ${got:-nothing}"
+        fi
+    }
+    check_attached examy-regions.json
+    check_attached examy-regions.json,examy-rubric.json show-solutions=true
+    check_attached "" embed-metadata=false
+    check_attached examy-rubric.json embed-metadata=rubric
+    check_attached examy-regions.json embed-metadata=question-regions show-solutions=true
+    check_attached examy-regions.json,examy-rubric.json embed-metadata=true
+    check_attached examy-regions.json,examy-rubric.json embed-metadata=auto show-solutions=true
 fi
 
 # tests/unit/answer-box-exam-view.typ must hold whatever the

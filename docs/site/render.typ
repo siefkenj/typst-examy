@@ -6,7 +6,6 @@
 #import "/src/lib.typ"
 #import "/src/prelude.typ": e
 #import "/src/rubric.typ": AREA
-#import "/src/points.typ": EXAMS_STARTED
 
 /// Lines an example may start with that set the document up rather than
 /// belong to the exam: they stay outside the `exam[..]` an example is wrapped
@@ -140,7 +139,7 @@
 /// The labels examy itself puts in a document, which an example's code may
 /// query: not renamed (see `_relabel`), as they are not the example's own.
 /// A query of one is narrowed to the example instead (see `_own_queries`).
-#let _PACKAGE_LABELS = ("examy-rubric", "examy-warning")
+#let _PACKAGE_LABELS = ("examy-rubric", "examy-regions", "examy-warning")
 
 /// `src` with each of its labels (`<name>`, `label("name")`) and each
 /// reference to one (`@name`) renamed with `suffix`, so that another copy of
@@ -171,18 +170,9 @@
 }
 
 /// `query(target)` as the example between the markers labelled `start` and
-/// `end` would have it in a document of its own: only what it draws, and,
-/// for `<examy-rubric>`, its exams numbered from 1, not among every example's
-/// on the page. The rubric data is given as `(value: ..)`, so that it is read
-/// as a query's result is (`.first().value`). In an example's scope as
-/// `_example_query` (see `_own_queries`).
-#let _example_query(target, start, end) = {
-  let found = query(selector(target).after(start).before(end))
-  if target != <examy-rubric> { return found }
-  // The exams begun before the example.
-  let before = EXAMS_STARTED.at(start).first()
-  found.map(m => (value: (..m.value, exam: m.value.exam - before)))
-}
+/// `end` would have it in a document of its own: only what it draws. In an
+/// example's scope as `_example_query` (see `_own_queries`).
+#let _example_query(target, start, end) = query(selector(target).after(start).before(end))
 
 /// `src` with each query of examy's own labels (see `_PACKAGE_LABELS`) made
 /// as the example would make it in a document of its own (see

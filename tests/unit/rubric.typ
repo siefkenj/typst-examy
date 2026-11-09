@@ -2,11 +2,14 @@
 // the export as data; and, laid out, which division each rubric belongs
 // to, rubrics that must not be lost, cards in the margin that never overlap,
 // and an exam that lays out the same whether its rubrics are shown or not.
-#import "/src/lib.typ": answer-box, config, e, exam, part, question, rubric, rubric-list, solution
-#import "/src/rubric.typ": AREA, RECORD, rubric_tree
+#import "/src/lib.typ": answer-box, config, e, exam, part, question, rubric, rubric-list, solution, subpart
+#import "/src/rubric.typ": AREA, RECORD, _exam_number, rubric_tree
 #import "/src/markers.typ": rubric_value
 #import "/src/scan.typ": glue_rubrics, has_any_rubric
-#import "/src/export.typ": division_number, latex, markdown, rubric_entries
+#import "/src/export.typ": display_name, latex, markdown, rubric_entries
+#import "/src/tokenize.typ": tokenize
+#import "/src/parse.typ": parse
+#import "/src/points.typ": compute_points_data
 #import "/tests/record.typ": cases, data, rule
 
 #set page(width: 7in, height: 6in, margin: (left: .5in, right: 2.2in, y: .4in))
@@ -142,10 +145,16 @@
   ),
   (type: "item", points: none, description: "Unscored", annotation: none),
 ))
-#assert.eq(division_number((0,)), "1")
-#assert.eq(division_number((1, 0)), "2.1")
-#assert.eq(division_number(("A", 2)), "A.3")
-#assert.eq(division_number((none,)), none)
+// A division's address in the export is its place in its parent at each
+// level, however it is numbered: two questions numbered 1, one lettered, and
+// one unnumbered, with its part and subpart.
+#let PATHS = compute_points_data(parse(tokenize[
+  #question[] #question(number: 1)[] #question(number: [A])[#part[]]
+  #question(number: none)[#part[#subpart[]] #part[]]
+]))
+#assert.eq(PATHS.map(r => r.path), ((0,), (1,), (2,), (2, 0), (3,), (3, 0), (3, 0, 0), (3, 1)))
+#rule[Export: each division's address, its place in its parent at each level, however it is numbered]
+#cases(([Division], [Address]), ..PATHS.map(r => (r.label, raw(repr(r.path)))))
 
 #rule[Export: Typst math as LaTeX, and a tree as entries, nested as it is]
 #cases(([Typst], [LaTeX]), ..TEX.map(((eq, tex)) => (eq, raw(tex))))
@@ -377,19 +386,34 @@
 #rule[Export: escapes, shorthands, and symbols as Markdown]
 #cases(([Typst], [Markdown]), ..SYMBOLS.map(((c, md)) => (c, raw(md))))
 
+// The exported text has a `~`'s no-break space as a plain ASCII one: in a
+// rubric's text, and in a name, whose label's thin space is one too.
+#let SPACES = (
+  ([Pages~1--3], rubric_entries(((kind: "item", points: 1, annotation: none, body: [Pages~1--3]),)).first().description),
+  ([Proof~one], rubric_entries(((kind: "group", title: [Proof~one], note: [See~below], annotation: none, children: ()),)).first().title),
+  ([See~below], rubric_entries(((kind: "group", title: [Proof], note: [See~below], annotation: none, children: ()),)).first().note),
+  ([1#sym.space.thin\(a)], display_name([1#sym.space.thin\(a)])),
+)
+#assert.eq(SPACES.map(((_, got)) => got), ("Pages 1–3", "Proof one", "See below", "1 (a)"))
+#rule[Export: no-break spaces as plain ones (a dash stays a dash), in rubric text and in a name]
+#cases(([Typst], [Exported]), ..SPACES.map(((c, got)) => (c, raw(got))))
+
 // The rubrics on their own, and as data.
 #pagebreak()
 #rule[`rubric-list`: every rubric of the last exam]
 #rubric-list()
 #context {
-  let exports = query(<examy-rubric>).map(m => m.value)
+  let exports = query(<examy-rubric>)
   // One per exam with rubrics, whether they are shown or not (exam 7 has
   // none); of those so far.
-  assert.eq(exports.map(x => x.exam).filter(n => n <= 12), range(1, 7) + range(8, 13))
+  let exams = exports.map(m => _exam_number(m.location()))
+  assert.eq(exams.filter(n => n <= 12), range(1, 7) + range(8, 13))
   // Exam 6: question 1 has no rubric of its own; its part has one.
-  let six = exports.find(x => x.exam == 6)
-  assert.eq(six.questions.map(q => (q.number, q.title, q.points)), (("1.1", "Question 1\u{2009}(a)", 2),))
-  assert.eq(six.questions.first().rubric, ((type: "item", points: 2, description: "Right", annotation: none),))
+  let six = exports.at(exams.position(n => n == 6)).value
+  assert.eq((six.format, six.exam-name), ("examy-rubric", none))
+  let rows = six.rubrics
+  assert.eq(rows.map(q => (q.address, q.display-name, q.level, q.points, q.bonus-points)), (((0, 0), "1 (a)", 2, 2, none),))
+  assert.eq(rows.first().rubric, ((type: "item", points: 2, description: "Right", annotation: none),))
 }
 #rule[The rubric data of the last exam, as `query(<examy-rubric>)` reads it]
 #context data(query(<examy-rubric>).last().value)

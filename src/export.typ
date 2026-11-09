@@ -107,7 +107,11 @@
   ""
 }
 
-#let _desc(c) = markdown(c).replace(regex(" *\n *"), "\n").replace(regex("\n{3,}"), "\n\n").replace(regex(" {2,}"), " ").trim()
+/// The no-break spaces Typst writes for a `~` (and its narrow form), which
+/// the exported text has as plain ASCII spaces.
+#let NBSP = regex("[\u{a0}\u{202f}]")
+
+#let _desc(c) = markdown(c).replace(NBSP, " ").replace(regex(" *\n *"), "\n").replace(regex("\n{3,}"), "\n\n").replace(regex(" {2,}"), " ").trim()
 
 /// A rubric's nodes (see `rubric_tree`) as data, nested as they are:
 ///   (type: "item", points, description, annotation)
@@ -128,23 +132,30 @@
   (type: "note", text: _desc(n.body))
 })
 
-/// A division's number: its numbers from the question down, joined by dots
-/// ("2.1" for 2 (a)); `none` for an unnumbered one.
-#let division_number(address) = {
-  if address.len() == 0 or address.any(n => n == none) { return none }
-  address
-    .map(n => if type(n) == int { str(n + 1) } else if type(n) == str { n } else { _desc(n) })
-    .join(".")
-}
+/// Content as a name in the exported data (a `display-name`): as `markdown`
+/// writes it, its spaces plain ASCII ones, whatever spaces Typst gave it (a
+/// label's thin space, a `~`'s no-break space), so that it reads, and
+/// compares, as it is typed.
+#let display_name(c) = markdown(c).replace(regex("[\u{a0}\u{2000}-\u{200a}\u{202f}\u{205f}\u{3000}]"), " ")
 
-/// The rubrics of an exam's divisions, from their records (see `RECORD`),
-/// as data. Pure.
-#let rubric_data(records) = records.map(r => (
-  number: division_number(r.address),
-  title: _desc(r.heading.title),
-  points: r.points,
-  rubric: rubric_entries(r.nodes),
-))
+/// What the data an exam exports (its rubrics, and its regions) says of a
+/// division, from its row of point data `r` (see `compute_points_data`): its
+/// `address`, its `path` (not its numbers, which two divisions may share,
+/// or not have), its label as text (`display-name`, not `label`, which in
+/// Typst is a `<label>`), its `level`, and its own `points` and
+/// `bonus-points`, as given, not its parts' (`none`: not given; practice
+/// points are neither). Pure.
+#let division_row(r) = (
+  address: r.path,
+  display-name: display_name(r.label),
+  level: r.level,
+  points: if r.intent == none { r.given },
+  bonus-points: if r.intent == "bonus" { r.given },
+)
+
+/// The rubrics of an exam's divisions, each `(row, nodes)`, its row of point
+/// data and its rubric's nodes (see `rubric_tree`), as data. Pure.
+#let rubric_data(divisions) = divisions.map(d => (..division_row(d.row), rubric: rubric_entries(d.nodes)))
 
 /// The name of a file the exam that ends at `here()` attaches, `base` +
 /// `ext`: the first exam of a document attaches it as named; another, with
@@ -160,30 +171,36 @@
 }
 
 /// Each division's rubric recorded (see `RECORD`), and the exam's rubrics
-/// as `metadata` labelled `<examy-rubric>`: `(exam, questions)`, `exam`
-/// counted from 1 and `questions` each division with a rubric, in order
-/// (see `rubric_data`). Emitted at the end of an exam with rubrics, whatever
-/// `show-rubrics` says, all in one place, so that it costs the same however
-/// many divisions there are. `divisions`: those that may have a rubric, in
-/// order, each `(id, address, field, info)` (see `rubric_info`). With
-/// `attach`, also attached to the PDF as `examy-rubric.json`, an array of
-/// this one exam's (see `config`'s `embed-metadata`).
-#let rubric_export(divisions, attach: false) = context {
+/// as `metadata` labelled `<examy-rubric>`:
+///
+///   (format: "examy-rubric", exam-name, rubrics)
+///
+/// `exam-name` the exam's name, `name`, as text; and `rubrics` each
+/// division with a rubric, in order (see `rubric_data`). Emitted at the end
+/// of an exam with rubrics, whatever `show-rubrics` says, all in one place,
+/// so that it costs the same however many divisions there are.
+/// `divisions`: those that may have a rubric, in order, each `(id, address,
+/// field, info, row)` (see `rubric_info`, and `compute_points_data` for
+/// `row`). With `attach`, also attached to the PDF as `examy-rubric.json`
+/// (see `config`'s `embed-metadata`).
+#let rubric_export(divisions, name, attach: false) = context {
   let exam = _exam_number(here())
   let bounds = exam_bounds()
   let records = ()
+  let rubrics = ()
   for d in divisions {
     let nodes = division_rubric(d.id, d.field, bounds).nodes
     if nodes.len() == 0 { continue }
     records.push((exam: exam, address: d.address, heading: d.info.heading, points: d.info.points, nodes: nodes))
+    rubrics.push((row: d.row, nodes: nodes))
   }
   for r in records [#metadata(r)#RECORD]
-  let data = (exam: exam, questions: rubric_data(records))
+  let data = (format: "examy-rubric", exam-name: name, rubrics: rubric_data(rubrics))
   [#metadata(data)<examy-rubric>]
   if attach and target() == "paged" {
     pdf.attach(
       attached_name("/examy-rubric", ".json"),
-      bytes(json.encode((data,))),
+      bytes(json.encode(data)),
       mime-type: "application/json",
       description: "The exam's rubrics",
     )
