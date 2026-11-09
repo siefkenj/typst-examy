@@ -32,6 +32,12 @@
   keep their `to`.
 - `#set pagebreak(weak: true)` and `#set colbreak(weak: true)` apply to breaks
   between or inside questions.
+- The text of every question, part, and subpart is a paragraph, in the PDF's
+  tags, so that a screen reader reads each one on its own, and for `par` rules.
+  It was one only when the exam drew something in the margin beside it, or the
+  text had a paragraph break: so `show par` rules and
+  `first-line-indent: (all: true)` now apply to every question, not only to
+  some.
 
 ## 1.0.0 — 2026-10-28
 

@@ -754,6 +754,13 @@
 /// division with a rubric drawn there.
 #let _rubric_end(d, opts) = rubric_end_area(d.id, d.address, d.fields.rubric, rubric_info(d, opts), opts)
 
+/// Ends a division's block, so that its text is a paragraph (`par`), in
+/// the PDF's tags and for `par` rules, as it is when its block holds
+/// another block, or a `place` (the margin's badges and rubrics, the
+/// regions' marks): Typst lays out text alone in a block as no paragraph.
+/// Invisible, and takes no room.
+#let _PAR = parbreak()
+
 /// The ids of division `idx` and the divisions around it, innermost first,
 /// for the end of a block it draws (see `end_mark`).
 #let _lineage(items, idx) = {
@@ -874,6 +881,8 @@
     block(width: 100%, inset: (left: indent), {
       set enum(numbering: enum_numbering(o.numbering, it.level))
       body
+      // Its text a paragraph, as it is beside a block (see `_PAR`).
+      _PAR
       end_mark(_lineage(items, idx), opts)
     }),
     own_styles,
@@ -981,6 +990,7 @@
     show pagebreak: it => colbreak(weak: it.weak)
     set enum(numbering: enum_numbering(o.numbering, owner.level))
     body
+    _PAR
     end_mark(_lineage(items, seg.division), opts)
   })
   let unit = opts.fr-unit
