@@ -44,7 +44,7 @@ to write their name (see #page-link("cover-pages.html")[Cover pages]).
 
 #example(
   ```typ
-  #import "@preview/examy:1.0.0": *
+  #import "@preview/examy:1.1.0": *
 
   #show: exam.with(show-solutions: false)
 
